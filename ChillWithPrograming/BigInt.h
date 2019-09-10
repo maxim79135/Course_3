@@ -11,7 +11,8 @@ class BigInt{
         BigInt operator- (BigInt bi);
         BigInt& operator-- ();
         BigInt operator-- (int);
-
+        friend std::ostream& operator<< (std::ostream &out, const BigInt &bi);
+    
         string getValue() { return this->value; }
     private:
         string value;
