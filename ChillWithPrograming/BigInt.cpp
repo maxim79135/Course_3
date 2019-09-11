@@ -16,7 +16,7 @@ BigInt BigInt::operator- (BigInt bi) {
         }
     }
     while (s1[0] == '0') s1.erase(0, 1);    
-    return BigInt(s1);
+    return BigInt(s1.empty() ? "0" : s1);
 }
 
 BigInt& BigInt::operator--() {
@@ -33,4 +33,9 @@ BigInt BigInt::operator--(int) {
 std::ostream& operator<< (std::ostream &out, const BigInt &bi) {
     out << bi.value;
     return out;
+}
+
+std::istream& operator>> (std::istream &in, BigInt &bi) {
+    in >> bi.value;
+    return in;
 }
