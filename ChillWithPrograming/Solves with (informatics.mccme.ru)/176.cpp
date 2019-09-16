@@ -11,8 +11,8 @@ int main() {
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++)
             cin >> matrix[i][j];
-    int a;
-    cin >> a;
+    
+    getchar();
     int *colors = new int[n];
 
     int count = 0;
@@ -21,9 +21,10 @@ int main() {
     }
 
     for (int i = 0; i < n - 1; i++)
-        for (int j = i + 1; j < n; j++)
-         if (matrix[i - 1][j - 1]) count++;
+        for (int j = i + 1; j < n; j++) {
+            if (matrix[i][j] && colors[i] != colors[j]) count++;
+        }
     
     cout << count;
-    return 0;
+    return EXIT_SUCCESS;
 }
