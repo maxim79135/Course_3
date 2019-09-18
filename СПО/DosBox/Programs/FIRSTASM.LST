@@ -1,0 +1,56 @@
+Microsoft (R) Macro Assembler Version 5.00                  9/18/19 18:29:36
+                                                             Page     1-1
+
+
+       1				.model small 
+       2 0000				.data 
+       3 0000  48 65 6C 6C 6F 20 77	  message0 db 'Hello world!' 
+       4       6F 72 6C 64 21		
+       5				   
+       6 0200				.stack 200h 
+       7 0000				.code 
+       8 0000				main: 
+       9 0000  B8 ---- R		  mov ax, @data 
+      10 0003  8E D8			  mov ds, ax 
+      11				   
+      12 0005  8D 16 0000 R		  lea dx, message0 
+      13 0009  B4 09			  mov ah, 09h 
+      14 000B  CD 21			  int 21h 
+      15				   
+      16 000D  B4 4C			  mov ah, 4ch 
+      17 000F  CD 21			  int 21h         
+      18 0011				end main 
+Microsoft (R) Macro Assembler Version 5.00                  9/18/19 18:29:36
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+DGROUP . . . . . . . . . . . . .  	GROUP
+  _DATA  . . . . . . . . . . . .  	000C	WORD	PUBLIC	'DATA'
+  STACK  . . . . . . . . . . . .  	0200	PARA	STACK	'STACK'
+_TEXT  . . . . . . . . . . . . .  	0011	WORD	PUBLIC	'CODE'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+MAIN . . . . . . . . . . . . . .  	L NEAR	0000	_TEXT
+MESSAGE0 . . . . . . . . . . . .  	L BYTE	0000	_DATA
+
+@CODE  . . . . . . . . . . . . .  	TEXT  _TEXT		
+@CODESIZE  . . . . . . . . . . .  	TEXT  0		
+@DATASIZE  . . . . . . . . . . .  	TEXT  0		
+@FILENAME  . . . . . . . . . . .  	TEXT  firstasm		
+
+
+     17 Source  Lines
+     17 Total   Lines
+     16 Symbols
+
+  50592 + 465952 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors
