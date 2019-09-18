@@ -1,0 +1,27 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    FW                                          See EILIB.TXT for terms
+;---------------
+
+; FW is a variant of the F string-searching program, in which we search
+;   for instances of a word within a set of files.  In addition to finding
+;   the given string, the FIND_WORD routine requires the string not to be
+;   embedded in a larger word (the characters on either side of the string
+;   must not be a letter).
+
+PF_FIND_PROC EQU FIND_WORD
+
+  JMP F_      ; jump around USAGE_MSG to the F.8 code
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FW [!] [-c | +cX] word filenames',0D,0A
+  DB '  finds all lines containing given word',0D,0A
+  DB '  ! suppresses the output of the containing file names',0D,0A
+  DB '  -c causes display of a whole record containing the word',0D,0A
+  DB '     where indented lines continue a record.  For +cX, non-X lines',0D,0A
+  DB '     continue a record.',0D,0A
+  DB 0,01A
+
+INCLUDE F.8   ; the remainder of the program code is identical to F.8
+

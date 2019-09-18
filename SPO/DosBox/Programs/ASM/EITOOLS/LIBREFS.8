@@ -1,0 +1,98 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   LIBREFS                                      See EILIB.TXT for terms
+;---------------
+
+; LIBREFS converts a file consisting of the redirected output of a sequence
+;   of A86 assemblies, into a file containing a program name and library-file
+;   name for each library-file call within each assembly.
+
+; This program was written to help create the listing of which programs
+; use which library files, within the EITOOLS library.
+
+LIBREFS:
+  MOV SI,081            ; point to our invocation command tail
+  JMP PFILE_IOARG       ; scan the input file name and process the file
+
+  DB 0D,0A,0D,0A    ; so that TYPE UNCOL.COM will be readable
+USAGE_MSG:
+  DB 'usage: LIBREFS in out',0D,0A
+  DB '  converts redirected A86 console output into a list of records',0D,0A
+  DB '  of program names and called library files.',0D,0A
+  DB 0,01A
+
+        DATA SEGMENT
+PROGNAME:               ; buffer for the name of the calling program
+  DB 32 DUP ?
+        DATA ENDS
+
+PFILE_REC:              ; process buffered input bytes at SI up to DX
+  LODSW                 ; fetch the first two bytes of the line
+  PUSH AX               ; save the first two bytes
+  CALL SKIP_LINE        ; advance to the next line
+  POP AX                ; restore the first two bytes
+  CMP AX,'8A'           ; it is the beginning of an A86 console output?
+  JNE RET               ; return if not, to ignore the line
+  CALL SKIP_LINE        ; it is an A86 console message: skip over "Source" line
+  PUSH DI               ; save the main output pointer
+  MOV DI,PROGNAME       ; point to our special buffer for the calling program
+  CALL COPY_FNAME       ; scan the main file name and copy to calling buffer
+  MOV AL,0              ; load terminating null
+  STOSB                 ; output terminating null for the calling name
+  POP DI                ; restore the main output pointer
+L1:                     ; loop here to scan each library file name
+  CALL SKIP_TO_FNAME    ; advance to the next file name
+  JZ RET                ; return if no more names in this assembly record
+  LEA CX,[DI+11]        ; load the pointer to the second output column
+  CALL COPY_FNAME       ; output the library file name
+  SUB CX,DI             ; calculate the pad count to the second column
+  MOV AL,' '            ; load blank
+  IF NC REP STOSB       ; blank fill to the second column of the output
+  MOV AX,PROGNAME       ; point to the buffer for the main program name
+  CALL COPYZ_AX         ; output the main (calling) program name
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output CRLF
+  JMP L1                ; loop to scan the next library file name
+
+
+; SKIP_TO_FNAME advances SI to the next library file name within an A86
+;   console output record.  We return Z if we see the string "Obje"
+;   beginning a name -- we take that to be the terminating "Object:" line.
+
+SKIP_TO_FNAME:
+  LODSB                 ; fetch a character
+  CMP AL,' '            ; is it a blank or below?
+  JBE SKIP_TO_FNAME     ; loop if it is, to scan the next character
+  CMP AL,'['            ; is it an INCLUDE bracket?
+  JE SKIP_TO_FNAME      ; loop if it is, to scan the next character
+  DEC SI                ; name character seen: retreat to it
+  CMP SI,DX             ; have we gone past the input buffer?
+  JAE >L9               ; return Z if we have
+  CMP W[SI],'bO'        ; does the name begin with "Ob"
+  JNE RET               ; return NZ (good name) if not
+  CMP W[SI+2],'ej'      ; Ob is seen: does there follow "je"?
+  JNE RET               ; return NZ if not
+  CALL SKIP_LINE        ; Obje is seen: skip the "Object:" line
+L9:                     ; common exit to signal end-of-assembly-record
+  CMP AL,AL             ; Z signals our caller should return
+  RET
+
+
+COPY_FNAME:             ; copy the SI-pointed file name to DI
+  MOV BX,DI             ; mark the output so we can retract false starts
+L1:                     ; loop here to scan each character of the file name
+  LODSB                 ; fetch a character
+  CMP AL,'.'            ; is it the terminating extension-period?
+  JE >L2                ; jump if it is, to scan over the extension
+  STOSB                 ; output the character
+  CMP AL,'\'            ; is it a subdirectory marker?
+  IF E MOV DI,BX        ; if yes then retract output, to supress dir names
+  JMP L1                ; loop to continue scanning the name
+
+L2:                     ; terminating extension-period is seen
+  LODSB                 ; fetch an extension character
+  CMP AL,' '            ; is it a terminating blank-or-below?
+  JA L2                 ; loop if not, to continue skipping extension chars
+  DEC SI                ; terminator seen: retreat back to it
+  RET
+
+

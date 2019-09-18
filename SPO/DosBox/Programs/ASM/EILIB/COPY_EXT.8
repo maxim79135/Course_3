@@ -1,0 +1,52 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  COPY_EXT                                      See EILIB.TXT for terms
+;---------------
+
+; OPEN_COPY_EXT opens two files, for filtering from one to the other.  Both
+;   files will have a default extension which can be overridden in the
+;   program's command tail invocation.  We are called with SI pointing to
+;   the command tail, where at least the first file name should be.  We
+;   construct and open the first file for reading, and create the second
+;   file, leaving it open for writing.  We use the second name from the command
+;   tail if there is one; we duplicate the first name with the second default
+;   extension if there isn't.  Input BX points to the two consecutive default
+;   extensions, each 4 bytes including the leading period (if a default
+;   extension has less than three characters the caller should pad the
+;   trailing bytes with nulls).  We return with IHANDLE and OHANDLE set to
+;   the open-file handles.
+
+        DATA SEGMENT
+        #if !IFILE_NAME
+IFILE_NAME:               ; buffer for constructing the input file name
+  DB 128 DUP ?
+        #endif
+        #if !OFILE_NAME
+OFILE_NAME:               ; buffer for constructing the output file name
+  DB 128 DUP ?
+        #endif
+        #if !IHANDLE
+IHANDLE DW ?              ; open-file handle for our input file
+        #endif
+        #if !OHANDLE
+OHANDLE DW ?              ; open-file handle for our output file
+        #endif
+        DATA ENDS
+
+EXT_ONLY  EQU 1           ; we do not have a default directory
+
+OPEN_COPY_EXT:
+  MOV DI,IFILE_NAME       ; point DI to the input name buffer
+  PUSH BX                 ; save the extension pointer across the call
+  CALL DIREXT_IFILE       ; open the first file for reading
+  MOV IHANDLE,AX          ; set IHANDLE to the input open file handle
+  POP BX                  ; restore the extension pointer
+  ADD BX,4                ; advance BX to the second default extension
+  CALL TAIL_BLANKS        ; skip intervening blanks in the invocation
+  CMP AL,0D               ; is there a second file name in the invocation?
+  IF E MOV SI,IFILE_NAME  ; if not then use the first name to make the second
+  MOV DI,OFILE_NAME       ; point DI to the output name buffer
+  MOV DX,DI               ; also point DX to the output file name
+  CALL NEWEXT_MAKE        ; make the output file name
+  CALL MCREAT             ; create and open the output file
+  MOV OHANDLE,AX          ; set OHANDLE to the output file's handle
+  RET

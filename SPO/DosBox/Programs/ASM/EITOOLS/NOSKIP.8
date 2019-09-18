@@ -1,0 +1,23 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  NOSKIP   ,-                       ; See EILIB.TXT for terms
+        ;---------------
+
+; NOSKIP outputs all lines containing any characters greater than a
+;   blank.  Thus, all "skipped" (blank) lines are filtered out.
+
+  DB '  filters out blank lines',0D,0A,0
+
+PROCESS_LINE:            ; filter CX bytes at SI--DI to BP
+  JCXZ RET               ; return if the line is empty
+  PUSH CX,SI             ; preserve register across the scan
+  SUB BX,BX              ; initialize a non-blanks counter
+L1:                      ; loop here for each character in the line
+  LODSB                  ; fetch the character
+  CMP AL,' '             ; is it a blank?
+  IF A INC BX            ; if non-blank then bump the counter
+  LOOP L1                ; loop to scan the next character
+  POP SI,CX              ; restore clobbered registers
+  TEST BX                ; were there any non-blanks?
+  IF Z RET               ; return if not, the line is not passed on
+  JMP OUT_PROCESS_LINE   ; the line is long enough: output it
+

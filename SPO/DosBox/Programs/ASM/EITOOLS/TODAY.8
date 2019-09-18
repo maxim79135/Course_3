@@ -1,0 +1,52 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   TODAY                                        See EILIB.TXT for terms
+;---------------
+
+; TODAY outputs today's date.  The user can optionally give a plus or
+;   minus sign, followed by a fixed number of days, to calculate a date
+;   that is a fixed number of days from today.
+
+NO_DOSCHECK EQU 1       ; we do not need to trap any DOS errors
+
+  JMP TODAY             ; jump around the USAGE_MSG
+
+USAGE_MSG:
+  DB 'usage: TODAY [+|-][number_of_days]',0D,0A
+  DB '   outputs the date that is a fixed number of days from today.',0D,0A
+  DB 0,01A
+
+TODAY:
+  MOV AH,02A            ; DOS function number for GET_DATE
+  INT 021               ; set CX to the current year, DX to the month and date
+  CALL ENCODE_DATE      ; convert the date into a doubleword integer BXCX
+  MOV SI,081            ; point to our invocation command tail
+L1:                     ; loop here to allow multiple terms
+  CALL TAIL_BLANKS      ; advance to the first nonblank in the command tail
+  CMP AL,0D             ; is the command tail empty?
+  JE >L4                ; jump if it is, to output the date
+  CMP AL,'+'            ; is there a plus sign?
+  JE >L2                ; jump if there is, to add the following number
+  CMP AL,'-'            ; is there a minus sign?
+  JNE >L3               ; jump if not: it had then better be just a number
+  INC SI                ; advance beyond the minus sign
+  CALL VERIFY_HDEC      ; set DXAX to the following number
+  SUB CX,AX             ; subtract the low word of the given number
+  SBB BX,DX             ; carry the subtraction into the high word
+  JMP L1                ; loop to allow multiple terms
+
+L2:                     ; a plus sign was seen
+  INC SI                ; advance beyond the plus sign
+L3:                     ; we will add the following number
+  CALL VERIFY_HDEC      ; set DXAX to the number
+  ADD CX,AX             ; add in the low word of the given number
+  ADC BX,DX             ; carry the addition to the high word
+  JMP L1                ; loop to allow multiple terms
+
+L4:                     ; scanning of the command line is complete
+  CALL DECODE_DATE      ; decode BXCX back into year CX and month/day DX
+  MOV DI,OBUFF          ; point to our output buffer
+  CALL OUT_DATE_CXDX    ; output the date, in English
+  CALL FLUSH_OBUFF      ; write the output buffer to the console
+  JMP GOOD_EXIT         ; exit the program
+
+

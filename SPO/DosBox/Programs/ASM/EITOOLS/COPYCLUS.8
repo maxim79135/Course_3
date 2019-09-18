@@ -1,0 +1,32 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COPYCLUS                                     See EILIB.TXT for terms
+;---------------
+
+; COPYCLUS copies the contents of a numbered cluster on the hard disk drive
+;   to a named disk file.
+
+; This program was written ten years ago.  It will need to be reworked,
+; in order to function with today's multi-gigabyte hard drives.
+
+COPYCLUS:
+  mov al,081            ; load BIOS index number for the D drive
+  CALL INIT_CLUS        ; initialize cluster scanning
+  MOV B_CLUS,AX         ; store the number of bytes in a cluster
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_DEC       ; scan the cluster number
+  CMP AX,BP             ; is the cluster number too high for this drive?
+  IF AE JMP USAGE_EXIT  ; abort if it is
+  PUSH AX               ; cluster number OK: save it
+  CALL OPEN_O_ARG       ; open the output file
+  POP AX                ; restore the cluster number
+  CALL CLUS_AX          ; read the cluster
+  MOV CX,0              ; load the number of bytes in the cluster
+B_CLUS EQU W[$-2]       ; cluster size is plugged into the above imm value
+  CALL MWRITE           ; output the cluster contents to the file
+  CALL MCLOSE           ; close the output file
+  JMP GOOD_EXIT         ; return to the operating system
+
+
+USAGE_MSG:
+  DB 'usage: COPYCLUS clusnum fname',0D,0A
+  DB '    outputs a decimal-numbered cluster to a file',0D,0A,0

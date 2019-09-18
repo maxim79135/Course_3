@@ -1,0 +1,30 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    DEC5                                        See EILIB.TXT for terms
+;---------------
+
+; OUT_DECIMAL5 outputs AX as a string of 5 decimal digits, right-justified and
+;   blank-filled, to DI-pointed memory.  DI advances beyond the output.
+
+OUT_DECIMAL5:
+  PUSH AX,BX,DX      ; preserve registers across call
+  XCHG DX,AX         ; swap number-to-be-output into DX
+  MOV AX,'  '        ; load two blanks
+  STOSW              ; output 2 blanks for left-fill
+  STOSW              ; 4 blanks are now output, DI points to low-digit
+  PUSH DI            ; save pointer to low digit
+  MOV BX,10          ; the modulus of the output is 10
+  STD                ; output is backwards
+L1:                  ; loop here for each digit of the output
+  XCHG AX,DX         ; swap the remaining number into AX
+  SUB DX,DX          ; high-word of 4-byte dividend is zero
+  DIV BX             ; divide number by 10
+  XCHG DX,AX         ; swap remainder (low digit) into AX, quotient into DX
+  ADD AL,'0'         ; convert the low digit from binary to ASCII
+  STOSB              ; output the ASCII digit
+  TEST DX            ; are there any more digits left to output?
+  JNZ L1             ; loop if yes to compute them
+  POP DI             ; restore low-digit pointer
+  INC DI             ; increment beyond this, the last digit
+  POP DX,BX,AX       ; restore clobbered registers
+  CLD                ; restore forward direction
+  RET

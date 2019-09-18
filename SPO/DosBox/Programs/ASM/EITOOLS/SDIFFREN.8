@@ -1,0 +1,95 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SDIFFREN                                     See EILIB.TXT for terms
+;---------------
+
+; SDIFFREN compares each line of the first two files named in its command
+;   tail.  The lines are presumed to contain long file names, which have
+;   possibly changed from the first file to the second.  For each line
+;   that has changed, we output a renaming command to the third (output)
+;   file, so that that output file can be run as a batch file, to effect
+;   the changes in the file names.
+
+SDIFFREN:
+  MOV SI,081        ; point to our invocation command tail
+  CALL MERGE_21     ; merge the two files into the output summary
+  JMP GOOD_EXIT     ; return to the operating system
+
+  DB  0D,0A,0A
+USAGE_MSG:
+  DB 'usage: SDIFFREN old_file new_file renaming_file'
+  DB 0D,0A
+  DB 0,01A
+
+QREN:
+  DB 'ren "',0
+QSQ:
+  DB '" "',0
+QQCRLF:
+  DB '"',0D,0A,0
+
+
+; PROCESS_MERGE is called by MERGE_21 to perform a single merge operation.
+;   We are called with SI pointing to and DX beyond the first file's bytes,
+;   BX pointing to and BP beyond the second file's bytes, and DI pointing
+;   to where we should output.  We compare the lines and take appropriate
+;   action: if the lines are the same we skip past them both.  Otherwise
+;   we output whichever line comes first.
+
+L1:                 ; the first file is exhausted
+  MOV BX,BP         ; empty the second file
+  RET
+
+L2:                 ; the second file is exhausted
+  MOV SI,DX         ; empty the first file
+  RET
+
+PROCESS_MERGE:
+  CMP SI,DX         ; is the first file exhausted?
+  JAE L1            ; jump if yes, empty the second file
+  CMP BX,BP         ; is the second file exhausted?
+  JAE L2            ; jump if yes, to empty the first file
+  LODSB             ; first file not exhausted: fetch a character from it
+  CMP AL,' '        ; was it a control character?
+  JB RET            ; return if so, to ignore it
+  DEC SI            ; not a control character: retreat back to it
+  MOV AL,[BX]       ; fetch the first character in the second file's line
+  INC BX            ; advance the second-file input pointer
+  CMP AL,' '        ; was it a control character?
+  JB RET            ; return if so, to ignore it
+  DEC BX            ; not a control character: retreat back to it
+  PUSH SI,BX        ; preserve input registers during comparison
+L0:                 ; loop here to compare each byte of the two files
+  LODSB             ; fetch the next byte from the first file
+  CMP AL,[BX]       ; compare it to the byte from the second file
+  JNE >L5           ; jump if they differ, to output a difference line
+  INC BX            ; bytes match: advance the second file pointer
+  CMP AL,0A         ; have we completed an entire matching line?
+  JNE L0            ; loop if not, to compare the next byte
+L7:                 ; the two lines match
+  POP AX,AX         ; discard the starting pointers-- both pointers advance
+  RET
+
+L5:                 ; the two lines do not match
+  POP BX,SI         ; restore the pointers to the start of the lines
+  MOV AX,QREN       ; point to "ren " and the opening quote
+  CALL OUT_QNAME    ; output the 'ren "' and the first file name
+  MOV AX,QSQ        ; point to the intervening quote-space-quote
+  XCHG SI,BX        ; swap the second file name pointer into SI
+  CALL OUT_QNAME    ; output the quotes and the second file name
+  XCHG SI,BX        ; swap the input pointers back to their proper places
+  MOV AX,QQCRLF     ; point to trailing quote and CRLF
+  JMP COPYZ_AX      ; output the trailing quote and CRLF
+
+
+OUT_QNAME:
+  CALL COPYZ_AX     ; output the leading string given by our caller
+L1:                 ; loop here to output the SI-pointed file name
+  LODSB             ; fetch a character from the name
+  STOSB             ; output the character
+  CMP AL,'"'        ; was it a double quote?
+  IF E STOSB        ; output a second double-quote if it was
+  CMP AL,0A         ; was it the terminating linefeed?
+  JNE L1            ; loop if not, to output the next character
+  DEC DI,2          ; retract the output CRLF
+  RET
+

@@ -1,0 +1,50 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  CONSO      ,NZ_DECIMAL            ; See EILIB.TXT for terms
+        ;---------------
+
+; CONSO outputs all lines containing a specified number of consecutive
+;    consonants.
+
+USAGE_MSG:
+  DB 'usage: CONSO n <in >out',0D,0A
+  DB '  outputs lines with n or more consecutive consonants',0D,0A
+  DB 0
+
+NZ_DECIMAL:
+  CALL VERIFY_DEC       ; scan the count
+  TEST AX               ; was the value zero?
+  IF Z JMP USAGE_EXIT   ; error if it was
+  MOV N_CONSO,AX        ; store the count
+  JMP NO_MORE_ARGS      ; verify no more arguments
+
+
+; PROCESS_LINE scans the line of CX bytes pointed to by SI, and outputs it
+;   if there are N_CONSO consecutive consonants.
+
+PROCESS_LINE:
+  PUSH CX,SI            ; preserve registers during scanning
+L1:                     ; loop here when a non-consonant is seen
+  MOV DX,0              ; reset the consosants-countdown to the target value
+N_CONSO EQU W[$-2]      ; target value is plugged into the above imm word
+L2:                     ; loop here when a consonant is seen
+  LODSB                 ; fetch the next byte
+  CMP AL,0D             ; is it the terminating CR?
+  JE >L3                ; jump if it is, to repress output of this line
+  AND AL,0DF            ; coerce letters to upper case
+  SUB AL,'B'            ; reduce consonants range to zero
+  CMP AL,25             ; was the byte an A or a non-letter?
+  JAE L1                ; loop if it was-- a non-consonant
+  CMP AL,'O'-'B'        ; was the byte an O?
+  JE L1                 ; loop if it was-- a non-consonant
+  OR AL,014             ; coerce E,I,U,Y to the same value
+  CMP AL,017            ; was it E,I,U, or Y?
+  JE L1                 ; loop if it was-- a non-consonant
+  DEC DX                ; consonant was seen: count it down
+  JNZ L2                ; loop if we have not reached the consecutive count
+  POP SI,CX             ; consecutive consonants seen: restore ptr and count
+  JMP OUT_PROCESS_LINE  ; output the line
+                        
+L3:                     ; line scanned-- consecutive consonants not seen
+  POP SI,CX             ; restore (discard) pointers
+  RET
+

@@ -1,0 +1,246 @@
+EILIB source file library, V1.03           July 26, 2000
+Copyright 2000 Eric Isaacson.  All rights reserved.
+
+Thank you for purchasing the source file library!
+
+Legal Terms and Conditions
+
+Throughout this section, the terms "EILIB" and "the library"
+refer to any or all of the source files in either the EILIB
+or the EITOOLS parts of this software package.
+
+The source files contained in this package are licensed for your 
+personal use only.  You may not publish or redistribute any of 
+these source files, or any source files resulting from the 
+modification of these files, unless each recipient has purchased 
+a copy of A86 plus EILIB for themselves.  (For example, if you 
+do some contract programming for a company, and use EILIB, or 
+any files derived from EILIB source code, that company must buy 
+a copy of A86+EILIB from me, for each computer on which your 
+source code will exist.) 
+
+You may publish executable programs assembled using the library, 
+if they contain substantial functional additions that you have 
+created, on the condition that your copyright claim to such 
+programs is based solely on the creative enhancements and 
+additions you have made, and not on the content I have provided 
+to you.  You are specifically prohibited from attempting to 
+restrict me, or other customers of EILIB, from publishing any 
+programs simply because they are based on the library.  You are 
+also prohibited from republishing the EITOOLS executable 
+programs, unless and until you make your own substantial 
+functional additions to them.  I may myself publish the EITOOLS 
+executables, but I wish to retain the right to decide which 
+ones, and under what conditions, they are published. 
+
+The library is provided on an "as-is" basis.  It is entirely up 
+to you to determine its fitness and suitability for use.  Under 
+no circumstances will I assume any liability whatever for its 
+performance (or lack of performance).
+
+It is also entirely up to you to figure out how the library or the
+EITOOLS programs work.  The programs are well-commented, and I have
+included a few additional tips at the end of this document, so you
+should be able to do this on your own.  I will not answer any
+questions about the library or the programs, and I not feel obligated
+to respond to any bug reports or suggestions for improvement.  (Keep
+in mind that, since you have all the source code, this means you can
+fix bugs and make improvements yourself.  I had hesitated to release
+this library due to the potential support burden; so I decided to
+solve the problem by disclaiming any support!) 
+
+
+Instructions for Installation
+
+The library consists of two sets of files, zipped together as 
+EILIB.ZIP and EITOOLS.ZIP.  The INSTALL.BAT file will unzip the files
+into default directories C:\A86\EILIB and C:\A86\EITOOLS, create the
+catalog file A86.LIB within the EILIB subdirectory, and assemble each
+of the programs in the EITOOLS subdirectory.  Or, you can manually
+create subdirectories in a different location, and unzip the files
+into them, as described in the following paragraphs.  In any event,
+you will want to provide an appropriate SET A86LIB and/or SET A386LIB
+line in your AUTOEXEC.BAT file, if you wish to use the EILIB library
+from any location on your computer. 
+
+EILIB.ZIP contains the library files.  They should be unzipped into
+their own directory, such as \A86\EILIB.  You should then use the
+A86LIB tool to create the catalog file A86.LIB within the EILIB
+directory (there is a batch file LIBMAKE.BAT that does this), and you
+should edit your AUTOEXEC.BAT file to add the EILIB directory to the
+A86LIB and/or A386LIB environment variable, if you have them.  If you
+already have your own library of source files, you can include both
+your library and EILIB in the environment variable; for example: 
+
+  SET A86LIB=C:\A86\EILIB;C:\A86\MYLIB
+
+You will need to execute AUTOEXEC.BAT, or reboot your computer, 
+for the environment variable to take effect. 
+
+EITOOLS.ZIP contains the source files for a number of small 
+programs, most of which use the library.  You should unzip 
+those files into another subdirectory, such as \A86\EITOOLS. 
+
+
+Instructions for Use
+
+As I stated in the "Legal Terms and Conditions" above, it is up 
+to you to figure out how the source code works.  Each file with 
+extension .8 or .8D in the EITOOLS directory is a separate 
+program, which can be assembled simply using the command: 
+
+  A86 progname.8
+
+or
+
+  A86 progname.8D
+
+where "progname" is the name of any individual program within
+the EITOOLS directory.
+
+If A86.COM is in a PATH directory, and if the A86LIB environment 
+variable includes the EILIB subdirectory, then all needed EILIB 
+files will be automatically included in the assembly, and the 
+executable COM program will be produced.  (.8D files produce a 
+.BIN device driver, suitable for placement into a CONFIG.SYS 
+file.)  If you see the message "Bad command or file name", that 
+means DOS couldn't find the A86.COM program: you need to place 
+A86.COM into a directory named by the PATH command in your 
+AUTOEXEC.BAT, then you need to reboot your computer.  If A86 
+executes but tells you there were undefined symbols, that means 
+the EILIB subdirectory has not been successfully placed into the 
+A86LIB environment variable.  You need to place a command such 
+as SET A86LIB=C:\A86\EILIB into your AUTOEXEC.BAT file, then
+reboot your computer. 
+
+In general, the operation of each EITOOLS program is given in the
+source file for that program.  Many of those programs also contain a
+"usage" message that will be output by the program when there are no
+command-tail arguments, and/or when the command tail is of an
+unexpected syntax.  There is also a capsule summary of each EITOOLS
+program in the file TSUMMARY.TXT in the EITOOLS directory. 
+
+The EILIB files contain procedures and/or macros that you can 
+call from any of your A86 programs.  You do not need to declare 
+those procedures or their included files -- just use them, and 
+A86 will see to it that the necessary files are included.  There
+is a capsule summary of all the major procedures and macros
+in the file LSUMMARY.TXT in the EILIB directory.
+
+The best way to figure out how each procedure works, is to see 
+it being used by a working program.  One of the tools, the F 
+program, is a simple string-searching utility that will help you 
+figure out what EITOOLS programs (or other EILIB files), if any, 
+use the procedure you are interested in.  For example, to see 
+the list of files using the procedure OPEN_I_ARG, go to the 
+EITOOLS subdirectory and type the command 
+
+    f OPEN_I_ARG *.8*
+
+to the DOS prompt.  (The search string for F is case-sensitive, 
+and my assembler code is all-caps, so you need to type all-
+caps; use FNC instead of F if you don't like that.)  A similar 
+search in the EILIB subdirectory will show you other library 
+files using OPEN_I_ARG. 
+
+Some library files are not called by any programs -- they are 
+called either in proprietary source files of mine, or in 
+outdated source files.  I have included these unused library 
+files because I thought they might still be of interest to you.  
+They are listed in a text file called NOT_USED.TXT. 
+
+
+Tips and General Comments
+
+Note the word LINE_FILTER in the headers of many of the EITOOLS 
+programs.  LINE_FILTER is a macro that sets up a program to be a 
+line filter.  The beginning code to each such program is 
+contained in the macro expansion to LINE_FILTER, so that you 
+don't see it in the source file.  You may want to assemble a 
+LINE_FILTER file with the +L switch, and look at the resulting 
+.LST file, to see what is really happening with such files. 
+
+Many of the library files will expect your calling program to
+provide one or more variables and/or procedures, that are used
+by the library.  For example, the LINE_FILTER macro in the
+previous paragraph expects you to provide a procedure called 
+PROCESS_LINE, that the library code calls repeatedly, for each 
+line of input.  If you neglect to provide all the variables and 
+procedures the library file expects, A86 will list the symbol 
+name as undefined, and give you the name of the library file 
+that used it. 
+
+My D86 debugger is an excellent tool for figuring out how a program
+works.  Use the F1, F2, and F5 keys to step the program.  You can set
+up scanning memory windows for programs making use of string-ops to
+input from SI and output to DI: the command 1T,SI will show you
+upcoming input on memory line 1, and the command 4TZ,ES,DI will show
+you what has just been output (up against the end of the display
+line).  Note that non-instruction content to programs, such as the
+"usage:" message near the start of many programs, shows up as
+garbage-instructions in the D86 disassembly.  This is normal, since
+D86 does not try to distinguish such sections when it gives you a
+disassembly of the program.  You will have problems only if the
+instruction pointer accidentally gets into such areas -- that is why
+a program that starts with a "usage:" message must first have a JMP
+instruction around that message.
+
+Speaking of that "usage:" message: I often put a hex 01A byte 
+just beyond the terminating null of the message.  This is so 
+that one can issue a TYPE PROGRAM.COM command to the DOS prompt, 
+and get just a few garbage bytes (the JMP) followed by the usage 
+message only.  The 01A will terminate the output to TYPE. 
+
+In many of the programs you will see declarations such as the COUNT1
+EQU W[$-2] after a MOV CX,0 instruction in CSORT2.8 in EITOOLS.  This
+is a trick to save code: I am declaring a byte memory variable which
+exists as the immediate operand to an instruction within the
+program.  The result is a program that is smaller and faster than if
+I had coded the equivalent COUNT1 DW 0 near the top of the program,
+and then MOV CX,COUNT1 where the MOV CX,0 now is.  This is a form of
+"self-modifying code", which is frowned upon by many programmers, but
+which I do not shun. 
+
+A more outrageous trick is my use of DB 03C and DB 03D as a form of
+JMP instruction.  03C is the opcode for the CMP AL,ib instruction. 
+A86 will assemble the 03C byte, and, when the program is executed,
+the following one-byte instruction will be interpreted as the
+immediate operand to the CMP AL,ib, and will hence not be executed as
+an instruction in its own right.  For example, in the program SUB.8,
+the sequence 
+
+    DB 03C          ; skip over the initial MOVSB
+  L9:               ; loop here to find the tail of the field
+    MOVSB           ; copy the byte to output
+    CMP SI,AX       ; have we reached the field limit?
+
+will result in the instruction CMP AL,0A4 being executed, followed
+immediately by the CMP SI,AX.  This makes the program smaller and
+faster than the equivalent code: 
+
+    JMP >L1         ; skip over the initial MOVSB
+  L9:               ; loop here to find the tail of the field
+    MOVSB           ; copy the byte to output
+  L1:
+    CMP SI,AX       ; have we reached the field limit?
+
+Note that this trick works ONLY if the instruction being skipped 
+occupies exactly one opcode byte, and if you don't care that the 
+flags are modified.  If the following instruction is two bytes, 
+you can use DB 03D, which is the opcode for CMP AX,iw. 
+
+In general, I write my assembly-language code to make the program as
+small as possible -- small size usually takes priority over execution
+speed.  My reasoning is that, unless an instruction is in a loop
+executing thousands of times, it will take DOS longer to load the
+extra program bytes, than was saved by larger-but-faster
+instructions.  For this reason, you will see a lot of XCHG AX,rw
+instructions, in situations where a MOV instruction would have
+sufficed.  Those XCHG instructions are just a single byte, whereas
+the MOVs are two bytes. 
+
+Occasionally in the source files, you will see instructions coded in
+lower-case.  Those are instructions which I considered temporary at
+the time I coded them, and which I intended to remove later on. 
+Sometimes such instructions acquire an unplanned permanence!
+

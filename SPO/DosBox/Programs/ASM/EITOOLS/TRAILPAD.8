@@ -1,0 +1,29 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  TRAILPAD   ,LSIZE                 ; See EILIB.TXT for terms
+        ;---------------
+
+; TRAILPAD pads each line of standard input with trailing blanks, to insure
+;   that the lines are all of the same length, whose decimal value is
+;   given in our command tail.
+
+USAGE_MSG:
+  DB 'usage: TRAILPAD line_size <in >out',0D,0A,0
+
+LSIZE:
+  CALL VERIFY_1_DEC     ; fetch the padded line size
+  MOV LINE_SIZE,AX      ; store the line size
+  RET
+
+PROCESS_LINE:           ; filter CX bytes from SI--DI to BP
+  DEC DI,2              ; retreat to the trailing CRLF
+  MOV AL,' '            ; load the padding blank
+  LEA CX,[SI+01234]     ; point CX beyond the padded line
+LINE_SIZE EQU W[$-2]    ; padding offset is plugged into the above instruction
+  SUB CX,DI             ; calculate the number of bytes we need to pad
+  IF AE REP STOSB       ; if the line is not already too long then pad it
+  MOV AX,0A0D           ; padding is complete
+  STOSW                 ; output the terminating CRLF
+  MOV CX,DI             ; point CX beyond the line
+  SUB CX,SI             ; calculate the number of bytes in the line
+  JMP OUT_PROCESS_LINE ; output the resulting line
+

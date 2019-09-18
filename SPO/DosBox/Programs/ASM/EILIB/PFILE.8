@@ -1,0 +1,278 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    PFILE                                       See EILIB.TXT for terms
+;---------------
+
+; Note: if this library file is filled with Conflicting Multiple Definition
+;   errors, the most likely cause is that you have neglected to define your
+;   PFILE_REC routine, or, if PFILE_REC is a memory variable to be called
+;   indirectly, you have neglected to declare the variable.
+
+; PROCESS_FILE processes the SS:DX-named file.  We read the file to the 64K
+;   segment beyond the current DS, and call PFILE_REC repeatedly to
+;   process individual records of the file.  The caller must supply the
+;   PFILE_REC procedure.  PFILE_REC is called with SI pointing to and DX
+;   beyond the file contents to be processed.  We guarantee the inclusion
+;   of at least 4K bytes before and after SI, if it is there in the file and
+;   if the caller does not disturb the input segment.  We also keep the
+;   caller's registers BX,CX,DI,BP and ES unchanged.  PFILE_REC must advance
+;   SI by at least 1 each time it is called.  PFILE_REC should preserve our
+;   DX beyond-pointer, unless it wants to prematurely halt processing: in that
+;   case, it can set both DX and SI to something less than 0FFFE.  Note that
+;   we are responsible only for reading the input data; the caller must perform
+;   the actual processing and output.
+
+; PROCESS_HERE is a tricky but terse way to specify varying PFILE_REC routines
+;   for processing different files in the same program.  Instead of using
+;   PROCESS_FILE directly, the calling program places a CALL PROCESS_HERE
+;   instruction before the PFILE_REC code, and uses a CALL to the resulting
+;   routine, instead of a call to PROCESS_FILE.  PROCESS_SI_HERE is a version
+;   that calls FILE_ARG first.  Note that if PROCESS_HERE is used, the caller
+;   should *not* declare the symbol PFILE_REC: we do that for the caller.
+;
+;   For example, if SI points to two file names, file1 and file2, which are
+;   to be processed using different PFILE_REC code, you can code the following:
+;
+;----------------------------------------------------------------------------
+;
+;      CALL PROCESS_FILE1   ; process file1 and advance SI to file2's name
+;      CALL PROCESS_FILE2   ; process file2 and advance SI beyond its name
+;
+;      ...
+;
+;    PROCESS_FILE1:
+;      CALL PROCESS_SI_HERE   ; process SI file, using following PFILE_REC code
+;      ; PFILE_REC code for file1 goes here
+;
+;      ...
+;
+;    PROCESS_FILE2:
+;      CALL PROCESS_SI_HERE   ; process SI file, using following PFILE_REC code
+;      ; PFILE_REC code for file2 goes here
+;
+;----------------------------------------------------------------------------
+
+        DATA SEGMENT
+        #if ref PFILE_NAME and !def PFILE_NAME
+PFILE_NAME DW ?            ; pointer to the name of this file
+        #endif
+
+        #if ref PFILE_REC_CT
+PFILE_REC_CT DW ?         ; number of times PFILE_REC has been called for file
+        #endif
+
+        DATA ENDS
+
+        #if !PFILE_PAD    ; caller can modify the amount of guaranteed file
+PFILE_PAD EQU 4K          ;   content before and after current buffer pointer
+        #endif
+        #if !PFILE_LIM
+PFILE_LIM EQU -2-PFILE_PAD
+        #endif
+
+        #if def GET_64K
+PFILE_H    DW 0
+        #endif
+
+        #if !def PFILE_IBUFF
+PFILE_IBUFF EQU 2
+        #endif
+
+        #if ref PROCESS_SI_HERE
+PROCESS_SI_HERE:
+  CALL FILE_ARG       ; point DX to SI file name, and advance SI
+        #endif
+        #if ref PROCESS_SI_HERE or ref PROCESS_HERE
+        DATA SEGMENT
+PFILE_REC DW ?            ; action routine for PROCESS_FILE
+        DATA ENDS
+PROCESS_HERE:
+  SS POP PFILE_REC W  ; use the code following our CALL, for PFILE_REC
+  ; from here we drop into PROCESS_FILE, so that PROCESS_FILE will return
+  ;    to our grandcaller
+        #endif
+PROCESS_FILE:
+  PUSH DS,SI          ; save registers across call
+  PUSH BX,CX          ; preserve registers during open
+        #if IFILE_OPTIONAL
+  SUB BX,BX           ; load standard-input handle, in case pointer is null
+  TEST DX             ; have we been passed a null pointer?
+  JZ >L6              ; jump if yes, to use standard input
+        #endif
+  PUSH DS             ; save caller's DS
+  MOV DS,SS           ; point to our stack segment, for the file name
+        #if ref PFILE_NAME
+  MOV PFILE_NAME,DX   ; store the file name pointer
+        #endif
+  CALL MOPEN_READ     ; open the DX-file for reading
+  POP DS              ; restore caller's DS
+  JC >L4              ; return Carry if the open failed
+        #if IFILE_OPTIONAL
+L6:
+  SS MOV PFILE_H W,BX ; store the open-file handle
+        #else
+  SS MOV PFILE_H W,AX ; store the open-file handle
+        #endif
+        #if def GET_64K
+  CALL GET_64K        ; if non-DOS environment then fetch a free 64K segment
+        #else
+  MOV AX,DS           ; fetch our current DS, for calculation
+  ADD AX,01000        ; advance to the next 64K
+  MOV DS,AX           ; point DS to the next 64K
+        #endif        ; 
+        #if ref PFILE_REC_CT
+  SUB AX,AX               ; load zero
+  SS MOV PFILE_REC_CT,AX  ; initialize the records count for this file
+        #endif
+  MOV SI,PFILE_IBUFF  ; initialize SI to the start of that segment
+        #if ref FEX_FLUSH
+  CALL SET_FEX_P      ; initialize the FEX_P pointer
+        #endif
+  MOV W[SI-2],0AFF    ; initialize pre-buffer word with 0FF and linefeed
+  PUSH DI,ES          ; save output pointer
+        #if OUR_FILTER
+  MOV ES,DS           ; point ES to our input segment
+  MOV DI,SI           ; PFILE_READ will read bytes to the buffer start
+  MOV DX,-2           ; we must signal that end-of-file has not been reached
+        #else
+  MOV DX,SI           ; MREAD_CX will read bytes to the buffer start
+        #endif
+  JMP >L2
+
+L1:                   ; loop here to process each chunk of data
+        #if ref PFILE_REC_CT
+  SS INC PFILE_REC_CT ; increment the record count
+        #endif
+  SS_CALL PFILE_REC   ; invoke caller's procedure to process a record
+        #if ref FLUSH_OBUFF
+  CALL CHECK_OBUFF    ; check to see if the output buffer needs to be flushed
+        #endif
+  CMP DX,PFILE_LIM    ; is this buffer-full the end of the file?
+  JB >L5              ; skip the near-end limit check if it is
+  CMP SI,PFILE_LIM    ; not the end-of-file: are we near the end-of-buffer?
+  JB L1               ; loop if not, to process another record
+        #if ref FEX_FLUSH
+  CALL FEX_FLUSH      ; flush out any bytes from FEX_P to SI
+        #endif
+  PUSH BX,CX,DI,ES    ; time to read more: preserve registers
+  MOV CX,DX           ; point beyond the buffer
+  MOV ES,DS           ; point ES to the buffer's segment
+  SUB SI,PFILE_PAD    ; retreat to insure pad before SI
+  MOV DI,PFILE_IBUFF  ; we will copy down to the buffer bottom
+        #if ref FEX_FLUSH
+  MOV AX,DI           ; fetch the destination pointer
+  SUB AX,SI           ; substract the source, to calculate the movement offset
+  SS ADD FEX_P,AX     ; adjust FEX_P by the movement offset
+        #endif
+  SUB CX,SI           ; calculate the number of bytes to be moved
+  REP MOVSB           ; move the trailing bytes to the bottom of the buffer
+  MOV SI,PFILE_PAD+PFILE_IBUFF   ; adjust SI to reflect the move
+        #if OUR_FILTER
+L2:                   ; loop here to read each chunk of the file
+  PUSH SI             ; save SI during filtering
+  MOV SI,DX           ; SI=DX will trigger the reading of another bufferful
+  CALL DO_OUR_FILTER  ; read and filter a bufferful of bytes
+  POP SI              ; restore scanning pointer
+  JC >L3              ; exit if there was a read error
+        #else
+  MOV DX,DI           ; point DX beyond the bytes moved
+L2:                   ; loop here to read each chunk of the file
+  MOV CX,-2           ; point CX to the end of the 64K
+        #if def GET_64K
+  SS MOV BX,PFILE_H   ; load the open-file handle for the input file
+        #else
+  MOV BX,0            ; load the open-file handle for the input file
+PFILE_H EQU W[$-2]    ; handle is plugged into the above immediate word
+        #endif
+        #if ref FIND_ANY
+  CALL CLEAR_FANY     ; clear out all the found-string markers for FIND_ANY
+        #endif
+  CALL MREAD_CX       ; fill the 64K segment with input data
+  JC >L3              ; exit if there was a read error
+  ADD DX,AX           ; point DX beyond the data
+        #endif
+  MOV BX,DX           ; also point BX beyond the data
+  MOV W[BX],0FF0A     ; terminate the data with a linefeed and 0FF
+L3:                   ; jump here if the open failed
+  POP ES,DI           ; restore the output pointer
+L4:
+  POP CX,BX           ; restore the caller's registers
+  JC >L9              ; return Carry if the read (or open) failed
+L5:                   ; we don't need to check for near-end-of-buffer
+  CMP SI,DX           ; are we at the end of the file?
+  JB L1               ; loop if we aren't
+  PUSH BX             ; save caller's BX
+  SS MOV BX,PFILE_H   ; set BX to the open-file handle
+        #if PFILE_DATE
+  MOV AX,05700        ; MS-DOS function numbers for GET_DATE_TIME
+  INT 021             ; set DXCX to the date and time stamp for the file
+        #endif
+  CALL MCLOSE         ; close the file
+  POP BX              ; restore caller's BX
+  CLC                 ; NC signals success
+L9:
+  POP SI,DS           ; restore caller's registers
+  RET
+
+        #if ref NEXT_PFILE_HERE
+NEXT_PFILE_HERE:
+  SS POP PFILE_REC W  ; use the code following our CALL, for PFILE_REC
+  RET                 ; return to our grandcaller
+        #endif
+
+
+        #if OUR_FILTER
+; DO_OUR_FILTER performs pre-filtering of buffered input.  We are called with
+;   DI pointing to the buffer from which we should read up to address 0FFFE
+;   within the 64K source-file buffer.  We look for any instances of the
+;   special character 018 within the buffer.  We scan the following byte and
+;   eliminate the two-byte marker.  If the character B or the character
+;   OUR_FILTER follows the 018, we include the following contents.  If any
+;   other character follows, we eliminate the following contents, until another
+;   018 byte is seen.  If any 018 bytes were seen and if we have not reached
+;   the end of the file, we reread from the file to fill up the freed buffer
+;   space.
+
+L2:                     ; loop here to scan each buffer byte
+  LODSB                 ; fetch a buffer byte
+  CMP AL,018            ; is it the special filter marker?
+  JE >L4                ; skip if it is, to check for filtering
+L3 DB                   ; following opcode could be STOSB or CLC
+  STOSB                 ; if we are not filtering then output the byte
+DO_OUR_FILTER:
+  CMP SI,DX             ; have we reached the end of the buffer?
+  JB L2                 ; loop if not, to scan another byte
+  CALL PFILE_MREAD      ; read more buffer bytes
+  JMP L2                ; loop to scan more bytes
+
+L4:                     ; we have seen a filter marker
+  CMP SI,DX             ; have we reached the end of the buffer?
+  IF AE CALL PFILE_MREAD; if we have then read another byte
+  LODSB                 ; fetch the filter letter
+  CMP AL,OUR_FILTER     ; is it our filter letter?
+  IF NE CMP AL,'B'      ; if not then is it the Both letter?
+  MOV AL,0F8            ; load CLC opcode, to inhibit output
+  IF E MOV AL,0AA       ; if it is our filter then load STOSB opcode
+  CS MOV L3,AL          ; enable or disable output according to filter letter
+  JMP DO_OUR_FILTER     ; rejoin the main scanning loop
+
+PFILE_MREAD:            ; refill the input buffer
+  MOV CX,-2             ; point CX to the end of the 64K
+  CMP CX,DX             ; did we reach the end of file on the last read?
+  MOV DX,DI             ; point DX to the end of buffered bytes, in any case
+  JA >L9                ; break to grandcaller if we are at end-of-file
+  CMP DI,CX             ; have we filled the buffer with filtered bytes?
+  JAE >L9               ; break to grandcaller if we have
+  MOV BX,0              ; load the open-file handle for the input file
+PFILE_H EQU W[$-2]      ; handle is plugged into the above immediate word
+  CALL MREAD_CX         ; fill the 64K segment with input data
+  JC >L9                ; break to grandcaller if the read failed
+  MOV SI,DX             ; successful read: point SI to bytes just read
+  ADD DX,AX             ; advance DX beyond the bytes just read
+  RET
+
+L9:                     ; no more reading is needed
+  POP SI                ; discard caller's address and break to grandcaller
+  RET                   ; Carry flag signals read failure; NoCarry buffer full
+        #endif
+
+

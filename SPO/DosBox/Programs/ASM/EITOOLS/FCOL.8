@@ -1,0 +1,49 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER   FCOL      ,COL_STRING            ; See EILIB.TXT for terms
+        ;---------------
+
+; FCOL is a filter that passes all lines that contain a given string starting
+;   at a given column within the line.  The invocation syntax is:
+
+USAGE_MSG:
+  DB 'usage: FCOL [-]colnum string <in >out',0D,0A
+  DB '   passes lines containing the string at the column',0D,0A
+  DB '   if minus-sign then it passes lines that don''t',0D,0A,0
+
+;   where the minus sign is given if you want to pass all lines NOT containing
+;   the string at that column; "colnum" is the column number (1 for the leftmost
+;   column), and "string" is the string to be compared against at the indicated
+;   column.  The string has the syntax described by SCAN_STRING in the library.
+
+COL_STRING:
+  CALL TAIL_BLANKS      ; skip over leading blanks
+  CMP AL,'-'            ; is there a minus sign?
+  MOV DL,0              ; set DL to 0 in case not
+  IF E INC DX,SI        ; if there is a minus sign set DL to 1
+  CALL VERIFY_DEC       ; fetch the decimal column number
+  XCHG BX,AX            ; swap the column number into BX
+  MOV DI,STRING_TARGET  ; point to destination for the string argument
+  CALL SCAN_STRING      ; fetch the string argument
+  JMP NO_MORE_ARGS      ; verify that there are no more arguments
+
+
+; PROCESS_LINE processes the line of CX bytes pointed to by SI (and beyond by
+;   DI), and copies the line to the output buffer.
+
+PROCESS_LINE:
+  CMP CX,BX               ; is the line too short to have the indicated column?
+  JB >L1                  ; skip if it is-- automatic no match
+  PUSH CX,SI              ; save the line pointer and length across the compare
+  MOV CX,STRING_TARGLEN W ; fetch the length of the target string
+  MOV DI,STRING_TARGET    ; point to the target string
+  LEA SI,[SI+BX-1]        ; point SI to the column we want to look at
+  REPE CMPSB              ; is the string at the column?  set E if yes
+  POP SI,CX               ; restore the input line pointer and count
+L1:
+  MOV AL,0                ; set AL to 0 in case the string wasn't there
+  IF E INC AX             ; if the string was there then set AL to 1
+  XOR AL,DL               ; flip the AL-result if user typed a minus-sign
+  JZ RET                  ; suppress the output if the string wasn't there
+  JMP OUT_PROCESS_LINE    ; jump to output the line
+
+  RET                     ; to satisfy the above JZ RET

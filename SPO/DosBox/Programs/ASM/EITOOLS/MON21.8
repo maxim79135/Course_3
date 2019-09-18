@@ -1,0 +1,98 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    MON21                                       See EILIB.TXT for terms
+;---------------
+
+; MON21 is an INTCHAIN program, to be chained to the MS-DOS interrupt 21 hex.
+;   We output a line of diagnostic code to the BIOS console every time the
+;   interrupt is called.
+
+; This routine was written for pre-Win95, DOS-only systems.  It does not
+; appear to work in a DOS box under Win98.
+
+MON21:                    ; our replacement for the DOS service interrupt
+  CS MOV OPTR W,OUTBUFF+4 ; initialize buffer output beyond our dashes
+  CALL REGDUMP            ; produce a dump of register values
+  PUSHF                   ; push flags onto stack, as if INT were executed
+  PUSH CS                 ; push our CS onto stack, as if INT were executed
+  CALL 0FB                ; call the old DOS interrupt service routine
+  CALL CARRYOUT           ; output a display of the status of return Carry
+  CALL REGDUMP            ; output a dump of register values
+  CALL DISPLAY            ; output our buffer to the BIOS console
+  PUSH BP                 ; preserve register
+  MOV BP,SP               ; point BP to our stack
+  PUSHF                   ; push our flags onto the stack
+  POP W[BP+6]             ; pop the flags into the caller's flag image
+  POP BP                  ; restore clobbered register
+  IRET                    ; return to our caller
+
+OPTR   DW ?               ; our buffer output pointer
+
+REGDUMP:                  ; output a dump if register values to OPTR
+  PUSHF                   ; save flags across call
+  PUSH AX,DI,ES           ; save registers across call
+  MOV ES,CS               ; point ES to our segment, for output
+  CLD                     ; output is forward
+  CS MOV DI,OPTR          ; fetch the current output pointer
+  CALL HEXW_SPACE         ; output AX
+  MOV AX,BX               ; fetch BX
+  CALL HEXW_SPACE         ; output BX
+  MOV AX,CX               ; fetch CX
+  CALL HEXW_SPACE         ; output CX
+  MOV AX,DX               ; fetch DX
+  CALL HEXW_SPACE         ; output DX
+  STOSB 2                 ; output two trailing spaces
+  CS MOV OPTR,DI          ; store the revised output pointer
+  CALL BIOS_KEY_AX        ; pause, to let the user see the pre-call values
+  POP ES,DI,AX            ; restore clobbered registers
+  POPF                    ; restore clobbered flags
+  RET
+
+
+HEXW_SPACE:               ; output hex AX, followed by a space
+  CALL HEX_AX             ; output hex AX
+  MOV AL,' '              ; load space
+  STOSB                   ; output a trailing space
+  RET
+
+
+CARRYOUT:                 ; output "c" or blank, depending on the Carry flag
+  PUSH AX,DI,ES           ; preserve registers across call
+  MOV ES,CS               ; point ES to our program for output
+  CS MOV DI,OPTR          ; point DI to the current output pointer
+  MOV AL,' '              ; load blank
+  IF C MOV AL,'c'         ; if Carry then load "c" instead
+  STOSB                   ; output the Carry-flag indicator
+  MOV AL,' '              ; load blank
+  STOSB                   ; output a trailing blank
+  CS MOV OPTR,DI          ; store the updated output pointer
+  POP ES,DI,AX            ; restore clobbered registers
+  RET
+
+
+DISPLAY:
+  PUSHF                           ; save flags across call
+  PUSH AX,BX,CX,DX,SI,DI,BP,DS,ES ; save all registers across call
+  MOV DS,CS                       ; point DS to our program, for scanning
+  MOV SI,OUTBUFF          ; point to our output buffer
+L1:                       ; loop here to output each buffered character
+  LODSB                   ; fetch a character
+  CALL CHAR_OUT           ; output the character
+  CMP SI,OPTR             ; have we reached the end of the buffer?
+  JB L1                   ; loop if not, to output more characters
+  MOV AL,0D               ; load CR
+  CALL CHAR_OUT           ; output CR
+  MOV AL,0A               ; load LF
+  CALL CHAR_OUT                   ; output LF, to terminate the output line
+  POP ES,DS,BP,DI,SI,DX,CX,BX,AX  ; restore clobbered registers
+  POPF                            ; restore clobbered flags
+  RET
+
+CHAR_OUT:                 ; output AL to the BIOS console
+  MOV AH,14               ; BIOS function number for OUTPUT_CHAR
+  INT 010                 ; output the character
+  RET
+
+
+OUTBUFF:                  ; our output buffer
+  DB '----'               ; leading dashes, to make the display stand out
+  DB 77 DUP ?             ; contents to be output by MON21 routine

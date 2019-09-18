@@ -1,0 +1,77 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  SCRABRAX                                      See EILIB.TXT for terms
+;---------------
+
+; SCRABRAX outputs to the console a sequence of randomly-generated scrabble
+;   racks.  Each user keystroke will generate another rack, until the
+;   ESC key is pressed.
+
+; "Scrabble" is undoubtedly a registered trademark owned by whatever
+; mega-corporation currently has the rights to the famous board game
+; of that name.
+
+        DATA SEGMENT
+LETTERS:              ; table of Scrabble letters
+  DB 100 DUP ?
+        DATA ENDS
+
+NO_DOSCHECK EQU 1     ; we will not trap errors in MS-DOS.8
+
+SCRABRAX:
+  CALL TIME_SEED      ; insure different racks each time the program is invoked
+L1:                   ; loop here to generate each rack
+  CALL SCRAB_LETTERS  ; regenerate the complete table of Scrabble letters
+  CALL DEAL_RACK      ; deal out the rack, and display it
+  CALL BIOS_KEY_AX    ; wait for a keystroke
+  CMP AL,01B          ; was it the ESC key?
+  JNE L1              ; loop if not, to display another rack
+  JMP GOOD_EXIT       ; ESC seen: exit the program
+
+
+
+; SCRAB_LETTERS generates an array of 100 characters, one for each tile in
+;   a Scrabble set.  We use the following frequency table to generate the
+;   proper number of each letter.
+
+L0:      ; frequency of each letter in the Scrabble rack
+  ;  A B C D  E F G H I J K L M N O P Q R S T U V W X Y Z
+  DB 9,2,2,4,12,2,3,2,9,1,1,4,2,6,8,2,1,6,4,6,4,2,2,1,2,1
+
+SCRAB_LETTERS:
+  MOV SI,L0         ; point to the frequencies table
+  MOV DI,LETTERS    ; we will output to the LETTERS array
+  MOV AX,'--'       ; we start with the two blank tiles
+  STOSW             ; output a minus sign for each blank tile
+  MOV AL,'A'        ; the remaining tiles are letters of the alphabet
+L1:                 ; loop here for each letter of the alphabet
+  XCHG CX,AX        ; save the letter in CL
+  LODSB             ; fetch the frquency of that letter
+  CBW               ; extend the count AL to AX
+  XCHG CX,AX        ; swap count into CX, letter back into AL
+  REP STOSB         ; output the correct number of copies of this letter
+  INC AX            ; increment to the next letter of the alphabet
+  CMP AL,'Z'        ; are we still in the alphabet?
+  JBE L1            ; loop if we are, to output the next letter
+  RET
+  
+
+; DEAL_RACK deals a rack of seven tiles from the initial 100, and outputs
+;    a display of the tiles.
+
+DEAL_RACK:
+  MOV CX,100        ; there are 100 tiles in a Scrabble set
+  MOV BX,7          ; we will deal 7 of the 100
+  MOV SI,LETTERS    ; point to the array of available tiles
+  MOV DX,DI         ; also point DX to the array, for later output
+L1:                 ; loop here to deal out each tile
+  CALL RANDOM_DEAL  ; deal out one tile
+  MOV AL,' '        ; load blank
+  STOSB             ; output a blank to space the output
+  DEC BX            ; count down tiles
+  JNZ L1            ; loop if there are more tiles to deal
+  DEC DI            ; retract trailing byte
+  MOV AX,0A0D       ; load a CRLF
+  STOSW             ; output a terminating CRLF
+  MOV CX,DI         ; point CX beyond the output line
+  SUB CX,DX         ; calculate the number of bytes in the line
+  JMP OWRITE        ; output the line to standard output

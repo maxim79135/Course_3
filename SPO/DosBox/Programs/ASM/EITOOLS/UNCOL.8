@@ -1,0 +1,72 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   UNCOL                                        See EILIB.TXT for terms
+;---------------
+
+; UNCOL converts a multi-column file into a single column.  The file must
+;   fit into a simgle 64K buffer.
+
+UNCOL:
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_DEC       ; fetch the column width
+  MOV COLNUM,AL         ; store the column width
+  JMP PFILE_IOARG       ; scan the input file name and process the file
+
+  DB 0D,0A,0A           ; so that TYPE UNCOL.COM will be readable
+USAGE_MSG:
+  DB 'usage: UNCOL width infile outfile',0D,0A,0,01A
+
+
+PFILE_REC:              ; process the entire file, at SI up to DX
+  MOV BX,0              ; set BH to zero, BL to the column width
+COLNUM EQU B[$-2]       ; column width is stored in the above immediate operand
+  SUB BH,BL             ; pre-decrement the current line offset
+L1:                     ; loop here to output each column
+  ADD BH,BL             ; advance the line offset to this column's offset
+  CALL OUT_COLUMN       ; extract and output this column field from each line
+  JNZ L1                ; loop if there was some contents in this column
+  MOV SI,DX             ; all columns output: signal our caller we're done
+  RET
+
+
+; OUT_COLUMN outputs the column that is BH bytes from the start of each line.
+;    Return Z if there were no lines longer.
+
+OUT_COLUMN:
+  PUSH SI               ; save the starting buffer pointer
+  SUB BP,BP             ; initialize the output count
+  MOV CH,0              ; high byte of all looping counts is zero
+L2:                     ; loop here at the start of each input line
+  CMP SI,DX             ; have we reached the end of the file?
+  JAE >L9               ; jump if we have, to exit the routine
+  MOV CL,BH             ; set CX to the current column's line offset
+  JCXZ >L4
+L3:                     ; loop here to scan each leading byte
+  LODSB                 ; fetch a byte
+  CMP AL,0A             ; is it the end of the line
+  LOOPNE L3             ; loop if not, to continue scanning
+  JE L2                 ; jump if it was the end of the line: no column output
+L4:
+  MOV CL,BL             ; column is reached: set CX to the column width
+  INC BP                ; count this output
+L5:                     ; loop here to output each byte of the column
+  CMP SI,DX             ; have we reached the end of the file?
+  JAE >L9               ; jump if we have, to cancel the output
+  LODSB                 ; fetch a byte from the column
+  STOSB                 ; output the byte
+  CMP AL,0D             ; is it the terminating CR?
+  LOOPNE L5             ; loop if not, to output another byte
+  CALL DETRAIL_CRLF     ; retract trailing blanks and output CRLF
+L6:                     ; loop here to scan to the end of the input line
+  LODSB                 ; fetch a byte from the line
+  CMP AL,0A             ; is it the terminating linefeed?
+  JNE L6                ; loop if not, to continue scanning
+  JMP L2                ; jump to process the next input line
+
+L9:                     ; the end of the file was seen
+  POP SI                ; restore SI to the start of the file
+  TEST BP               ; set Z if there was any output
+  RET
+
+
+
+

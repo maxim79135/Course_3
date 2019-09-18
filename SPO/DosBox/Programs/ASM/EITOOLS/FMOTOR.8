@@ -1,0 +1,23 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FMOTOR                                       See EILIB.TXT for terms
+;---------------
+
+; FMOTOR resets the wait time for the diskette motor to shut down, after
+;   any access.  This source file hard-codes a value of 9 to be fed
+;   to MOTOR_TIMEOUT.  This is the number of timer clock-ticks to wait.
+;   Since each clock tick is about 1/18 of a second, the wait time is
+;   thus about a half-second.
+
+FMOTOR:
+  MOV AL,9          ; 9 clock ticks equals about a half second
+MOTOR_TIMEOUT:
+  PUSH DS           ; save DS during buffer reset
+  SUB SI,SI         ; load zero
+  MOV DS,SI         ; point DS to the interrupt vector table
+  LDS SI,[078]      ; fetch the disk-parameter block from its INT 01E slot
+  MOV B[SI+2],AL    ; place the clock count into the "wait time" variable
+  POP DS            ; restore DS
+  MOV AH,0          ; load drive number for the A drive
+  MOV DL,0          ; BIOS function number for "reset disk system"
+  INT 013           ; reset drive A to the new parameter table
+  RET

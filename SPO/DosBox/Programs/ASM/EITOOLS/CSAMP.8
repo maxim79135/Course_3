@@ -1,0 +1,34 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   CSAMP                                        See EILIB.TXT for terms
+;---------------
+
+; CSAMP toggles the screen through a succession of attribute color palettes,
+;   in which color register 6 (normally a dingy orange) is reset to each
+;   of the 64 possible colors in the VGA palette.  Display continues until
+;   64 keys or pressed, or the ESC key is pressed.
+
+CSAMP:
+  MOV BX,6              ; first sample value zero, color register 6
+L0:                     ; loop here for each of the 64 possible color values
+  PUSH BX               ; save the color counter
+  CALL SET_COLOR_REG    ; reset the VGA color register
+  MOV ES,BX,0B800       ; we will output directly to the color screen
+  CALL ATTR_PALETTE     ; output the current color palette
+  POP BX                ; restore the color counter
+  MOV AL,BH             ; fetch the current color value
+  AAM                   ; unpack the value into decimal digits
+  ADD AX,'00'           ; convert the digits to ASCII
+  ES MOV B[24*160],AH   ; place the first digit at the bottom left of screen
+  ES MOV B[24*160+2],AL ; place the second digit after the first digit
+  CALL BIOS_KEY_AX      ; wait for a keystroke
+  CMP AL,01B            ; was it the Escape key?
+  JE RET                ; return if Escape was seen
+  INC BH                ; Escape not seen: increment the color number
+  CMP BH,64             ; have we reached the last color?
+  JB L0                 ; loop if not, to display another color
+  MOV BX,0606           ; all 64 colors seen: reset the original color
+SET_COLOR_REG:
+  MOV AX,01000          ; load BIOS function codes for SET_COLOR_REGISTER
+  INT 010               ; set VGA color register BL to new color BH
+  RET
+

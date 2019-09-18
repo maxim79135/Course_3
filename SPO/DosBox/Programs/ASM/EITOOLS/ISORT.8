@@ -1,0 +1,36 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ISORT                                        See EILIB.TXT for terms
+;---------------
+
+; ISORT sorts the file whose name is given in the command tail.  We do the
+;   fastest possible sort, with a simple lexicographic ordering of lines.
+
+ISORT:
+  MOV SI,081            ; point to our invocation command tail
+  CALL COPY_TAIL        ; make a copy of the commad tail
+  CALL TAIL_BLANKS      ; skip over leading blanks
+  PUSH SI               ; save the pointer to the first argument
+  CALL OPEN_I_ARG       ; open the input file
+  CALL TAIL_BLANKS      ; skip over intervening blanks
+  CMP AL,0D             ; are there no more arguments?
+  POP AX                ; restore the first-arg pointer to AX
+  IF E XCHG SI,AX       ; if no more args then use the same file as output
+  CALL FILE_ARG         ; scan the output file name
+  CALL LSORT_IHANDLE    ; sort the input file
+  JMP GOOD_EXIT         ; exit the program
+
+USAGE_MSG:
+  DB 'usage: ISORT infile [outfile]',0D,0A
+  DB 0
+
+GEN_SORTP EQU GEN_NONBLANK_LINE   ; we are sorting nonblank lines
+COPY_SORTREC EQU COPY_LINE        ; record output is a simple line-copy
+
+COMPARE:                ; compare records BP-[BX]
+  MOV SI,BP             ; fetch the pointer to the first record
+  ES MOV DI,[BX]        ; fetch the pointer to the second record
+  MOV CH,1              ; load count big enough for a line
+  REPE CMPSB            ; compare the two records
+  RET
+
+

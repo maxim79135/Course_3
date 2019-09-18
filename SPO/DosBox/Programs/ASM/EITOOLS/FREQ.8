@@ -1,0 +1,112 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    FREQ                                        See EILIB.TXT for terms
+;---------------
+
+; FREQ sends to standard output a summary of the frequency of each byte
+;   value given to standard input.  Thus, if the input is a text file,
+;   you can find the number of "A"s, the number of "B"s, etc.
+
+NO_DOSCHECK EQU 1       ; our MS_DOS library routines will not trap errors
+
+        DATA SEGMENT
+COUNTS   DD 256 DUP ?   ; number of occurances of each possible byte value
+TOTAL    DD ?           ; grand total of characters in file
+        DATA ENDS
+
+FREQ:
+  CALL VERIFY_NO_ARGS   ; make sure there is nothing in the command tail
+  MOV DI,OFFSET COUNTS  ; point to our array of character counts
+  MOV CX,0202           ; there are 0200 words plus 2 for the total
+  SUB AX,AX             ; we will zero-fill
+  REP STOSW             ; zero out all the counts
+  SUB BX,BX             ; we are processing standard input
+  CALL PROCESS_RECORDS  ; process the input via calls to PROCESS_RECORD
+  CALL OUTPUT_COUNTS    ; no more data: output the report
+  JMP GOOD_EXIT         ; go back to the operating system
+
+
+; PROCESS_RECORD examines bytes at SI up to DX.  For each byte, the 4-byte
+;   count of that byte's value within the COUNTS array is incremented.  The
+;   4-byte TOTAL count is also incremented.
+
+L0:                      ; loop here to process each byte
+  LODSB                  ; fetch the byte
+  MOV AH,0               ; convert byte AL into unsigned index AX
+  ADD AX,AX              ; AX = value * 2
+  ADD AX,AX              ; AX = value * 4 now indexes the array of 4-byte counts
+  XCHG BX,AX             ; swap the index into BX, for addressing
+  INC COUNTS[BX] W       ; increment the low word of the count
+  IF Z INC COUNTS[BX+2] W; if zero then carry the increment into the high word
+  INC TOTAL W            ; increment the low word of the total count
+  IF Z INC TOTAL[2] W    ; if zero then carry the increment into the high word
+PROCESS_RECORD:
+  CMP SI,DX              ; are there more bytes to process?
+  JB L0                  ; loop if there are
+  RET
+
+
+; OUTPUT_COUNTS creates and outputs the report of character frequencies we
+;   just gathered.  We report only characters with nonzero counts.  At
+;   the end we output the grand total.
+
+OUTPUT_COUNTS:
+  MOV DI,OBUFF            ; point to our output buffer
+  MOV SI,OFFSET COUNTS    ; we will scan each accumulated count
+  MOV CL,0                ; first character we look for is zero
+L1:                       ; loop here to check the count of each character 
+  LODSW                   ; fetch the low word of the count
+  XCHG BX,AX              ; swap the low word into BX
+  LODSW                   ; fetch the high word of the count
+  MOV DX,AX               ; copy the high word into DX
+  OR AX,BX                ; is the count zero?
+  IF NZ CALL OUTPUT_COUNT ; if nonzero then output a report line
+  INC CL                  ; increment to the next character to be checked
+  JNZ L1                  ; loop if there is another character to check
+  LODSW                   ; no more characters: fetch low of TOTAL
+  XCHG BX,AX              ; save in BX
+  LODSW                   ; fetch high of TOTAL
+  XCHG DX,AX              ; swap into DX
+  XCHG AX,BX              ; swap low back into AX
+  CALL OUT_DECIMAL8       ; output the TOTAL byte count of standard input
+  MOV SI,TOTAL_MSG        ; point to trailing message
+  MOV CX,TOTAL_MSG_SIZE   ; load size of message
+  REP MOVSB               ; output the trailing message
+  JMP FLUSH_OBUFF         ; write the output buffer to standard output
+
+
+; OUTPUT_COUNT outputs a single report line for character CL, whose count
+;   is DXBX.  We output the decimal count, the hex value of the character,
+;   and also the ASCII symbol if the character is displayable (021--07E).
+
+OUTPUT_COUNT:
+  PUSH SI,CX        ; preserve registers across call
+  XCHG AX,BX        ; swap so the count is now DXAX
+  CALL OUT_DECIMAL8 ; output the count as a decimal number
+  MOV AL,' '        ; load blank
+  STOSB             ; output intervening blank
+  POP CX            ; restore character CL
+  MOV AL,CL         ; fetch the character
+  CALL HEX_AL       ; output the hex value
+  MOV AL,CL         ; fetch the character again
+  SUB AL,' '        ; reduce displayable range to zero
+  CMP AL,05F        ; is the character displayable as ASCII?
+  JAE >L2           ; skip if not
+  MOV AL,' '        ; character is displayable: load intervening blank
+  MOV AH,CL         ; fetch the character
+  STOSW             ; output the blank and the character
+L2:
+  MOV AX,0A0D       ; load CRLF
+  STOSW             ; terminate the line with CRLF
+  POP SI            ; restore clobbered register
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: freq <in >out',0D,0A
+  DB '  reports the frequency of each byte value',0D,0A,0
+
+TOTAL_MSG:
+  DB ' ---Total',0D,0A
+TOTAL_MSG_SIZE EQU $ - TOTAL_MSG
+
+

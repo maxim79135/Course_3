@@ -1,0 +1,127 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HUGEFLOP                                     See EILIB.TXT for terms
+;---------------
+
+; HUGEFLOP breaks the huge file named in the command tail into floppy-sized
+;   pieces, and outputs the pieces to successive blank, non-system diskettes.
+
+HUGEFLOP:
+  MOV SI,081            ; point to the invocation command tail
+  CALL OPEN_I_ARG       ; open the input file
+  JMP START             ; jump into our processing loop
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: HUGEFLOP fname [out_letter] [size_digit]',0D,0A
+  DB '    outputs a huge file to successive floppies',0D,0A
+  DB '    3=360K (default)  7=720K  2=1.2M  4=1.4M',0D,0A
+  DB '    (default drive letter A)',0D,0A,0,01A
+
+L4:                     ; command-tail character might be a letter
+  AND AL,0DF            ; coerce the character to upper-case
+  CMP AL,'Z'            ; is it indeed a letter?
+  JA >L5                ; jump if not, to force a USAGE_EXIT
+  MOV OUT_L1,AL         ; drive letter seen: store it in our file name
+  MOV OUT_L2,AL         ; also store the letter in our prompt message
+L0:                     ; loop here to skip past characters
+  INC SI                ; advance skip beyond the character
+START:
+  CALL TAIL_BLANKS      ; skip over intervening blanks
+  CMP AL,'A'            ; is the character in the letters range?
+  JAE L4                ; jump if it might be
+  CMP AL,':'            ; is it a colon?
+  JE L0                 ; loop if it is, to ignore the colon
+  CMP AL,','            ; is it a comma?
+  JE L0                 ; loop if it is, to ignore the comma
+  CMP AL,';'            ; is it a semicolon?
+  JE >L6                ; loop if yes, to ignore the rest of the command tail
+  CMP AL,'2'            ; is it below the range of recognized digits?
+  JB >L5                ; jump if it is, to force a USAGE_EXIT
+  CBW                   ; digit candidate: convert char AL into an index AX
+  PUSH BX               ; save the input file handle
+  MOV BX,BSIZES         ; point to our array of buffer sizes
+  ADD BX,AX             ; advance by out index
+  ADD BX,AX             ; add twice to make the index a word-index
+  MOV FULL_SIZE,CX,[BX] ; fetch the buffer size, and store it
+  MOV BX,BCOUNTS        ; point to the array of buffer counts
+  XLATB                 ; fetch the buffer count from the table
+  POP BX                ; restore the input file handle
+  MOV FULL_COUNT,AL     ; store the buffer count
+  TEST AL               ; did we get a legal value?
+  JNZ L0                ; loop if yes, drop if no to force a USAGE_EXIT
+L5:
+  CALL NO_MORE_ARGS     ; verify that there are no more arguments
+L6:
+  MOV BP,-10            ; load bogus handle for the first MCLOSE
+L1:                     ; loop here to read each buffer-full of the file
+  MOV DX,01000          ; point well beyond this program
+  MOV CX,45312          ; buffer size is 1/8 of a 360K floppy
+FULL_SIZE EQU W[$-2]
+  CALL MREAD            ; read the buffer
+  XCHG CX,AX            ; swap the actual count into CX, for writing
+  XCHG BX,BP            ; swap the output handle into BX
+  JCXZ >L3              ; exit the program if there were no more bytes
+  DEC BUFF_COUNT B      ; count down buffers for this output file
+  IF Z CALL NEW_FLOPPY  ; if output is full then open a new file
+  MOV DX,01000          ; point to the input buffer
+  CALL MWRITE           ; write the buffer to the output file
+  XCHG BX,BP            ; swap the input handle back to BX, output handle to BP
+  IF NC CMP AX,CX       ; if no error then see if all the bytes were output
+  JAE L1                ; loop if no error and full output
+  MOV AX,WFAIL          ; output failed: point to message
+  JMP EMSG_USAGE_EXIT   ; output message and abort the program
+
+L3:                     ; input is exhausted
+  CALL MCLOSE           ; close the latest output file
+  MOV BX,BP             ; fetch the input handle
+  CALL MCLOSE           ; close the input file
+  JMP GOOD_EXIT         ; exit back to the operating system
+
+WFAIL:
+  DB 'Sorry, write failed.',0D,0A,0
+
+BUFF_COUNT  DB 1        ; set so the first pass will open the first output file
+
+FLOP_NAME:
+OUT_L1      DB 'A:X0'
+FLOP_DIGIT  DB '0',0
+
+FLOP_PROMPT:
+            DB 'Insert a blank disk in drive '
+OUT_L2      DB  'A and type the digit '
+PPT_DIGIT   DB '0 : ',0
+
+BCOUNTS EQU $-'2'                   ; buffer counts for each density of floppy
+;  DB 30,8,39,0,0,23                 ; 2=1.2M  3=360K  4=1.4M  5,6=none  7=720K
+  DB 30,8,37,0,0,23                 ; 2=1.2M  3=360K  4=1.4M  5,6=none  7=720K
+
+BSIZES EQU $-'2'-'2'                ; buffer sizes for each density of floppy
+  DW 40448,45312,37376,0,0,31744    ; 2=1.2M  3=360K  4=1.4M  5,6=none  7=720K
+  DW 40448,45312,37376,0,0,31744    ; 2=1.2M  3=360K  4=1.4M  5,6=none  7=720K
+
+
+; NEW_FLOPPY closes the previous output file whose handle is BX, prompts the
+;   user to switch disks, opens the next file, and increments the output name
+;   for the next call.
+
+NEW_FLOPPY:
+  MOV BUFF_COUNT,8            ; reset the count of input buffers for this file
+FULL_COUNT EQU B[$-1]
+  CALL MCLOSE                 ; close the previous output file
+  MOV PPT_DIGIT,AL,FLOP_DIGIT ; plug the last digit of the name into the prompt
+  MOV AX,FLOP_PROMPT          ; point to the prompt message
+  CALL EMESSAGE               ; output the prompt message
+L1:                           ; loop here until the correct digit is pressed
+  CALL BIOS_KEY_AL            ; fetch a keystroke
+  CMP AL,PPT_DIGIT            ; is it the digit we prompted for?
+  JNE L1                      ; loop if not, until the digit is typed
+  CALL ECRLF                  ; correct digit seen: echo a CRLF
+  MOV DX,FLOP_NAME            ; point to the name of the floppy file
+  CALL MCREAT                 ; open the new floppy file
+  INC FLOP_DIGIT              ; increment the name
+  CMP FLOP_DIGIT,'9'+1        ; have we gone past digit 9?
+  JB RET                      ; return if not
+  MOV FLOP_DIGIT,'0'          ; we have: cycle back to digit 0
+  INC B[FLOP_DIGIT-1]         ; increment the tens-digit
+  RET
+

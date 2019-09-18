@@ -1,0 +1,58 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER   FIXDIR                           ; See EILIB.TXT for terms
+        ;---------------
+
+; FIXDIR adjusts a directory listing created by the DOS-under-Win95 command
+;    DIR /S.  We eliminate all but the lines for individual files, and we
+;    prepend the full path to the long names for those files.
+
+        DATA SEGMENT
+PATH_CT  DW ?          ; number of characters in the prepended path
+PATH:    DB 1K DUP ?   ; buffer to hold the prepended path
+        DATA ENDS
+
+PROCESS_LINE:          ; filter the line which is CX bytes at SI--DI, to BP
+  CMP CX,13            ; is the line too short for any processing whatever?
+  JB RET               ; return if it is
+  MOV BX,CX            ; save the line count in BX
+  PUSH SI              ; save the line pointer
+  MOV DI,DIR_OF        ; point to "Directory of " string
+  MOV CX,13            ; load size of "Directory of "
+  REPE CMPSB           ; is this a "Directory of " line?
+  JE >L1               ; jump if it is, to record the path
+  POP SI               ; restore the line pointer
+  MOV CX,44            ; load byte count before the long file name
+  SUB BX,CX            ; reduce the line count to the long-file-name count
+  JB RET               ; return if the line is not long enough
+  CMP W[SI+15],'D<'    ; is this a <DIR> line?
+  JE RET               ; return if it is
+  MOV DI,BP            ; we have a genuine file line: point DI to output
+  REP MOVSB            ; copy the line up to the long file name
+  PUSH SI              ; save the line pointer
+  MOV SI,PATH          ; point to the prepended path
+  MOV CX,PATH_CT       ; load the path count
+  REP MOVSB            ; output the path
+  POP SI               ; restore the pointer to the long file name
+  MOV AL,'\'           ; load subdir char
+  CMP AL,[DI-1]        ; did the path end with a subdir char?
+  IF NE STOSB          ; if not then output the subdir char
+  MOV CX,BX            ; copy the remaining line count to CX
+  REP MOVSB            ; output the long file name
+  JMP PROCESS_LINE_EXIT; reset BP and check for buffer overflow
+
+L1:                    ; a "Directory of " line was seen
+  POP AX               ; discard the pointer to the line start
+  LODSB                ; fetch the drive letter
+  LODSB                ; fetch the colon
+  CMP AL,':'           ; was it in fact a colon?
+  JNE RET              ; return if not, to ignore the line
+  LEA CX,[BX-17]       ; set CX to the path count
+  MOV PATH_CT,CX       ; store the path count
+  MOV DI,PATH          ; point to the path buffer
+  REP MOVSB            ; copy the path to the path buffer
+  RET
+
+DIR_OF:                ; string that identifies a line giving the path
+  DB 'Directory of '
+
+

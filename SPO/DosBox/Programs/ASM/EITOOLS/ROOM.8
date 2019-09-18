@@ -1,0 +1,130 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ROOM                                         See EILIB.TXT for terms
+;---------------
+
+; ROOM is a program that tells how much room will be left when a directory
+;   is copied to a 360K diskette.  The current directory is used, unless an
+;   argument is provided; in that case, the argument is the name of the
+;   directory to be used.
+
+ROOM:
+  CALL GET_TAIL       ; copy and command tail to TAIL_BUFF
+  CALL FIND_FILES     ; find and add up all files matching this name
+  CALL REPORT_TOTAL   ; output the total to standard output
+  JMP GOOD_EXIT       ; exit back to the operating system
+
+NO_DOSCHECK EQU 1     ; we will not trap errors in MSDOS.8
+
+        DATA SEGMENT
+TAIL_BUFF:          ; wild-card total of the files we will look at
+  DB 128 DUP ?
+OBUFF:              ; our output message
+  DB 1K DUP ?
+        DATA ENDS
+
+
+; LOW_TOTAL and HIGH_TOTAL are initialized to minus the capacity of a diskette.
+;   The total will be incremented towards zero as files are found.
+
+LOW_TOTAL  DW 07800     ; low word of accumulated answer
+HIGH_TOTAL DW 0FFFA     ; high word of accumulated answer
+
+SLASH_ALL:          ; string that is appended to directory name
+  DB '\'
+ALL:                ; string that is used if no argument given
+  DB '*.*',0
+SHORT_MSG:          ; message appended if the total was positive
+  DB ' SHORT!!'
+
+
+; GET_TAIL copies the command tail from the program's PSP to our own buffer,
+;   where it will not be clobbered when we call MS-DOS.  We also append "\*.*"
+;   to the argument, transforming the directory name into a wildcard
+;   specification that will cause every file in the directory to be found.
+;   We return with SI pointing to the specification.  If there was no argument,
+;   SI points to "*.*".
+
+GET_TAIL:
+  MOV SI,081        ; point to the start of the command tail
+  CALL TAIL_BLANKS  ; skip over leading blanks
+  CMP AL,0D         ; was there an argument?
+  JZ >L2            ; jump if not, to point to *.*
+  MOV DI,TAIL_BUFF  ; destination for our copy is our own buffer
+L1:                 ; loop here for each character of the directory name
+  LODSB             ; fetch the character
+  STOSB             ; copy the character to our own buffer
+  SUB AL,021        ; reduce the displayable-characters range to start at 0
+  CMP AL,07F-021    ; was the character a displayable character?
+  JB L1             ; loop if yes, to copy the next character
+  DEC DI            ; retreat output pointer back to the terminator
+  MOV SI,SLASH_ALL  ; point to our "\*.*" append-string
+  MOVSW 2           ; copy \*.*
+  MOVSB             ; copy null-terminator
+  MOV SI,TAIL_BUFF  ; point to the start of our created wildcard specifier
+  RET
+
+L2:                 ; there was no argument in the program invocation
+  MOV SI,ALL        ; point to *.*
+  RET
+
+
+; FIND_FILES calls the MS-DOS wildcard-find function to find all files matching
+;   the SI-pointed specification.  If any are found, we add the file size into
+;   our variables LOW_TOTAL and HIGH_TOTAL.  Since files on a diskette always
+;   occupy a multiple of 1024 bytes, we advance the size to the next multiple
+;   before adding it into the total.
+
+FIND_FILES:
+  MOV DX,SI         ; point DX to the specification, where MS-DOS wants it
+  MOV AH,04E        ; function number for FIND FIRST WILDCARD
+  INT 021           ; call MS-DOS to find the first wildcard
+  JC RET            ; return if there was no wildcard
+L1:                 ; loop here for every file found
+  MOV AX,W[09A]     ; fetch the low word of the file size
+  MOV BX,W[09C]     ; fetch the high word of the file size
+  ADD AX,1023       ; increment size to the next 1024-multiple
+  ADC BX,0          ; carry to high word if necessary
+  AND AX,NOT 1023   ; mask the size down to the next 1024-multiple
+  ADD LOW_TOTAL,AX  ; add it into the low word of our total
+  ADC HIGH_TOTAL,BX ; add it, with carry, into our high word
+  MOV AH,04F        ; function number for FIND NEXT WILDCARD
+  INT 021           ; call MS-DOS to find the next wildcard
+  JNC L1            ; loop if another file was found
+  RET
+
+
+; REPORT_TOTAL sends our report to standard output, based on the total
+;   accumulated in LOW_TOTAL and HIGH_TOTAL.
+
+REPORT_TOTAL:
+  MOV DI,OBUFF      ; initialize the output pointer
+  MOV AX,MESSAGE    ; point to our "Room left..." message
+  CALL COPYZ_AX     ; output the "Room left..." message
+  CALL OUT_TOTAL    ; output the total byte count
+  MOV AX,0A0D       ; load terminating CRLF
+  STOSW             ; terminate the message with the CRLF
+  MOV DX,OBUFF      ; point to the start of the output buffer
+  JMP OWRITE_DI     ; write the output buffer to the console
+
+
+
+OUT_TOTAL:
+  MOV AX,LOW_TOTAL  ; fetch the low word of the total
+  MOV DX,HIGH_TOTAL ; fetch the high word of the total
+  MOV BX,10         ; decimal base, no leading padding
+  TEST DH           ; did the total overflow into a positive value?
+  JNS >L1           ; jump if it did
+  NEG DX            ; number is negative: negate to positive
+  NEG AX            ; both words are negated
+  SBB DX,0          ; propagate Carry flag from lower word to upper word
+  JMP NUMOUT        ; output the number
+
+L1:                 ; overflow seen
+  CALL NUMOUT       ; output the overflow
+  MOV SI,SHORT_MSG  ; point to " SHORT!!"
+  MOVSW 4           ; output " SHORT!!"
+  RET
+
+
+MESSAGE:
+  DB 'Room left on a DSDD diskette would be ',0

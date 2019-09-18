@@ -1,0 +1,61 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SHOW87                                       See EILIB.TXT for terms
+;---------------
+
+; SHOW87 shows the contents of the floating-point stack.  DOS does not
+;   modify the 87 chip contents, so it is preserved from the last program
+;   that used it.
+
+NO_DOSCHECK EQU 1     ; disable automatic error trapping in MSDOS.8
+
+        DATA SEGMENT
+FLOAT_STATE:                    ; buffer to contain the status of the 87 chip
+  FCONTROL         DW ?         ; control register
+  FSTATUS          DW ?         ; status register
+  FTAG             DW ?         ; tag register
+  FIP              DW ?,?       ; instruction pointer
+  FOPERAND         DW ?,?       ; data operand pointer
+  FSTACK           DT 8 DUP ?   ; contents of the floating-point stack
+        DATA ENDS
+
+SHOW87:
+  MOV DI,OBUFF          ; initialize the output pointer
+  FWAIT                 ; insure that any previous instruction is complete
+  FSAVE [FLOAT_STATE]   ; save the entire 87 state in our buffer
+  MOV CL,B[FSTATUS+1]   ; fetch the part of 87 status containg the stack ptr
+  SHR CL,1              ; shift stack point from mask 038 down to 01C
+  SHR CL,1              ; shift down to 0E
+  AND CL,0E             ; mask away the other bits
+  MOV BX,FTAG           ; fetch the 87 tag word
+  ROR BX,CL             ; rotate the tag word so that ST(0) is on the bottom
+  MOV CX,8              ; we will output 8 numbers
+  LEA SI,FSTACK         ; point to the numbers-stack in our 87 buffer
+L1:                     ; loop here for the display of each number on stack
+  FINIT                 ; reset the 87, to get a clean slate
+  MOV AX,':8'           ; load a prototype register number output
+  SUB AL,CL             ; change the prototype to the actual number
+  STOSW                 ; output the number and a colon to the display
+  MOV AL,' '            ; load blank
+  STOSB                 ; output intervening blank
+  MOV AL,BL             ; fetch the low byte of the tag word
+  AND AL,3              ; mask the byte down to this number's tag field
+  ROR BX,1              ; rotate the next number's field to the bottom
+  ROR BX,1              ; the field has two bits so make two rotates
+  CMP AL,3              ; is this stack slot empty?
+  JNE >L2               ; jump if not empty
+  MOV AX,'--'           ; slot is empty-- load dashes for display
+  STOSW 2               ; output 4 dashes
+  JMP >L3               ; join common code
+
+L2:                     ; the floating-point stack slot is nonempty
+  PUSH BX,CX            ; preserve registers across call
+  CALL DISPLAY_FLOAT    ; output a display of the number's value
+  POP CX,BX             ; restore clobbered registers
+L3:                     ; common code with empty case
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; terminate the output line
+  ADD SI,10             ; advance the input pointer to the next number
+  LOOP L1               ; loop to output another floating-stack number
+  FRSTOR [FLOAT_STATE]  ; save the entire state in our buffer
+  CALL FLUSH_OBUFF      ; write the output buffer to the console
+  JMP GOOD_EXIT         ; exit the program

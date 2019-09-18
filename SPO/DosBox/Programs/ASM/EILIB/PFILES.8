@@ -1,0 +1,76 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    PFILES                                      See EILIB.TXT for terms
+;---------------
+
+; PROCESS_CX_FILES expects the command-tail pointer SI to point to exactly
+;   CX file names, and BX to point to an array of DWs, pointing to PFILE_REC
+;   action routines, and post-file processing routines, one pair for each file
+;   to be processed.  We verify the correct number of names, then we call
+;   PROCESS_FILE for each file, using the BX-pointed routine as the PFILE_REC
+;   routine for that file.  At the end of each whole file, we call a post-
+;   processing routine for that file, provided from the BX-array.
+
+; Example usage:
+;
+   L0:
+;    DW FILE1_ACT,POST1
+;    DW FILE2_ACT,POST2
+;    DW FILE3_ACT,POST3
+;
+;  MAIN:
+;    MOV SI,081             ; point to command tail
+;    MOV CX,3               ; there will be three files there to process
+;    MOV BX,L0              ; point to the table of action routines
+;    CALL PROCESS_CX_FILES  ; process the files
+;    ; do any post-processing here
+;    JMP GOOD_EXIT          ; exit the program
+;    ...
+;  FILE1_ACT:
+;    ; process an SI-pointed record from the first file
+;    ...
+;  POST1:
+;    ; post-processing routine at the end of the first file
+;    ...
+;  FILE2_ACT:
+;    ; process an SI-pointed record from the second file
+;    ...
+;  POST2:
+;    ; post-processing routine at the end of the second file
+;    ...
+;  FILE3_ACT:
+;    ; process an SI-pointed record from the third file
+;    ...
+;  POST3:
+;    ; post-processing routine at the end of the third file
+
+        DATA SEGMENT
+        #if !def PFILE_REC
+PFILE_REC DW ?
+        #endif
+        DATA ENDS
+
+U1:                   ; the exact number of file names was not seen
+  JMP USAGE_EXIT      ; output usage message and exit the program
+
+PROCESS_CX_FILES:
+  PUSH CX,SI          ; save the files count and command-tail pointer
+L1:                   ; loop here to count down each file name
+  CALL FILE_ARG       ; scan the file name
+  JC U1               ; jump if a file name was not seen
+  LOOP L1             ; loop to scan another name
+  CALL NO_MORE_ARGS   ; names scanned: verify no more command-tail arguments
+  POP SI,CX           ; restore pointer and files count
+L2:                   ; loop here to process each file
+  CALL FILE_ARG       ; point DX to the file name
+  MOV AX,[BX]         ; fetch the pointer to this file's PFILE_REC routine
+  INC BX,2            ; advance the pointers-pointer
+  MOV PFILE_REC W,AX  ; store the action-routine pointer
+  INC BX,2            ; advance the pointers-pointer
+  PUSH BX,CX,SI       ; save registers during file processing
+  PUSH W[BX-2]        ; push pointer to this file's post-processing routine
+  CALL PROCESS_FILE   ; process the file
+  POP AX              ; restore the pointer to the post-processing routine
+  CALL AX             ; call the post-processing routine
+  POP SI,CX,BX        ; restore clobbered registers
+  LOOP L2             ; loop to process another file
+  RET

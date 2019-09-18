@@ -1,0 +1,40 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SCAN_FDT                                     See EILIB.TXT for terms
+;---------------
+
+; SCAN_FDT sets DXCX to the file-format date and time whose ASCII rendition is
+;   pointed to by SI.  The format is CX: H,M,2S = 5,6,5 bits  DX: Y-1980,M,D = 
+;   7,4,5 bits.
+
+SCAN_FDT:
+  CALL TAIL_BLANKS  ; skip over leading blanks
+  LODSW             ; skip over the century digits
+  MOV CL,8          ; shift count of 8 ensures DL is cleared first
+  CALL >L1          ; scan number and shift it into DX
+  SUB DL,80         ; file format uses offset from 1980
+  IF C ADD DL,100   ; adjust if the date is in the 21st century
+  MOV CL,4          ; shift count for the month is 4
+  CALL >L1          ; read the month
+  INC CX            ; shift count for the day is 5
+  CALL >L1          ; read the day
+  PUSH DX           ; save the file-format date
+  CALL >L1          ; read the hours (shift count is still 5)
+  INC CX            ; shift count for minutes is 6
+  CALL >L1          ; read the minutes
+  DEC CX            ; shift count for seconds is 5
+  SHL DX,CL         ; use zero for the seconds
+  MOV CX,DX         ; copy the file-format time to CX
+  POP DX            ; set the file-format date to DX
+  RET  
+
+L1:                 ; read decimal value and shift it into CL bits of DX
+  LODSB             ; fetch an intervening byte
+  CMP AL,'0'        ; is it too low to be a digit?
+  JB L1             ; loop if it is too low
+  CMP AL,'9'        ; is it too high to be a digit?
+  JA L1             ; loop if it is too high
+  DEC SI            ; it is a digit: retreat back to it
+  CALL SCAN_DECIMAL ; set AX to the decimal value
+  SHL DX,CL         ; make room for the value
+  OR DX,AX          ; place the value into the bottom CL bits of DX
+  RET

@@ -1,0 +1,27 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  TIMEDLAX                                      See EILIB.TXT for terms
+;---------------
+
+; GET_TIME_DLAX sets DLAX to the time-of-day, in hundredths of seconds
+;   since midnight.
+
+GET_TIME_DLAX:
+  PUSH BX,CX        ; preserve registers across call
+  MOV AH,02C        ; MS-DOS function code for GET_TIME
+  INT 021           ; set CH=hour CL=minute DH=second DL=hundredths
+  MOV AL,100        ; load multiplier
+  MUL DH            ; convert seconds to hundredths
+  XCHG BX,AX        ; swap the answer into BX
+  MOV DH,0          ; extend hundredths DL to DX
+  ADD BX,DX         ; add the hundredths into the seconds
+  MOV AL,60         ; load multiplier
+  MUL CH            ; convert hours to minutes
+  MOV CH,0          ; extend minutes CL to CX
+  ADD AX,CX         ; add minutes into hours
+  MOV DX,6000       ; load multiplier
+  MUL DX            ; convert minutes into hundredths
+  ADD AX,BX         ; add hundredths into minutes
+  ADC DX,0          ; carry the addition to DX
+  POP CX,BX         ; restore clobbered registers
+  RET
+

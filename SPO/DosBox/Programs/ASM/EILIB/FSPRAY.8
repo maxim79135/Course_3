@@ -1,0 +1,233 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FSPRAY                                       See EILIB.TXT for terms
+;---------------
+
+; FSPRAY handles programs that "spray" data to a sequence of files with
+;   sequential names.  We subdivide memory beyond our 64K program segment
+;   into equal-sized chunks; then we buffer output there.  The calling
+;   program must EQU the following names to applicable constants:
+
+;   FSPRAY_1ST is the character required at the end of the file name
+;      handed to OPEN_FSPRAY.  The checking routine is case-insensitive,
+;      but the declaration of FSPRAY_1ST must be upper-case if it is
+;      a letter.
+;
+;   FSPRAY_INC is the increment added to the last character, to create
+;      each subsequent file name.
+;
+;   FSPRAY_CT is the number of files being created.
+
+; We adopt two different strategies, depending on whether there are 15 files
+; or more.  If there are fewer than 15 files, we keep all the files open,
+; and maintain an array of open-file handles for them.  If there are 15 or
+; more files, open each file only when writing to it, and close it again
+; after each write is complete.
+
+; This module uses the A86 macro facility to abbreviate some of the operations
+; within the code.  This style of programming is somewhat different from
+; the other modules in the library.  I provide it here to illustrate the
+; possibilities, and also to provide some macros for the testing of new
+; versions of A86.
+
+ADDINC MACRO          ; ADD, except we use the INC instruction if we can
+        ##if #2 EQ 1  ; are we adding just one?
+  INC #1              ; if yes then an INC suffices
+        ##else
+  ADD #1,#2           ; more than one: use ADD instead
+        ##endif
+#EM
+
+FS_ADJUST_DIGIT MACRO         ; check for adjust of digit to letter A
+        #if FSPRAY_1ST LE '9' ; no check needed if we didn't start with a digit
+  MOV AL,FS_LETTER            ; fetch the updated file character
+  CMP AL,'9'             ; is the character still a digit?
+  JBE >M1                ; skip if it is
+  CMP AL,'A'             ; has the characer already been advanced?
+  IF B ADD FS_LETTER,7   ; if not then advance it into letters-range
+M1:
+        #endif
+#EM
+
+FS_COERCE MACRO
+        #if FSPRAY_CT GE 15
+  XCHG AX,DX            ; swap the file name pointer into AX
+  STOSW                 ; store the file name pointer in FS_NAME
+  XCHG DX,AX            ; restore registers
+        #endif
+        #if FSPRAY_1ST GE 'A' ; we coerce only if required character a letter
+  AND AL,0DF                  ; coerce the letter to upper case
+        #endif
+#EM
+
+FS_TRIM MACRO                 ; if buffer size might exceed 64K then trim it
+        #if FSPRAY_CT LT 10   ; skip check if too many files -- can't be >64K
+  CMP AX,01000                ; is there over 64K for each buffer?
+  IF AE MOV AX,0FFF           ; if yes then trim the size to almost 64K
+        #endif
+#EM
+
+FS_STORE_HANDLE MACRO
+        #if FSPRAY_CT LT 15
+  STOSW                       ; output the open-file handle
+        #else
+  CALL MCLOSE                 ; if too many files we do not keep them open
+        #endif
+#EM
+
+FS_OPEN_FILE MACRO
+  SHR BX,1              ; convert the pointer index into a word index
+        #if FSPRAY_CT LT 15
+  MOV BX,FS_HANDLE[BX]  ; fetch the open-file handle for this buffer
+        #else
+  XCHG AX,BX            ; swap the file index into AX
+  SHR AL,1              ; convert the pointer index into a byte index
+  ADD AL,FSPRAY_1ST     ; calculate the last character of the file name
+  MOV FS_LETTER,AL      ; store the letter into the name
+  MOV DX,FS_NAME        ; point to the file name
+  CALL MOPEN_APPEND     ; open the file
+        #endif
+#EM  
+
+FS_MANY_CLOSE MACRO
+        #if FSPRAY_CT GE 15
+  CALL MCLOSE           ; close the file
+        #endif
+#EM
+
+FS_FEW_CLOSE MACRO
+        #if FSPRAY_CT LT 15
+  CALL MCLOSE           ; close the file
+        #endif
+#EM
+
+        DATA SEGMENT
+  ; NOTE: we output sequentially to the following buffers, so they must
+  ;       be consecutive and in the order given!
+
+             DB 126 DUP ?
+  FS_LETTER  DB 0,0
+END_FS_NAME:
+        #if FSPRAY_CT LT 15
+  FS_HANDLE  DW  FSPRAY_CT DUP ?
+        #else
+  FS_NAME    DW  ?
+        #endif
+  FS_PTR     DD  FSPRAY_CT DUP ?
+        DATA ENDS
+
+
+; OPEN_FSPRAY insures that the file name pointed to by SI ends with the
+;   character FSPRAY_1ST, then opens FSPRAY_CT files, with incrementing file
+;   names.
+
+E1:                 ; error occurred either scanning name or opening files
+  JMP USAGE_EXIT    ; abort the program
+
+OPEN_FSPRAY:
+  CALL FILE_ARG       ; scan the file name
+  JC E1               ; error if there was no file name
+  MOV CX,SI           ; point CX beyond the name just scanned
+  MOV SI,DX           ; retreat SI back to the name
+  SUB CX,SI           ; calculate the number of bytes in the name
+  MOV DI,END_FS_NAME  ; point beyond our file name buffer
+  SUB DI,CX           ; retreat the output pointer by that many bytes
+  MOV DX,DI           ; return the final pointer in DX
+  REP MOVSB           ; copy the file name to the buffer
+  MOV AL,[DI-2]       ; fetch the last letter of the name
+  FS_COERCE           ; coerce the character to upper case
+  CMP AL,FSPRAY_1ST   ; the letter had better be FSPRAY_1ST
+  JNE E1              ; abort if it is not
+  MOV CX,FSPRAY_CT    ; load the number of files we will create
+  PUSH CX             ; save the count
+L1:                   ; loop here to open each file
+  CALL MCREAT         ; open a file for writing
+  JC E1               ; jump if error
+  FS_STORE_HANDLE              ; either store the handle or close the file
+  ADDINC FS_LETTER,FSPRAY_INC  ; increment the final character of the file
+  FS_ADJUST_DIGIT              ; adjust if the character incremented beyond '9'
+  LOOP L1             ; loop to open another file
+  POP CX              ; restore the count of files
+  MOV BX,CS           ; fetch the pointer to our segment
+  ADD BH,010          ; advance beyond our 64K
+  MOV AX,W[2]         ; point beyond available memory
+  SUB AX,BX           ; calculate the number of paragraphs available to us
+  SUB DX,DX           ; extend count AX to DXAX
+  DIV CX              ; calculate the number of paragraphs for each buffer
+  FS_TRIM             ; trim the size to 64K if necessary
+  XCHG DX,AX          ; swap the paragraph count into DX
+L3:                   ; loop here to calculate each buffer pointer
+  SUB AX,AX           ; offset of each buffer is zero
+  STOSW               ; output the offset
+  MOV AX,BX           ; each the segment address
+  STOSW               ; output the segment address
+  ADD BX,DX           ; advance the segment address to the next buffer
+  LOOP L3             ; loop to output another buffer pointer
+  MOV CL,4            ; shift count of 4 will multiply by 16
+  SHL DX,CL           ; convert the paragraph count to a byte count
+  MOV FS_LIMIT W,DX   ; count the count as our buffer limit
+  RET
+
+
+; W_FSPRAY copies CX bytes from SI to buffer number AX.  If the buffer fills,
+;   we flush it to the appropriate file.
+
+W_FSPRAY:
+  PUSH BX,DX,DI,ES    ; preserve registers across call
+  ADD AX,AX           ; AX = file number * 2
+  ADD AX,AX           ; AX = file number * 4 will index the pointers array
+  XCHG BX,AX          ; swap the pointers-index into BX
+  LES DI,FS_PTR[BX]   ; fetch the output pointer for this buffer
+  JMP >L2             ; jump into the output loop
+
+L1:                   ; loop here each time there is too much to output
+  XCHG DX,CX          ; swap the available count to CX, desired to DX
+  SUB DX,CX           ; decrement the desired count by what we are outputting
+  REP MOVSB           ; output the bytes
+  PUSH BX             ; preserve the pointer index of this buffer
+  CALL FS_FLUSH       ; output the buffer to the file
+  POP BX              ; restore the pointer index
+  MOV CX,DX           ; restore the new desired count
+L2:
+  MOV DX,0FFF0        ; load the limit of our buffer
+FS_LIMIT EQU W[$-2]   ; the limit is plugged into the above immediate value
+  SUB DX,DI           ; calculate the number of remaining bytes in the buffer
+  CMP CX,DX           ; can we output all our bytes to the buffer?
+  JA L1               ; loop if we can't, to partially output and flush
+L2:
+  REP MOVSB           ; we have enough room for all the bytes: output them
+  MOV FS_PTR[BX] W,DI ; store the revised output pointer for this buffer
+  POP ES,DI,DX,BX     ; restore clobbered registers
+  RET
+
+
+; FS_FLUSH writes DI bytes from ES:0 to the open file numbered BX/4, and
+;   resets DI to 0.
+
+FS_FLUSH:
+  PUSH CX,DX,DS         ; preserve registers across call
+  FS_OPEN_FILE          ; open the file for reading
+  MOV CX,DI             ; point CX beyond the bytes output (same as count)
+  SUB DX,DX             ; point DX to the start of the buffer
+  MOV DS,ES             ; point DS to the buffer
+  CALL MWRITE           ; output the buffer to the file
+  SUB DI,DI             ; reset the output pointer to the start of the buffer
+  FS_MANY_CLOSE         ; close the file
+  POP DS,DX,CX          ; restore clobbered registers
+  RET
+
+
+; CLOSE_FSPRAY flushes all the output buffers, and closes all the output
+;   files created by OPEN_SPRAY.
+
+CLOSE_FSPRAY:
+  MOV CX,FSPRAY_CT      ; load the number of buffers
+  SUB BX,BX             ; starting index is zero
+L1:                     ; loop here to flush and close each file
+  PUSH BX               ; save the pointer index
+  LES DI,FS_PTR[BX]     ; fetch the output pointer
+  CALL FS_FLUSH         ; flush the buffer
+  FS_FEW_CLOSE          ; close the file if it was open
+  POP BX                ; restore the pointer index
+  ADD BX,4              ; advance to the next pointer index
+  LOOP L1               ; loop to flush and close the next file
+  RET

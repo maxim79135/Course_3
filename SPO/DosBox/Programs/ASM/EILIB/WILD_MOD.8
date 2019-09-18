@@ -1,0 +1,22 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   WILD_MOD                                     See EILIB.TXT for terms
+;---------------
+
+; WILD_MODBAK is called to transform the SI-pointed list of files using
+;   the MODBAK procedure.  The caller must declare OBUFF and associated
+;   symbols, and provide the procedure MODBAK_REC, as described in
+;   MODBAK.8.  The list of files can include wildcard characters.
+
+WILD_MODBAK:
+  SUB CX,CX         ; copy the entire stack up to the 0000 top
+  CALL WILD_ARGS    ; parse the filenames and point SI to their pointers
+  JZ RET            ; return if there were no filenames
+L1:                 ; loop here to process each file
+  LODSW             ; fetch the pointer to the file
+  PUSH CX,SI        ; save the pointers count and pointer
+  XCHG SI,AX        ; swap this path pointer into SI
+  CALL MODBAK       ; process the file
+  POP SI,CX         ; restore the pointers pointer and count
+  LOOP L1           ; loop to process the next file
+  RET
+

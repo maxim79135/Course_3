@@ -1,0 +1,48 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   AVAILMEM                                     See EILIB.TXT for terms
+;---------------
+
+; AVAILMEM tells how much memory is available for a user program.
+
+; This program does not use any library routines!
+
+AVAILMEM:
+  MOV AX,W[2]       ; fetch the segment number just beyond available memory
+  MOV BX,SS         ; point BX to our program segment
+  SUB AX,BX         ; calculate the number of paragraphs of available memory
+  MOV CL,6          ; load shift factor
+  SHR AX,CL         ; convert the paragraph count into a number of kilobytes
+  MOV BX,10         ; load decimal base
+  SUB DX,DX         ; extend the K count from AX to DXAX
+  DIV BX            ; set DL to low digit of K count, and AX to K/10
+  DIV BL            ; unpack the upper two digits of the K count
+  MOV DI,MSG        ; point to our output message
+  PUSH DI           ; save the pointer to the message
+  CALL DIGIT        ; output the high digit of the K count
+  MOV AL,AH         ; fetch the middle digit value
+  CALL DIGIT        ; output the middle digit of the K count
+  MOV AL,DL         ; fetch the lower digit value
+  CALL >L1          ; output the lower digit of the K count
+  POP DX            ; restore the pointer to the output message
+  MOV CX,MSG_SIZE   ; load the size of the message
+  MOV BX,1          ; load open-file handle for console output
+  MOV AH,040        ; DOS function number for WRITE
+  INT 021           ; write the message to the console
+  MOV AX,04C00      ; DOS function numbers for GOOD EXIT
+  INT 021           ; exit the program
+
+DIGIT:              ; output binary value AL as a decimal digit
+  TEST CH           ; have we output any digits yet?
+  JS >L1            ; skip if we have
+  TEST AL           ; is the value zero?
+  IF NE MOV CH,080  ; if nonzero then mark that we have output a digit
+  IF E MOV AL,-16   ; if zero then fix it so a blank will be output
+L1:
+  ADD AL,'0'        ; convert the binary value to an ASCII digit
+  STOSB             ; output the digit
+  RET
+
+
+MSG:
+     DB '000K of memory is available to a program.',0D,0A
+MSG_SIZE EQU $-MSG

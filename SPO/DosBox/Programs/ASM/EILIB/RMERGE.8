@@ -1,0 +1,163 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  RMERGE                                        See EILIB.TXT for terms
+;---------------
+
+; RMERGE is a substitute for MREAD, that handles up to 100 "open" files
+;   at one time.  MS-DOS allows only 20 open files, so we maintain 16 files
+;   really open, and open and seek as necessary whenever a read
+;   is requested of us.  The "handle" BL is a number from 0 to 99; we read from
+;   the file whose extension is .00 through .99, repsectively.  The caller
+;   must supply the filename RMERGE_NAME in CS and also define the fixed
+;   location CS:RMERGE_EXT at which we will place the 2-digit extension number.
+
+; When we detect an end-of-file condition (fewer bytes read than requested),
+; we automatically close the file.  For program efficiency, the caller should
+; monitor end-of-file, and quit trying to read from that file when the end is
+; reached.
+
+; The calling program must also call RMERGE_INIT when the program starts,
+; to allow us to set up our data areas at the very top of the stack segment.
+; At that point the files are pseudo-open; i.e., we will handle the actual
+; opening of input files as RMERGE is called for each possible file.
+
+; This module assumes that our program has a 64K stack segment, with the
+; hardware stack at the top of the 64K at the time RMERGE_INIT is called.
+; Whatever has been pushed into the stack will be moved below the RMERGE_DATA
+; template, then RMERGE_DATA will be initialized.  The template contains the
+; following data:
+
+  RMERGE_DATA STRUC
+   ORG -418        ; structure is flush against the top of SS
+
+H_RMERGE:
+   DD 100 DUP ?
+; consists of a doubleword for each of the 100 possible "open" files.  Each
+; doubleword is a 3-byte location counter followed by the 1-byte open-file
+; handle.  A handle of 0FF indicates that the file is really closed-- we
+; must open the file (closing another file if necessary) and seek to the
+; location counter before we can read the data for our caller.
+
+ENDQ_RMERGE  DW ?   ; points beyond the last entry in Q_RMERGE.
+
+Q_RMERGE:
+     DB 16 DUP ?
+; is a queue of "handles" of open files, given in the order of least recent
+; usage.  The queue is maintained so that we can decide which file to close
+; when we have reached the limit of really-open files.  Q_RMERGE is flush
+; against the top of the stack segment, so that an ENDQ_RMERGE value of 0 means
+; the queue is full (16 files are open).
+
+ENDS
+
+; RMERGE_INIT copies memory at SS:SP through 0FFFF to a new stack segment,
+;   with segment address BX, leaving room for the RMERGE_DATA template.
+;   We initialize the template, point SS:SP to the stack we just copied,
+;   and return to our caller via the new stack.
+
+RMERGE_INIT:        ; NOTE we assume DS=SS when this routine is called!
+  MOV ES,BX         ; point ES to the new SS
+  MOV SI,SP         ; point to the items pushed on the stack
+  SUB SP,418        ; make room for our RMERGE_DATA template
+  MOV DI,SP         ; set up new SP as destination
+  SUB CX,CX         ; point CX beyond the hardware stack
+  SUB CX,SI         ; calculate the number of bytes on the stack
+  REP MOVSB         ; copy the stack below the template
+  MOV SS,BX         ; point SS to the new stack segment
+  SUB AX,AX         ; we will zero-fill the template
+  MOV CL,100        ; there are 100 doublewords to fill
+L1:                 ; loop here to store each doubleword
+  STOSW             ; low word of each location counter starts out zero
+  MOV AH,0FF        ; "handle" of each file starts out "not really open"
+  STOSW             ; store the high counter byte 0 and "handle" 0FF
+  MOV AH,0          ; restore AX to 0
+  LOOP L1           ; loop to store the next doubleword
+  MOV AX,Q_RMERGE   ; load the start of the queue
+  STOSW             ; set ENDQ_RMERGE so that the queue is empty
+  RET
+
+
+RMERGE:
+  PUSH BX,SI,BP         ; preserve registers across call
+  MOV BH,0              ; high byte of "handle" is always zero
+  SS MOV SI,ENDQ_RMERGE ; point SI beyond the open-files queue
+  MOV BP,BX             ; copy "handle" to BP
+  ADD BP,BP             ; double the "handle"
+  ADD BP,BP             ; quadruple the "handle", for doubleword addressing
+  ADD BP,H_RMERGE       ; point BP to its doubleword within the H_RMERGE array
+  MOV AL,[BP+3]         ; fetch the open-file handle
+  CMP AL,0FF            ; is the file really open?
+  JNE >L7               ; skip if it is
+  PUSH CX,DX,DS         ; preserve registers while we open and seek
+  CALL RMERGE_NAME_BL   ; point DX to the file name with extension BL
+  TEST SI               ; is the open-files queue full?
+  JNZ >L3               ; skip if not-- no need to close a file
+  PUSH BX               ; queue full-- preserve register across closing
+  SS XCHG BL,Q_RMERGE B ; swap in the least-recently-used file "handle"
+  ADD BX,BX             ; double the "handle"
+  ADD BX,BX             ; quadruple the "handle", for doubleword addressing
+  MOV AL,0FF                 ; load the "file really closed" code
+  SS XCHG AL,H_RMERGE[BX+3]  ; swap the closed-code with the open-file handle
+  CBW                        ; extend the handle AL to AX
+  XCHG BX,AX            ; swap the handle into BX
+  CALL MCLOSE           ; close the least-recently-used file
+  POP BX                ; restore our "handle" number
+  JMP >L4               ; jump to open our file
+
+L3:                     ; file was closed but the queue is not full
+  SS MOV B[SI],BL       ; place the "handle" at the end of the queue
+  INC SI                ; increment the end-of-queue pointer
+  SS MOV ENDQ_RMERGE,SI ; store the end-of-queue pointer
+L4:
+  PUSH BX               ; preserve "handle" BL
+  CALL MOPEN_READ       ; open our file
+  POP BX                ; restore "handle" BL
+  PUSH AX               ; save the handle number
+  JC >L6                ; jump if error, to pop and return Carry
+  MOV [BP+3],AL         ; store our new handle in the H_RMERGE entry
+  MOV CH,0              ; high byte of location is zero (16-megabyte limit)
+  MOV CL,[BP+2]         ; fetch the third byte of the location
+  MOV DX,[BP]           ; fetch the bottom word of the location
+  MOV AX,CX             ; look at the bottom word
+  OR AX,DX              ; combine with top word-- is the location zero?
+  JZ >L6                ; skip if zero-- no need to seek
+  MOV AX,04200          ; MS-DOS function codes for ABSOLUTE_SEEK_TO_CXDX
+  INT 021               ; seek to the current location in the file
+L6:
+  POP AX,DS,DX,CX       ; restore handle AL and clobbered registers
+  JC >L9                ; jump if error, to return Carry
+L7:                     ; jump here if the file is really open
+  MOV AH,BL             ; "handle" will go to end of queue
+L8:                     ; loop here to find the "handle" in the queue
+  DEC SI                ; retreat to the next queue entry
+  SS XCHG AH,[SI]       ; SI+1 handle moves to SI, old SI swaps into AH
+  CMP AH,BL             ; have we found the old slot for our handle?
+  JNE L8                ; loop if not, to keep moving handles back
+  MOV BL,AL             ; "handle" is moved to end of queue: load real handle
+  CALL MREAD            ; read from the file
+  JC >L9                ; jump if error, to return Carry
+  ADD [BP],AX           ; add actual bytes read into location counter
+  ADC B[BP+2],0         ; carry the addition into the third byte
+  CMP AX,CX             ; did we reach the end of the file?
+  JAE >L9               ; jump if not, to return
+  PUSH AX               ; end-of-file seen: preserve actual count
+  CALL MCLOSE           ; close the file
+  POP AX                ; restore the actual count
+  MOV B[BP+3],0FF       ; mark the file as closed
+  SS DEC ENDQ_RMERGE    ; remove the "handle" from the queue
+L9:                     ; common exit
+  POP BP,SI,BX          ; restore clobbered registers
+  RET
+
+
+; RMERGE_NAME_BL creates the extension digits for file number BL, plugs the
+;   digits into RMERGE_EXT, and points DS:DX to the full name RMERGE_NAME.
+ 
+RMERGE_NAME_BL:
+  MOV DS,CS             ; point DS to CS, containing the file name
+  MOV AL,BL             ; fetch the "handle"
+  AAM                   ; decompose the "handle" to decimal digit values
+  XCHG AL,AH            ; reverse the bytes, for 8086 word storage
+  ADD AX,'00'           ; convert the bytes to ASCII digits
+  MOV RMERGE_EXT,AX     ; store the bytes as the file extension
+  MOV DX,RMERGE_NAME    ; point to the file name for our file
+  RET

@@ -1,0 +1,313 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SUB                                          See EILIB.TXT for terms
+;---------------
+
+; SUB makes almost any number of mass substitutions of standard input, sending
+;   the resulting text to standard output.  The command tail gives the list
+;   of substitutions to be made, alternating before- and after-strings.
+;   A name beginning with @ is the name of a file containing substitution-
+;   strings.  The string arguments can contain control characters, as
+;   determined by the filtering mechanism in SCAN_STRING, described in its
+;   library file.
+
+; We also accept a parameter +F followed by a decimal number, which causes
+; that number of bytes to be skipped from scanning, at the beginning of each
+; input line.
+
+        DATA SEGMENT
+  ISEG        DW ?    ; segment pointer to the input buffer
+  SORT_PTRS   DW ?    ; pointer to the 4-byte sort records
+  SORT_LIMIT  DW ?    ; highest legal memory location for a 4-byte record
+  MAX_LENGTH  DW ?    ; length of the longest target string
+        DATA ENDS
+
+  JMP SUB_          ; jump around messages to program code
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 'usage: SUB targ1 subst1 [..targn subsn] <in >out',0D,0A
+  DB '        mass-substitutes any number of strings',0D,0A
+  DB '        @listfile can also be given in the command tail',0D,0A
+  DB 01A,0
+
+SUB_:                 ; (SUB is a reserved word, we cannot use it as a label!)
+  CALL CHECK_MEMORY   ; insure that we have enough memory
+  CALL READ_STRINGS   ; read the substitution strings
+  SUB DI,DI           ; we start out with no residual bytes
+L1:
+  CALL FETCH_INPUT    ; input another buffer-full of bytes
+  PUSHF               ; save Z flag, telling if there are more bytes
+  MOV DX,0900         ; point DX to the strings
+  MOV BP,SORT_PTRS    ; point BP to the start of our pointers buffer
+  CALL SUB_STRINGS    ; process buffer-full, except for residual bytes
+  POPF                ; restore Z flag, telling if there were more bytes
+  JZ L1               ; loop if there were more bytes
+  MOV DS,ES           ; no more input: point DS to the input buffer
+  SUB SI,SI           ; point SI to the buffered residual bytes
+  CS LES DI,OPTR      ; load the output pointer
+  CALL COPY_TAIL      ; copy the remaining input buffer as-is
+  CALL FLUSH_OUTPUT   ; output the residual bytes
+  JMP GOOD_EXIT       ; exit the program
+
+OPTR DW 0             ; output pointer offset
+OSEG DW 0             ; output segment
+
+READ_STRINGS:
+  MOV DI,0900         ; point DI to the final strings buffer
+  PUSH DI             ; save the strings pointer
+  CALL FILE_TAIL      ; scan the command tail
+  POP SI              ; restore the strings pointer
+  CMP DI,SI           ; were there any strings scanned?
+  JBE >L8             ; abort if there were no strings
+  MOV AX,-1           ; load terminating marker
+  STOSW               ; output the terminating marker
+  INC DI              ; advance output pointer in case it was odd
+  AND DI,NOT 1        ; now we know the output pointer is even
+  MOV MAX_LENGTH,BP   ; store the maximum string length
+  MOV AX,0FFF0        ; load buffer limit
+  SUB AX,BP           ; reduce the buffer limit by the max string length
+  MOV FOUND_LIMIT,AX  ; reduced value is our limit, to avoid boundary problems
+  MOV SORT_PTRS,DI    ; store the sort pointers pointer
+  MOV AX,0F000        ; point beyond the sort pointers area
+  SUB AX,DI           ; calculate the available sort pointers bytes
+  SUB DX,DX           ; extend bytes count AX to DXAX
+  MOV BX,3            ; load divisor
+  DIV BX              ; calculate the size of the two-byte pointers area
+  NEG AX              ; negate the size
+  ADD AX,0F000        ; add in beyond pointer-- now we have the 4-byte limit
+  MOV SORT_LIMIT,AX   ; store the limit to the pointer pairs area
+  RET
+
+
+CHECK_MEMORY:
+  MOV AX,CS           ; fetch our segment location
+  ADD AX,01000        ; advance to the next 64K
+  MOV ISEG,AX         ; store the input buffer segment
+  ADD AX,01000        ; advance to the next 64K
+  MOV OSEG,AX         ; store the output buffer segment
+  ADD AX,01000        ; advance to the next 64K
+  CMP AX,W[2]         ; have we exceeded available memory?
+  JBE RET             ; return if we haven't
+L8:
+  JMP USAGE_EXIT      ; abort the program
+
+
+TAIL_AL:
+  CMP AL,'+'          ; is a special + flag operator seen?
+  JE >L2              ; jump if it is seen
+  STOSW               ; output garbage to the count-slot
+  CALL SCAN_STRING    ; scan the string specification
+  ADD DI,CX           ; advance the output pointer beyond the string
+  PUSH CX             ; save the string length
+  STOSW               ; output garbage to the second count-slot
+  CALL SCAN_STRING    ; scan the second string
+  ADD DI,CX           ; advance the output pointer beyond the string
+  POP AX              ; restore the string length
+L9:
+  CMP AX,BP           ; have we exceeded the previous maximum length?
+  IF A XCHG BP,AX     ; if we have then update the maximum
+  RET
+
+L2:                       ; flag specifier + was seen
+  INC SI                  ; skip over the +
+  LODSB                   ; fetch the following flag letter
+  AND AL,0DF              ; coerce the letter to upper case
+  CMP AL,'F'              ; is it F?
+  JNE L8                  ; error exit if it was not F
+  CALL VERIFY_DEC         ; it was F: fetch the following decimal number
+  MOV FIELD_SIZE,AX       ; store as a field size for skipping
+  MOV FIELD_OPCODE B,074  ; enable our field-skipping code
+  JMP L9                  ; make sure line length is at least the skip-size
+
+
+; SUB_STRINGS finds all instances of the target strings in the input
+;   buffer (CX bytes at DI), and substitutes the new strings.  The
+;   substituted text is buffered in its own segment, and then output.
+;   We return with DI pointing to CX residual bytes, needed for the
+;   start of the next input buffer.
+
+L2:                     ; loop here for each string that was found
+  CMP DI,0FEFF          ; is the found string too close to the end of buffer?
+FOUND_LIMIT EQU W[$-2]  ; buffer limit is plugged into the above imm value
+  JAE >L3               ; jump if beyond: we will pick up string in next buffer
+  MOV [BP],DI         ; output the pointer to the found string
+  INC BP,2            ; advance the output pointer
+  MOV [BP],SI         ; output the pointer to the target string
+  INC BP,2            ; advance the output pointer
+  CMP BP,SORT_LIMIT   ; are there too many pointers?
+  JAE L8              ; abort if there are
+  ADD DI,BX           ; advance buffer pointer beyond the found string
+  SUB CX,BX           ; reduce buffer count by the length of the string
+L1:                   ; loop here to search for our target
+  CALL FIND_STRING    ; find the next instance of the target string
+  JZ L2               ; loop if we found the string
+L3:
+  POP CX              ; no more instances of this string: restore buffer count
+SUB_STRINGS:
+  MOV BX,DX           ; fetch the pointer to the next target string
+  MOV DX,[BX]         ; load the size of the target string
+  INC BX,2            ; advance the pointer beyond the target size
+  MOV SI,BX           ; copy the target string pointer to SI
+  ADD BX,DX           ; advance BX to the second string's size
+  ADD BX,[BX]         ; advance BX by the size of the second string
+  INC BX,2            ; include the size slot itself in the advance
+  XCHG BX,DX          ; swap target size into BX, next-string pointer to DX
+  SUB DI,DI           ; point DI to the buffer start
+  PUSH CX             ; save the buffer count
+  TEST BX             ; did we hit the terminating marker?
+  JNS L1              ; loop if not, to scan our buffer for this target
+  MOV SI,BP           ; point SI beyond the 4-byte records
+  MOV ES,CS           ; point ES to our home segment, for output
+  MOV DI,BP           ; point DI to the 2-byte records to be output
+  MOV AX,SORT_PTRS    ; point AX to the 4-byte records
+  JMP >L8             ; jump into loop
+
+L4:                   ; loop here to create each record pointer
+  STOSW               ; output a record pointer
+  ADD AX,4            ; advance the pointer to the next record
+L8:
+  CMP AX,SI           ; have we reached the end of the 4-byte pointers?
+  JB L4               ; loop if not, to output the next pointer
+  SUB AX,AX           ; load terminating marker
+  STOSW               ; output the terminating marker
+  SUB DI,4            ; retreat DI back to the last pointer
+  MOV CH,0            ; clear CH, expected by SIDI_SORT
+  PUSH SI             ; save the pointer to the 2-byte pointers
+  CALL SIDI_SORT      ; sort the record pointers according to their occurance
+  LES DI,OPTR D       ; point to current output
+  MOV DS,ISEG         ; point DS to the input segment
+  SUB SI,SI           ; point SI to the input buffer start
+  POP BX              ; restore the pointer to the 2-byte pointers
+  DB 03D              ; skip over REP STOSB to L5
+L3:
+  REP STOSB
+L5:                   ; loop here for each string-found record
+  SS MOV BP,[BX]      ; point BP to the 4-byte record
+  INC BX,2            ; advance the 2-byte record pointer
+  TEST BP             ; have we reached the terminator?
+  JZ >L6              ; jump if we have
+  MOV CX,[BP]         ; point CX to the string location within the buffer
+  MOV BP,[BP+2]       ; point BP to the target string
+  SUB CX,SI           ; calculate the intervening bytes count
+  JB L5               ; loop if we are already past-- string was superceded
+  CALL COPY_BYTES     ; output the intervening buffer bytes
+  MOV AX,[BP-2]       ; fetch the length of the target string
+  ADD SI,AX           ; advance the input pointer past the found string
+  ADD BP,AX           ; advance BP beyond the target string, to second string
+  MOV CX,[BP]         ; load the size of the second string
+  PUSH DS,SI,AX,CX    ; preserve the input buffer pointer and counts
+  LEA SI,[BP+2]       ; point SI to the second string
+  MOV DS,CS           ; point DS to our segment, where the second string is
+  CALL COPY_BYTES     ; output the second string
+  POP CX,AX,SI,DS     ; restore the counts and input buffer pointer
+  SUB CX,AX           ; are the strings the same length?  loop if they are
+FIELD_OPCODE EQU B[$] ; JE opcode is plugged in if fields are enabled
+  JMP L5              ; loop to substitute the next string that was found
+  SUB AX,SI           ; SI-AX will retreat the input to the start of the string
+  NEG AX              ; AX points to the start of the string
+  ADD AX,01234        ; advance AX beyond the field
+FIELD_SIZE EQU W[$-2] ; field size is plugged into the above immediate value
+  DB 03C              ; skip over the initial MOVSB
+L9:                   ; loop here to find the tail of the field
+  MOVSB               ; copy the byte to output
+  CMP SI,AX           ; have we reached the field limit?
+  JAE >L2             ; skip if we have
+  CMP W[SI],'  '      ; have we reached the blank tail?
+  JNE L9              ; loop if we have not
+  MOV AL,' '          ; load blank, for filling
+  NEG CX              ; negate CX to (first - second)
+  JNS L3              ; if first was longer then fill in the difference
+  SUB SI,CX           ; if second was longer then truncate the blanks
+  JMP L5              ; loop to substitute the next string that was found
+
+L2:                   ; we have reached the field limit
+  MOV AL,' '          ; load blank, for filling
+  NEG CX              ; negate CX to (first - second)
+  JNS L3
+  ADD DI,CX
+  JMP L5
+
+L6:                   ; there are no more found strings in this buffer
+  POP CX              ; restore the input buffer count
+COPY_TAIL:
+  PUSH CX                     ; save the buffer count
+  CMP CX,0FFF0                ; was it a full input buffer?
+  IF E CS SUB CX,MAX_LENGTH   ; if it was then retreat by the maximum string
+  SUB CX,SI                   ; calculate the remaining buffer bytes
+  IF B SUB CX,CX      ; no bytes if we had advanced closer than MAX_LENGTH
+  CALL COPY_BYTES     ; output all but the residual bytes
+  SS MOV OPTR,DI      ; save the output pointer
+  POP CX              ; restore the buffer count
+  SUB CX,SI           ; calculate the number of residual bytes
+  IF B SUB CX,CX      ; if underflow then set the number to zero
+  MOV ES,DS           ; restore ES to the input buffer, to copy the bytes
+  SUB DI,DI           ; destination for the residual bytes is the buffer start
+  REP MOVSB           ; copy the residual bytes down to the buffer start
+  RET
+
+
+COMPARE:
+  MOV SI,BP           ; fetch the pointer to the first 4-byte record
+  MOV DI,[BX]         ; fetch the pointer to the second 4-byte record
+  MOV CL,2            ; we will compare at most two words
+  REPE CMPSW          ; compare buffer ptrs-- if equal, compare target ptrs
+  RET
+
+
+
+; COPY_BYTES effects a REP MOVSB, making sure that the output buffer is
+;   flushed when it is full.
+
+COPY_BYTES:
+  MOV AX,DI           ; fetch the output pointer
+  NOT AX              ; calculate 0FFFF-DI, the number of available bytes
+  CMP AX,CX           ; are there enough bytes for this output?
+  JAE >L1             ; skip if there are
+  SUB CX,AX           ; not enough bytes: reduce required count by our room
+  XCHG CX,AX          ; swap the available bytes into CX, for output
+  REP MOVSB           ; output the bytes that we can
+  SS MOV OPTR,DI      ; store the output pointer, for FLUSH_OUTPUT's benefit
+  CALL FLUSH_OUTPUT   ; flush the output buffer
+  XCHG CX,AX          ; swap in the remaining count
+L1:
+  REP MOVSB           ; output the bytes
+  RET
+
+
+; FETCH_INPUT assumes that the DI residual bytes returned by FIND_STRING have
+;   been copied to offset 0.  We input another buffer-full of bytes to [DI];
+;   and compute CX = the size of the new buffer-full (including the residual
+;   bytes).  We return Z if the input buffer was filled.
+
+FETCH_INPUT:
+  PUSH BX             ; preserve register across call
+  SUB BX,BX           ; handle number of standard input is zero
+  MOV DX,DI           ; point DX beyond the residual bytes
+  MOV CX,0FFF0        ; point CX beyond available memory
+  SUB CX,DX           ; compute the number of bytes we can input this time
+  SS MOV DS,ISEG      ; point DS to our input buffer
+  MOV AH,03F          ; MSDOS function number for READ
+  INT 021             ; read a buffer-full of standard input
+  MOV CX,DX           ; point CX to the start of this last read
+  ADD CX,AX           ; add in the number of bytes actually read
+  MOV BX,CX           ; point BX beyond the bytes actually read
+  MOV W[BX],'  '      ; mark the beyond-buffer with two blanks
+  POP BX              ; restore clobbered register
+  MOV ES,DS           ; also point ES to the input buffer, for searching
+  MOV DS,SS           ; point DS to our program segment, where targets are
+  CMP CX,0FFF0              ; did we reach the end of the input file?
+  IF B MOV FOUND_LIMIT,CX   ; if yes then reset FOUND_LIMIT to the end
+  RET
+
+
+; FLUSH_OUTPUT flushes the output bytes, from 0 up to the output pointer OPTR,
+;   and resets DI to 0.
+
+FLUSH_OUTPUT:
+  PUSH AX,BX,SI,CX,DS   ; preserve registers across call
+  SS LDS DI,OPTR        ; point DS to the output buffer
+  SUB DX,DX             ; point DX to the start of the buffer
+  CALL OWRITE_DI        ; output the buffered bytes
+  SUB DI,DI             ; reset the output pointer to the start of the buffer
+  POP DS,CX,SI,BX,AX    ; restore clobbered registers
+  RET

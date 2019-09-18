@@ -1,0 +1,102 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  F1COMMON ,-                       ; See EILIB.TXT for terms
+        ;---------------
+
+; F1COMMON is a filter that compares adjacent lines of the sorted input.
+;   We output a report of which strings that begin lines occur frequently.
+;   The report has one line for each such string, giving the number of
+;   occurrances of the string, followed by the string itself.  The minimum
+;   number of occurances of the string needed to get into the report depends
+;   on the length of the string, as given in the fixed table MIN_LENGTHS
+;   given below.
+
+  DB '  outputs a report of common starting strings of lines.',0D,0A,0
+
+        DATA SEGMENT
+PREV_LINE:                ; buffer to hold the previous line
+  DB 256 DUP ?
+        DATA ENDS
+
+PROCESS_LINE  DW  FIRST_LINE  ; first action routine is FIRST_LINE
+
+; The COUNTS buffer contains the number of consecutive matching lines so far
+; seen, for each string length 1, 2, 3, etc.  This is a pre-initialized
+; buffer that is changed by the program as it scans each line.
+
+COUNTS:
+  DW 20 DUP 1
+DIFF EQU $-COUNTS   ; offset used for addressing the following MIN_LENGTHS
+
+; The MIN_LENGTHS buffer contains the count required for each string length,
+; before that number of consecutive matches will be reported.  These are
+; fixed values. 
+
+MIN_LENGTHS:
+  DW 100          ; strings of length 1 require 100 consecutive matching lines
+  DW 50           ; strings of length 2 require 50 consecutive matching lines
+  DW 34           ; strings of length 3 require 34 consecutive matching lines
+  DW 25,20,17     ; etc. for lengths 4,5,6 ...
+  DW 15,13,12
+  DW 10,9,9,8
+  DW 8,7,7,6
+  DW 6,6,5
+
+
+FIRST_LINE:                   ; process the first line of the file
+  MOV PROCESS_LINE,NEXT_LINE  ; subsequent lines are handles by NEXT_LINE
+COPY_TO_PREV:
+  MOV DI,PREV_LINE            ; point output to our previous-line buffer
+  REP MOVSB                   ; copy this line to the buffer
+  MOV AL,0FF                  ; load FF terminator
+  STOSB                       ; output an FF terminator
+  RET
+
+
+NEXT_LINE:              ; process each subsequent line of the file
+  MOV B[DI],0           ; null-teminate this copy of the line
+  PUSH SI,CX            ; save the line pointer and count
+  MOV BX,COUNTS         ; point to out buffer of duplication counts
+  MOV DI,PREV_LINE      ; point DI to the previous line, for comparing
+  JMP >L2               ; jump into our loop
+
+L1:                     ; loop here for each matching byte
+  CMP AL,0D             ; have we reached the end of the line?
+  JE >L3                ; jump if we have, to process the match counts
+  INC W[BX]             ; increment the COUNTS entry for this string length
+  INC BX,2              ; advance the COUNTS buffer pointer
+  CMP BX,MIN_LENGTHS    ; have we reached the end of the COUNTS buffer?
+  JAE >L4               ; return if we have: all counts are still pending
+L2:
+  LODSB                 ; fetch a byte from the current line
+  SCASB                 ; compare to the corresponding previous line's byte
+  JE L1                 ; loop if the bytes matched
+L3:                     ; loop here to reset each subsequent count
+  MOV AX,1              ; load count of 1
+  XCHG AX,W[BX]         ; reset the failing slot's count back down to 1
+  CMP AX,W[BX+DIFF]     ; did this count reach the minimum for this length?
+  JB >L5                ; skip if it did not
+  MOV DI,BP             ; we have a reportable string: fetch output pointer
+  MOV CX,BX             ; copy the count-buffer pointer to CX
+  MOV BX,5 BY 10        ; five-digit output, decimal base
+  MOV DX,' ' BY 0       ; DH=blank pad, DL=0 high byte of output
+  CALL NUMOUT           ; output the count for this string
+  MOV AL,' '            ; load blank
+  STOSB                 ; output an intervening blank
+  MOV BX,CX             ; restore the count buffer pointer to BX
+  SUB CX,COUNTS         ; convert CX to a count-buffer offset
+  SHR CX,1              ; convert the offset to an index
+  INC CX                ; increment, to produce the length of the string
+  MOV SI,PREV_LINE      ; point to the previous line, for copying
+  REP MOVSB             ; output the matching string
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output CRLF, to terminate the report line
+  MOV BP,DI             ; restore the output pointer to BP
+L5:
+  INC BX,2              ; advance the count-buffer pointer
+  CMP BX,MIN_LENGTHS    ; have we reached the end of the buffer?
+  JB L3                 ; loop if not, to reset the next count
+L4:
+  POP CX,SI               ; restore the current line count and pointer
+  CALL COPY_TO_PREV       ; copy the current line to the prev buffer
+  JMP PROCESS_LINE_EXIT+2 ; check BP for overflow and return to our caller
+

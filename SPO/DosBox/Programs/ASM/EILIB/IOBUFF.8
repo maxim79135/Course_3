@@ -1,0 +1,34 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  IOBUFF                                        See EILIB.TXT for terms
+;---------------
+
+; PROCESS_IOBUFF handles input and output buffering for files already opened,
+;   with handles IHANDLE and OHANDLE.  We are called with SI=IBUFF, DI=OBUFF,
+;   i/oBUFF_END, i/oBUFF_LIMIT, and IBUFF_ENDREAD already set up.  We call the
+;   routine PROCESS_SI, which should be provided by the calling program, and
+;   which should advance SI beyond processed input, and output to DI.  We will
+;   keep calling PROCESS_SI until we reach the end of the file.  The caller
+;   must call FLUSH_OBUFF before exiting the program.
+
+PROCESS_IOBUFF:
+  CALL LOAD_IBUFF         ; read input into IBUFF, and point SI to it
+  JMP >L3                 ; jump into loop
+
+L2:                       ; loop here to repeatedly call PROCESS_SI
+  CALL PROCESS_SI         ; have the main program process the input
+  CMP DI,OBUFF_LIM        ; is the output buffer too full?
+  IF AE CALL FLUSH_OBUFF  ; if yes then flush it
+L3:
+  CMP SI,IBUFF_LIMIT      ; are we near the end of the input buffer?
+  JB L2                   ; loop if not
+  PUSH AX                 ; we are near the end: preserve AX across test
+  MOV AX,IBUFF_LIMIT      ; fetch the input limit pointer
+  CMP AX,IBUFF_ENDREAD    ; had we reached the end-of-file?
+  POP AX                  ; restore clobbered register
+  JNE PROCESS_IOBUFF      ; loop if not, to load more data
+  RET
+
+
+
+
+

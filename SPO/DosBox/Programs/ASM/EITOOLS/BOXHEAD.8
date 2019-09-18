@@ -1,0 +1,163 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    BOXHEAD                                     See EILIB.TXT for terms
+;---------------
+
+; BOXHEAD accepts as input a Netscape INBOX file, and produces a summary
+;   file containing one line for each email in the input file.  The
+;   summary line contains the date and time, sender, and subject.
+
+BOXHEAD:
+  MOV SI,081            ; point to the command tail
+  JMP PFILE_IOARG       ; process the files
+
+USAGE_MSG:
+  DB 'usage: BOXHEAD mailfile outfile',0D,0A
+  DB '   produces a summary file from a Netscape INBOX file',0D,0A
+  DB 0D,0A
+  DB 0,01A
+
+TARGETS:                ; target strings for us to find
+  LSTR  'From - '       ; starting string for all emails
+  DB   4,0D,0A,0D,0A    ; ending string for all emails (a skipped line)
+  DB 35                 ; field length for the sender's name
+  LSTR  'From: '        ; target string for the sender's name
+  DB 55                 ; field length for the subject
+  LSTR  'Subject: '     ; target string for the subject
+
+
+PFILE_REC:
+  MOV BP,TARGETS        ; point to our template of target strings
+  CALL LIMIT_FIND       ; advance SI to the next "From -" found in the buffer
+  JNZ RET               ; return if there was no "From -" in the buffer
+  PUSH DX,SI            ; save the input pointer and limit
+  CALL OUT_MSG_DATE     ; output the message date
+  CALL LIMIT_FIND       ; find the end of this message
+  MOV DX,SI             ; reset the buffer limit to the end of this message
+  POP SI                ; restore the pointer to the start of the message
+  CALL OUT_LIMIT_FIND   ; find and output the sender's name
+  CALL OUT_LIMIT_FIND   ; find and output the subject field
+  CALL DETRAIL_CRLF     ; retract trailing blanks and output CRLF
+  MOV SI,DX             ; point SI beyond the message we processed
+  POP DX                ; restore the beyond-pointer for the entire buffer
+  RET
+  
+
+; OUT_MSG_DATE outputs a sortable numeric version of the date whose line
+;   is pointed to by SI.  This routine assumes an extremely specific location
+;   and format for the date.
+
+OUT_MSG_DATE:       ; output a sortable numeric version of the SI-pointed date
+  ADD SI,27         ; advance SI to the year
+  MOVSW 2           ; output the year
+  SUB SI,19         ; retreat SI to the second letter of the month name
+  LODSW             ; fetch the second and third letters of the month
+  MOVSB             ; copy the following blank to the output
+  CALL OUT_MM       ; output the numeric month number
+  MOV AL,'/'        ; load slash
+  STOSB             ; output intervening slash
+  MOVSW 4           ; output day and time
+  MOV AL,' '        ; load blank
+  STOSB             ; output a trailing blank
+  RET
+
+
+; OUT_LIMIT_FIND is called with SI pointing to, and DX beyond, a Netscape
+;   inbox email message, and with BP pointing to a template entry consisting
+;   of a field-length byte, and a target Lstring.  We find the Lstring within
+;   the message, and then output the following line contents as an output
+;   field of the indicated length.
+
+OUT_LIMIT_FIND:
+  MOV CL,[BP]           ; fetch the field length
+  INC BP                ; advance the template pointer
+  MOV CH,0              ; extend the field length from CL to CX
+  PUSH SI               ; save the message pointer
+  CALL LIMIT_FIND       ; find the template's Lstring within the message
+  JNZ >L2               ; skip if the string was not found
+  ADD SI,BX             ; advance SI beyond the found string
+  MOV BH,0D             ; load carriage return as our delimiter
+L0:
+  MOV AX,[SI]           ; fetch the first two bytes of the line's contents
+  CMP AL,'<'            ; is the content a bracketed entity?
+  JE >L3                ; jump if it is, to reset delimiter to right-bracket
+  AND AX,0DFDF          ; coerce the two bytes to upper-case
+  CMP AX,'ER'           ; might it be a "Re:" reply indicator?
+  JNE >L1               ; skip if not
+  MOV AX,[SI+2]         ; RE is seen: load the next two bytes
+  CMP AX,' :'           ; is it indeed an "Re: " reply indicator?
+  JNE >L1               ; skip if it is not
+  ADD SI,4              ; skip beyond the "Re: " indicator
+  JMP L0                ; loop to check the remaining line contents
+
+L3:                     ; line content begins with left bracket
+  MOV BH,'>'            ; reset our delimiter to be a right bracket
+L5:                     ; loop here to skip over leading blanks
+  INC SI                ; skip over leading bracket-or-blank
+L1:
+  CMP B[SI],' '         ; is there a leading blank?
+  JE L5                 ; loop if there is, to skip it
+L4:                     ; loop here to scan and output each byte
+  LODSB                 ; fetch the byte
+  CMP AL,BH             ; is it our delimiter byte?
+  JE >L2                ; skip if it is
+  STOSB                 ; not a delimiter: output the byte
+  LOOP L4               ; loop to scan and output the next byte
+L2:                     ; line content is output
+  MOV AL,' '            ; load blank
+  REP STOSB             ; blank-fill the remainder of the output field
+  STOSB                 ; ensure at least one blank separates the fields
+  POP SI                ; restore the input message pointer
+  RET
+
+
+; LIMIT_FIND finds the BP-pointed Lstring in the array SI up to DX.  We return
+;   with BP advanced beyond the Lstring.  We return Z if found, with SI
+;   advanced to the found string.  We return NZ if not found, with SI
+;   pointing to possible residual bytes at the end of the array.
+
+LIMIT_FIND:
+  PUSH CX,DI        ; preserve registers across call
+  MOV CX,DX         ; point CX beyond the input buffer
+  SUB CX,SI         ; calculate the number of buffered bytes
+  MOV BL,[BP]       ; load the target string's count
+  MOV BH,0          ; extend the count from BL to BX
+  INC BP            ; advance the template pointer beyond the length byte
+  MOV DI,SI         ; point DI to the input buffer
+  MOV SI,BP         ; point SI to the target string
+  ADD BP,BX         ; advance the template pointer beyond the string
+  XCHG DS,ES        ; swap ES to the buffer's segment, DS to the template
+  CALL FIND_STRING  ; advance DI to the found string
+  MOV SI,DI         ; copy the found-string pointer to SI
+  XCHG DS,ES        ; restore the segment registers
+  POP DI,CX         ; restore caller's registers
+  RET
+
+
+; OUT_MM is called with AX set to the second and third letters of the
+;   English name of a month (an for January, eb for February, etc.).
+;   We output to DI the corresponding two-digit month number (01 for
+;   January, 02 for February, etc.).
+
+  EVEN                  ; align to word boundary for optimized word-find
+L0:                     ; second and third letters of each month
+  DB 'anebarprayunulugepctovec'
+  
+OUT_MM:             ; output numeric month whose 2nd-3rd letters are AX
+  PUSH DI           ; save the output pointer
+  MOV CX,13         ; load month count, plus one to get us past December
+  MOV DI,L0         ; point DI to our buffer of possible 2nd-3rd values
+  PUSH DI           ; save the buffer pointer
+  REPNE SCASW       ; find our values in the buffer
+  XCHG AX,DI        ; swap the beyond-values pointer into AX
+  POP DI            ; restore the buffer pointer
+  SUB AX,DI         ; calculate the number of bytes advanced
+  POP DI            ; restore our main output pointer
+  SHR AX,1          ; convert from number of bytes to number of words
+  AAM               ; unpack the digits to AH and AL
+  ADD AX,'00'       ; convert the digits to ASCII
+  XCHG AH,AL        ; swap so the most significant digit is output first
+  STOSW             ; output the digits
+  RET
+
+
+

@@ -1,0 +1,71 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  LINES                                         See EILIB.TXT for terms
+;---------------
+
+; This module handles line-oriented standard input.  The main module must leave
+; us with a DATA segment having enough room for 04080 hex bytes; it must call
+; PROCESS_LINES when it is ready for standard input; it must supply a routine
+; PROCESS_LINE that we call; and it must jump to GOOD_EXIT when it is done.
+
+; We call PROCESS_LINE with SI pointing to CX bytes, constituting the line.
+; The terminating linefeed is counted in the CX bytes.  In addition, DI is
+; left pointing beyond the linefeed.  The main program may clobber any
+; registers.  During the execution of PROCESS_LINES, we preserve all registers
+; except AL,CX,SI,DI, and the arithmetic flags.
+
+; This module assumes DS=ES=SS at all times.
+
+        DATA SEGMENT
+
+L1:                     ; input buffer
+  DB 4096 DUP ?
+THISLINE:               ; buffer for collecting the current line
+  DB 0300 DUP ?
+        DATA ENDS
+
+
+; PLINES_INPUT gets more bytes from the physical standard input, and resets
+;   SI and CX to the pointer and count of those bytes.  Return Z if there were
+;   no more bytes.
+
+PLINES_INPUT:
+  PUSH AX,BX,DX  ; preserve registers across call
+  MOV BX,0       ; zero is the open-file number of standard input
+PLINES_HANDLE EQU W[$-2]
+  MOV DX,L1      ; point CX to our input buffer
+  MOV CX,4096    ; input limit is the size of our buffer
+  MOV AH,03F     ; MSDOS function number for READ
+  INT 021        ; read bytes from standard input
+  XCHG CX,AX     ; swap actual count into CX
+  MOV SI,DX      ; point SI to the buffer pointer
+  POP DX,BX,AX   ; restore clobbered registers
+  TEST CX,CX     ; set Z flag if there were no bytes read
+  RET
+
+
+; PROCESS_LINES buffers up standard input, one line at a time, into our buffer
+;   THISLINE, then processes the line.  We return when standard input is
+;   exhausted.
+
+PROCESS_LINES:
+  CALL PLINES_INPUT   ; get our first buffer-full of input
+  JCXZ RET            ; return if there is no more input
+  MOV DI,THISLINE     ; we output a line at a time to our buffer
+L1:                   ; loop here for each byte copied to our line-buffer
+  LODSB               ; fetch the byte
+  STOSB               ; store the byte in our buffer
+  CMP AL,0A           ; is the byte the line-terminating linefeed?
+  JNE >L4             ; jump if not to gather another byte
+  PUSH CX,SI          ; preserve input buffer count and pointer
+  MOV SI,THISLINE     ; point to the start of this word
+  MOV CX,DI           ; point CX beyond the word
+  SUB CX,SI           ; calculate the length of the word
+  CALL PROCESS_LINE   ; process the input line
+  MOV DI,THISLINE     ; restore the gathering-output to the start of the line
+  POP SI,CX           ; restore the input buffer's pointer and remaining count
+L4:                   ; jump here to process the next line
+  LOOP L1             ; count down the input buffer bytes
+  CALL PLINES_INPUT   ; if buffer was empty then refill it
+  JNZ L1              ; loop if there were more bytes
+  RET                 ; no more bytes-- time to return
+

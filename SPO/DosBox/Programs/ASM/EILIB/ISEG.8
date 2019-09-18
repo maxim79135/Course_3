@@ -1,0 +1,89 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    ISEG                                        See EILIB.TXT for terms
+;---------------
+
+; ISEG handles full-segment buffering for the input file whose open-file
+;   handle is SS:IHANDLE.  The caller must supply a procedure PROCESS_ISEG,
+;   that will process input at SI up to DX.  PROCESS_ISEG needs to preserve
+;   DS and advance SI by some amount; it need not preserve any other register.
+
+; If the caller wishes to keep track of the position within the input file
+; of the current input buffer, we provide the support code for this module
+; to work with ISEG_LOCOUT.
+
+        #if !def ISEG_PRE
+ISEG_PRE EQU 8K           ; we guarantee SI will be preceded by this many bytes
+        #endif
+        #if !def ISEG_LIM ; limit beyond which we will read more bytes
+ISEG_LIM EQU 0FFFF-16K    
+        #endif
+        #if ref ISEG_LOCOUT
+        DATA SEGMENT
+ISEG_LOC     DW ?,?     ; total number of file bytes read so far
+ISEG_LOCEND  DW ?       ; the end of the last read for this file
+        DATA ENDS
+        #endif
+
+ISEG:
+  MOV DX,CS             ; point to our program segment
+  ADD DH,010            ; advance to the next 64K
+  MOV DS,DX             ; point DS to a free 64K segment
+  SUB DX,DX             ; point to the start of the segment
+  SUB SI,SI             ; also point SI to the start of the segment
+        #if ref ISEG_LOCOUT
+  SS MOV ISEG_LOC,SI    ; reset the low word of the bytes-read counter
+  SS MOV ISEG_LOC+2,SI  ; also reset the high word of the bytes-read counter 
+        #endif
+  PUSH CX               ; save the caller's register
+  JMP >L3               ; jump to make the first read of the file
+
+L1:                     ; loop here if the entire buffer was read
+  POP BX,CX             ; restore caller's registers
+L2:                     ; loop here to process each record
+  PUSH DX               ; save the beyond-buffered-bytes pointer
+  CALL PROCESS_ISEG     ; process the SI-pointed record
+  POP DX                ; restore the beyond-buffered-bytes pointer
+  CMP SI,ISEG_LIM       ; have we reached the buffer limit?
+  JB L2                 ; loop if not, to process another record
+  PUSH CX,ES,DI         ; buffer limit reached: save registers
+  MOV CX,ISEG_PRE       ; load count of previous bytes to preserve
+  MOV ES,DS             ; point ES to out buffer segment, for copying
+  PUSH CX               ; save the new SI pointer
+  SUB SI,CX             ; retreat the current SI by the prev-bytes count
+  MOV CX,DX             ; point CX beyond the buffered bytes
+  SUB DI,DI             ; we will copy to the bottom of the segment
+  SUB CX,SI             ; calculate the number of bytes we will copy
+  REP MOVSB             ; copy the buffered bytes we are keeping
+  MOV DX,DI             ; further reading will take place after this move
+  POP SI,DI,ES          ; restore new SI pointer and caller's output pointer
+L3:
+  PUSH BX               ; save caller's BX register
+  SS MOV BX,IHANDLE W   ; load the open-file handle for our input file
+  MOV CX,0FFFF          ; buffer limit is the full 64K
+  CALL MREAD_CX         ; fill out the segment with the input file
+  ADD DX,AX             ; point DX beyond ther actual bytes read
+        #if ref ISEG_LOCOUT
+  SS ADD ISEG_LOC,AX    ; add the read-amount into the bytes-read counter
+  SS ADC ISEG_LOC+2,0   ; carry the addition into the high word
+  SS MOV ISEG_LOCEND,DX ; mark the end of the current read buffer
+        #endif
+  CMP AX,CX             ; did we fill the segment with the file?
+  JE L1                 ; loop if we did, to read more later on
+  CALL MCLOSE           ; reading is complete: close the input file
+  POP CX,BX             ; restore caller's registers
+  JMP >L5               ; jump into the final processing loop
+
+L4:                     ; loop here to process each record of final buffer
+  PUSH DX               ; save the beyond-file pointer
+  CALL PROCESS_ISEG     ; process the record
+  POP DX                ; restore the beyond-file pointer
+L5:
+  CMP SI,DX             ; are there any bytes left to process?
+  JB L4                 ; loop if there are, to process one record
+  RET                   ; input file is completely processed
+
+
+
+
+ 
+

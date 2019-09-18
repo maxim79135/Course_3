@@ -1,0 +1,73 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OUT_FDT                                      See EILIB.TXT for terms
+;---------------
+
+; OUT_FTIME outputs a human-readable display of the file time encoded into AX:
+;   h,m,2s where the bit fields are of lengths 5,6,5.  We do nothing with the
+;   2-seconds field, unless OUT_2SEC has been declared
+
+; OUT_FDATE outputs a human-readable display of the file date encoded into AX:
+;   y-1980,m,d where the bit fields are of lengths 7,4,5.
+
+OUT_FTIME:
+  PUSH BX,CX        ; preserve registers across call
+  XCHG BX,AX        ; swap the time stamp into BX
+  MOV AL,' '        ; load blank
+  STOSB             ; output leading blank
+  MOV AL,BH         ; fetch the hours field
+  SHR AL,CL,3       ; shift the hours field to the bottom
+  SHL BX,CL         ; shift the minutes field up into BH
+  MOV AH,' '        ; blank-pad the leading hours digit
+  CALL >D1          ; output the hours field
+  MOV AL,':'        ; load colon
+  STOSB             ; output intervening colon
+  MOV AL,BH         ; fetch the minutes field
+  AND AL,03F        ; mask away the two remaining hours bits
+  CALL >D2          ; output the minutes field
+        #if OUT_2SEC
+  MOV AL,':'        ; load colon
+  STOSB             ; output intervening colon
+  MOV AL,BL         ; fetch the seconds field
+  AND AL,0F8        ; mask AL to the seconds field
+  SHR AL,CL,2       ; shift the seconds field down into position
+  CALL >D2          ; output the seconds field
+        #endif
+  POP CX,BX         ; restore clobbered registers
+  RET
+
+
+OUT_FDATE:
+  PUSH BX,CX        ; preserve registers across call
+  XCHG BX,AX        ; swap the date stamp into BX
+  MOV AX,'  '       ; load blanks
+  STOSW             ; output leading blanks
+  MOV AL,BH         ; fetch the years field
+  SHR AL,1          ; shift the 7-bit years field to the bottom
+  ADD AX,1980-02000 ; convert AX into a decimal year
+  CALL OUT_DEC_AX   ; output the year
+  MOV AL,'/'        ; load slash
+  STOSB             ; output intervening slash
+  MOV AX,BX         ; refetch the date stamp
+  SHR AX,CL,5       ; shift the months field down to the bottom
+  AND AL,0F         ; mask away the remaining years bits
+  CALL >D2          ; output a slash, and the months field
+  MOV AL,'/'        ; load slash
+  STOSB             ; output intervening slash
+  XCHG AX,BX        ; swap the time stamp back to AX
+  AND AX,01F        ; mask down to the day value
+  CALL >D2          ; output the day
+  POP CX,BX         ; restore clobbered registers
+  RET
+
+
+D2:                ; output AL as a 2-digit decimal, zero padded
+  MOV AH,'0'       ; load the leading-pad digit
+D1:
+  PUSH BX,DX       ; preserve registers across call
+  MOV BX,020A      ; BH=2 at least 2 digits, BL=10 decimal base
+  MOV DH,AH        ; place the padding character into DH
+  MOV DL,AH,0      ; the high two words of the number are always zero
+  CALL NUMOUT      ; output the number
+  POP DX,BX        ; restore clobbered registers
+  RET
+

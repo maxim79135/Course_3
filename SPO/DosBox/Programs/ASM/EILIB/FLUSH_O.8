@@ -1,0 +1,57 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  FLUSH_O                                       See EILIB.TXT for terms
+;---------------
+
+; FLUSH_OBUFF writes, via OWRITE, the contents of buffered bytes from OBUFF
+;   through DI, and resets DI to OBUFF.
+
+; DETRAIL_CRLF retracts trailing blanks from the line just output to DI,
+;   outputs a CRLF, and checks for buffer overflow.
+
+; CRLF_OCHECK outputs a CRLF to DI, and checks for OBUFF overflow.
+
+; CHECK_OBUFF checks to see if DI has overflowed the OBUFF output buffer.  If
+;   it has, we flush the buffer via OWRITE.
+
+        #if !def OBUFF_END
+OBUFF_END EQU 0F000
+        #endif
+        #if !def OBUFF
+        DATA SEGMENT
+OBUFF:                      ; main buffer for output
+  ORG $ + (OBUFF_END-$)/5*4 ; overflow point will be 80% into the output buffer
+OBUFF_LIM:
+  ORG OBUFF_END             ; full OBUFF occupies free memory up to OBUFF_END
+        DATA ENDS
+        #endif
+
+        #if ref DETRAIL_CRLF
+L0:                 ; loop here to retract each trailing blank
+  DEC DI            ; retreat the output pointer to the trailing blank
+DETRAIL_CRLF:
+  CMP DI,OBUFF      ; have we retreated to the start of the buffer?
+  JBE CRLF_OCHECK   ; jump if we have, to output the CRLF
+  ES MOV AL,B[DI-1] ; fetch the last byte output
+  CMP AL,0A         ; is it the end of the previous line?
+  JE CRLF_OCHECK    ; jump if it is, to output this line's CRLF
+  CMP AL,' '        ; is it a trailing blank?
+  JBE L0            ; loop if it is, to retract the blank
+        #endif
+        #if (ref CRLF_OCHECK)
+CRLF_OCHECK:        ; output CRLF, then check if DI has exceeded OBUFF_LIM
+  MOV AX,0A0D       ; load CRLF
+  STOSW             ; output the CRLF
+        #endif
+CHECK_OBUFF:        ; if DI has exceeded OBUFF_LIM then flush OBUFF
+  CMP DI,OBUFF_LIM  ; have we exceeded the limit?
+  JB RET            ; return if not
+FLUSH_OBUFF:
+  PUSH AX,CX,DX,DS  ; preserve registers across call
+  MOV DS,ES         ; point DS to our output segment
+  MOV DX,OBUFF      ; point DX to the start of the buffer
+  CALL OWRITE_DI    ; write the buffer to the output file
+  MOV DI,DX         ; reset DI to the start of the buffer
+  POP DS,DX,CX,AX   ; restore clobbered registers
+  RET
+
+

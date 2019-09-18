@@ -1,0 +1,408 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   TCOLS                                        See EILIB.TXT for terms
+;---------------
+
+; TCOLS arranges an input file of many short lines into a file containing
+;   multiple columns on a page.  This program appears as a sample source
+;   file in the A86 package, as well as in the EITOOLS library.
+
+  JMP TCOLS     ; jump around messages, to program code
+
+DEFAULT MACRO
+  DEFT_#1 EQU #2
+  DB ' (default #2)',0D,0A
+#EM
+
+DOC_MSG:
+
+DB 0D,0A
+DB 'TCOLS V1.1  Copr.1994 Eric Isaacson, 416 E. Univ.St., BMG IN 47401',0D,0A
+DB '  Permission to use granted only to registered A86 users.',0D,0A,0D,0A
+
+  DB 'TCOLS converts single-column input into paged, multi-column output.',0D,0A
+  DB 'Usage: TCOLS <in >out #1 #2 #3 #4 #5          , where',0D,0A
+  DB '  #1 is the number of major columns you want each page split into',0D,0A
+  DB '  #2 is the number of lines to skip between each page'
+  DEFAULT  SKIPCT,6
+  DB '  #3 is the number of chars per line the printer is now set to'
+  DEFAULT  PWIDTH,80
+  DB '  #4 is the number of lines per page the printer is now set to'
+  DEFAULT  LPAGE,66
+  DB '  #5 is which line within the first page the printer is now at'
+  DEFAULT  LSTART,0
+  DB          0D,0A
+
+DB 'Examples:',0D,0A
+DB 'TCOLS <MYPROG.XRF >PRN 4 6 96 88',0D,0A
+DB '   sends the file MYPROG.XRF to the printer, split into 4 columns, where'
+DB            0D,0A
+DB '   the printer is set to 96 characters a line, 8 lines per inch.',0D,0A
+DB 'TCOLS <NARROW.LST 6 0 80 23 22 | MORE',0D,0A
+DB '   provides 6-column screen-paged output.',0D,0A
+DB 'NOTE for readability, TCOLS will convert underscores to hyphens when the'
+DB            0D,0A
+DB '   lines per page is greater than 80.',0D,0A
+
+DOC_LEN EQU $-DOC_MSG
+
+        DATA SEGMENT
+BUF:
+             DB 04000 DUP (?)
+OUTBUF:
+             DB 02000 DUP (?)
+OUTBUF_LIM:
+             DB 0100 DUP (?)
+             DW ?             ; in case the line-overflow logic scans back
+SOURCE_BUF:
+             DB 04002 DUP (?)
+  WIDTH      DW ?   ; number of characters in an major output column
+  NCOLS      DB ?   ; number of major output columns on a page
+  LPAGE      DB ?   ; total number of lines on a page (including skipped)
+  PWIDTH     DW ?   ; total width in characters of a printed page
+  BUFEND     DW ?   ; pointer reached when a buffered page is complete
+  SKIPCT     DB ?   ; number of lines skipped between pages
+  LSTART     DB ?   ; number of first-page lines already output before program
+  THISPAGE   DB ?   ; number of printed lines on this page
+        DATA ENDS
+
+MAIN:
+TCOLS:
+  CALL SCAN_ARGS    ; scan the command arguments
+  CALL READ_SOURCE  ; read the first block of source text
+  JZ >L2            ; exit if there was no source text
+L1:                 ; loop here for each page of output
+  CALL GATHER_PAGE  ; input a page, and arrange in into columns
+  PUSHF             ; save Z-flag, to see if there is more input
+  CALL OUTPUT_PAGE  ; process the columns-buffer into final output
+  CALL OFLUSH       ; flush the output buffer
+  POPF              ; restore Z flag, is there more output?
+  JNZ L1            ; loop if there is more output
+L2:
+  JMP GOOD_EXIT     ; all done, go back to operating system
+
+
+; CHECK_DIGIT sees if there is another command-tail argument pointed to by
+;   SI.  If there is, it had better start with a decimal digit, or else we
+;   abort the program.  We return NZ if there is an argument; Z if there are
+;   no more arguments (terminator 0FF is seen).
+
+CHECK_DIGIT:
+  PUSH AX           ; preserve register across call
+L1:                 ; loop here to skip over blanks and control chars
+  LODSB             ; load the next character
+  CMP AL,' '        ; is it a blank or control char?
+  JBE L1            ; loop if yes, to skip the character
+  DEC SI            ; retreat SI back to the first argument-char
+  CMP AL,0FF        ; is it the command-tail terminator?
+  JE >L2            ; return Z if yes
+  SUB AL,'0'        ; reduce first character to 0--9 range if digit
+  CMP AL,10         ; is the character a digit?
+  JAE >E1           ; abort the program if not; NZ is set if yes
+L2:
+  POP AX            ; restore clobbered register
+  RET
+
+E1:                 ; improper command tail in program invocation
+  MOV DX,DOC_MSG    ; point to the documentation-message
+  MOV CX,DOC_LEN    ; load size of message
+  JMP ERROR_EXIT    ; educate the user about this program
+
+
+; CLEAR_PAGE calculates the number of lines to be printed on the coming
+;   page, at sets up a blank columns-buffer based on that number.  We return
+;   with DI pointing just beyond the blanked buffer.  If the calculations
+;   indicate something is wrong, we abort the program.
+
+CLEAR_PAGE:
+  MOV AL,LPAGE      ; fetch the total number of lines on a page
+  SUB AL,SKIPCT     ; subtract the number of lines that we skip
+  JBE E1            ; abort if we skip more lines than there are
+  SUB AL,LSTART     ; also subtract any first-page lines already output
+  JBE E1            ; abort if that subtraction has exhausted the count
+  MOV THISPAGE,AL   ; store as the number of lines on this page
+  MOV LSTART,0      ; cancel first-page count for the subsequent pages
+  MOV CX,PWIDTH     ; load the number of characters per line
+  MUL CL            ; calculate the number of characters in the columns buffer
+  XCHG CX,AX        ; swap the count into CX for blanking
+  MOV DI,BUF        ; point DI to the start of the columns buffer
+  MOV AL,' '        ; we will fill the buffer with blanks
+  REP STOSB         ; buffer is filled, DI points beyond the buffer
+  RET
+
+
+; SCAN_ARGS scans the decimal arguments in the command tail at DS:080. All the
+;   appropriate page-size variables are set according to these argument values.
+
+SCAN_ARGS:
+  MOV SI,080        ; point to the command-tail buffer in the PSP
+  LODSB             ; load the size of the command tail
+  CBW               ; extend the size AL to AX
+  XCHG BX,AX        ; swap the size into BX, for indexing
+  MOV B[BX+SI],0FF  ; mark the end of the command-tail with terminator 0FF
+  CALL CHECK_DIGIT  ; any there any arguments in the command tail?
+  JZ E1             ; abort the program if there are not
+  CALL SCAN_DECIMAL ; input the first argument-- number of major columns
+  MOV NCOLS,AL      ; store it
+  XCHG BX,AX        ; also swap NCOLS into BL for later calculations
+  MOV AL,DEFT_SKIPCT; load the default number of lines skipped
+  CALL SCAN_DECIMAL ; read the next argument if there is any
+  MOV SKIPCT,AL     ; store the number of lines to skip between pages
+  MOV AL,DEFT_PWIDTH; load the default page width
+  CALL SCAN_DECIMAL ; read the next argument if there is any
+  MOV CL,AL         ; store in CL for the moment
+  DIV BL            ; divide by major columns count, to get chars per column
+  SUB CL,AH         ; subtract remainder from page width, insures even multiple
+  MOV AH,0          ; zero out the remainder
+  MOV WIDTH,AX      ; store the number of characters in an output column
+  CMP AL,2          ; this width had better be at least 2 chars
+  JB E1             ; abort the program if not
+  MOV AL,CL         ; AX is now the characters-per-line
+  MOV PWIDTH,AX     ; store the characters-per-line printer is set to
+  MOV AX,CX         ; re-fetch the characters-per-line
+  ADD AX,BUF        ; calculate beyond-first-line, reached when buffer full
+  MOV BUFEND,AX     ; store the value for later use
+  MOV AL,DEFT_LPAGE ; load defualt lines-per-page
+  CALL SCAN_DECIMAL ; read the next argument, if there is any
+  MOV LPAGE,AL      ; store the total number of lines on a printed page
+  MOV AL,DEFT_LSTART; load the default first-line-position
+  CALL SCAN_DECIMAL ; read the next argument, if any
+  MOV LSTART,AL     ; store the starting first-page position
+  RET
+
+
+; GATHER_PAGE takes input text at DS:SI, and formats it into columns on a
+;   single page, at BUF.  RZ if the input file end (0FFH marker) was seen.
+
+GATHER_PAGE:
+  CALL CLEAR_PAGE   ; blank-fill the columns-buffer
+  MOV BX,DI         ; point BX beyond the columns-buffer
+  MOV BP,DX,DI,BUF  ; start BP=column ptr  DX=line ptr  DI=char ptr
+L1:                 ; loop here for each column entry
+  CALL GATHER_LINE  ; copy an input line to a column entry
+  JZ RET            ; return if there is no more input
+  CALL NEXT_LINE    ; advance pointers to the next column entry
+  JB L1             ; loop if there is another entry on this page
+  OR AL,0FF         ; page complete: set NZ to signal more input
+  RET
+
+
+; NEXT_LINE sets DI to the next line of this column in the page display buffer.
+;   It moves to the top of the next column as necessary.  RAE if the page is
+;   full.
+
+NEXT_LINE:
+  ADD DX,PWIDTH     ; advance column-pointer to same column on the next line
+  CMP DX,BX         ; have we run off the end of the buffer?
+  JB >L1            ; skip if we have not
+  ADD BX,WIDTH      ; one column is complete-- advance end-buffer-limit
+  ADD BP,WIDTH      ; advance the column-pointer to the next column
+  MOV DX,BP         ; set the line-ptr to this new column
+  CMP BP,BUFEND     ; have the columns run off the right end of the page?
+  JAE RET           ; return AE if they have-- page is full of columns
+L1:
+  MOV DI,DX         ; set char-output pointer to the new line-ptr value
+  RET
+
+
+; GATHER_LINE copies a line of text from SI to DI.  RZ if the input file end
+;    is seen.
+
+GATHER_LINE:
+  MOV CX,WIDTH      ; set up the limit for output in this column-entry
+L0:                 ; loop here for each character output to column-entry
+  LODSB             ; fetch a character from the input
+  CMP AL,020        ; is it a control-character?
+  JB >L1            ; jump if yes
+  CMP AL,0FE        ; is it a marker?
+  JAE >L2           ; jump if yes
+  CMP AL,'_'        ; is it an underscore?
+  JE >L5            ; jump if yes
+L6:
+  STOSB             ; store the character in columns-buffer
+  LOOP L0           ; loop to look at the next character
+  DEC SI,2          ; column-entry has overflowed: retreat input pointer
+  MOV B[SI],0FE     ; mark input buffer with line-overflow marker
+  ES MOV B[DI-1],' '; cancel the last byte output-- it will go to next line
+  RET
+
+L1:                 ; control-character seen on the input line
+  CMP AL,0A         ; is it the line-terminator?
+  JNE L0            ; if not then ignore it
+  TEST AL,AL        ; set NZ to signal end-of-file was not seen
+  RET
+
+L2:                 ; a marker was seen in the input stream
+  JE >L4            ; jump if it was the line-overflow marker
+  CALL READ_SOURCE  ; it was the end-of-file marker: read more input
+  JNE L0            ; loop for more reading if there was more input
+  RET               ; input exhausted-- return Z to caller
+
+L4:                 ; a line-overflow marker was seen in the input-stream
+  PUSH BX,CX,DI     ; preserve registers across indentation
+  MOV AL,0A         ; we will look for the linefeed for this line
+  MOV DI,SI         ; transfer source pointer to DI for linefeed-search
+  REPNE SCASB       ; find where the linefeed is
+  CMP B[DI-2],0D    ; was there also a carriage return?
+  IF E INC CX       ; if yes then don't count it
+  MOV BX,CX         ; preserve the count for reducing the stacked CX value
+  POP DI            ; restore columnar-output pointer
+  MOV AL,' '        ; load blank-- we are indenting to right-justify overflow
+  REP STOSB         ; now the overflow is indented
+  POP CX            ; restore original count
+  SUB CX,BX         ; reduce count by the number of blanks we indented
+  POP BX            ; restore clobbered register
+  JMP L0
+
+L5:                 ; an underscore was seen in the input stream
+  CMP LPAGE,80      ; are we squeezing those lines tightly on a page?
+  JBE L6            ; jump if not, no need to convert
+  MOV AL,'-'        ; tight squeeze: change to hyphen for readability
+  JMP L6            ; re-join the main storage-loop
+
+
+; SCAN_DECIMAL sets AX to the value of the next decimal-number argument
+;   pointed to by SI, and advances SI beyond the argument.  If there are
+;   no more arguments, we retain the input value AL as our return-value.
+
+SCAN_DECIMAL:
+  MOV AH,0          ; high-byte of default value is always zero
+  CALL CHECK_DIGIT  ; is there an argument there?
+  JZ RET            ; return the default value if there was not
+  PUSH BX,DX        ; preserve registers across call
+  SUB BX,BX         ; initialize BX, we will accumulate value there
+L1:                 ; loop here for each digit of the number
+  LODSB             ; load the next digit
+  SUB AL,'0'        ; reduce the digit to a binary value
+  MOV DX,10         ; load multiplicand, it is also the digit-limit value
+  CMP AL,DL         ; is it in fact another decimal digit?
+  JAE >L2           ; jump if not to exit this procedure
+  CBW               ; extend value AL to AX
+  XCHG AX,BX        ; swap previous accumulation into AX, new digit into BX
+  MUL DX            ; multiply the previous accumulation by 10
+  ADD BX,AX         ; add into the new digit value
+  JMP L1            ; loop to accumulate another digit
+
+L2:                 ; non-digit was seen
+  DEC SI            ; retreat back to the non-digit
+  XCHG AX,BX        ; swap the accumulated value into AX
+  POP DX,BX         ; restore clobbered registers
+  RET
+
+
+; OUTPUT_PAGE transforms the column-buffer output into final-form output,
+;   with CRLFs inserted and trailing blanks removed.
+
+OUTPUT_PAGE:
+  PUSH CX,DX,SI     ; preserve registers across call
+  MOV DI,OUTBUF     ; initialize the output pointer
+  MOV DX,PWIDTH     ; DX holds the count of each columnized line
+  MOV SI,BUF        ; initialize the column-buffer source pointer
+  MOV CL,THISPAGE   ; load the lines count into CL
+  MOV CH,0          ; extend the CL-count to CX
+L1:                 ; loop here to output each line
+  CALL OUTPUT_LINE  ; output the line
+  ADD SI,DX         ; advance the source pointer to the next columnized line
+  LOOP L1           ; loop to output the next line
+  POP SI,DX,CX      ; restore clobbered registers
+  MOV AH,SKIPCT     ; load the count of lines to skip
+  TEST AH,AH        ; are there any lines to skip?
+  JZ RET            ; return if not
+L2:                 ; loop here for each skipped line between pages
+  CALL CRLF_OUT     ; output a blank line
+  DEC AH            ; count down lines
+  JNZ L2            ; loop to output the next blank line
+  RET
+
+
+; OUTPUT_LINE transforms a single line of columnized output into its final
+;   form, with trailing blanks removed and a CRLF appended to the end of the
+;   line.
+
+OUTPUT_LINE:
+  PUSH CX,SI        ; preserve registers across call
+  MOV CX,DX         ; fetch the count of columnized-line bytes
+  PUSH DI           ; preserve the output pointer
+  MOV DI,SI         ; load DI with source pointer, for scanning
+  ADD DI,CX         ; advance DI beyond this source line
+  DEC DI            ; retreat to the last byte of this source line
+  MOV AL,' '        ; load blank, to scan for trailing blanks
+  STD               ; scanning will be backwards
+  REPE SCASB        ; scan through the trailing blanks
+  CLD               ; restore forward scanning
+  IF NE INC CX      ; do not include the last byte if it was a non-blank
+  POP DI            ; restore output pointer
+  REP MOVSB         ; CX was decremented by # of trailing blanks; now move line
+  POP SI,CX         ; restore clobbered registers
+CRLF_OUT:           ; output a CRLF to the end of a line
+  PUSH AX           ; preserve AX across call
+  MOV AX,0A0D       ; load CRLF, backwards according to 8086 storage conventions
+  STOSW             ; output the CRLF
+  POP AX            ; restore clobbered register
+CHECK_FLUSH:        ; check to see if we need to flush the output buffer
+  CMP DI,OUTBUF_LIM ; have we reached the buffer limit?
+  JB RET            ; do nothing if we have not reached the limit
+OFLUSH:             ; flush the output buffer
+  PUSH AX,BX,CX,DX  ; save registers across call
+  MOV BX,1          ; handle-number for standard output is 1
+  MOV DX,OUTBUF     ; point DX to the output buffer
+  MOV CX,DI         ; point CX beyond the bytes we have output
+  SUB CX,DX         ; calculate the number of bytes output
+  CALL MWRITE       ; send those bytes to standard output
+  MOV DI,DX         ; reset the output-pointer to the start of the buffer
+  POP DX,CX,BX,AX   ; restore clobbered registers
+  RET
+
+
+; READ_SOURCE reads from standard input to SOURCE_BUF, and marks the end
+;    of the received text with 0FF.  Return with SI pointing to SOURCE_BUF.
+;    RZ if there was no more input.
+
+READ_SOURCE:
+  PUSH AX,BX,CX,DX  ; preserve registers across call
+  SUB BX,BX         ; handle-value for standard input is zero
+  MOV DX,SOURCE_BUF ; point to the destination for our source-read
+  MOV CX,04000      ; load the size limit for the read
+  CALL MREAD        ; read from standard input into the source buffer
+  XCHG BX,AX        ; swap the actual number of bytes read into BX
+  MOV SI,DX         ; point SI to the bytes that were read
+  MOV B[BX+SI],0FF  ; terminate the bytes with an 0FF marker
+  TEST BX,BX        ; set Z if there were no bytes read
+  POP DX,CX,BX,AX   ; restore clobbered registers
+  RET
+
+
+; MREAD reads from the open-file numbered BX, to the CX bytes at DX.  Return
+;   with AX set to the number of bytes actually read.
+
+MREAD:
+  MOV AH,03FH       ; MSDOS function number for READ
+MSDOS:
+  INT 021H          ; all MSDOS calls go through this interrupt
+  RET
+
+
+; MWRITE writes SI bytes from CX to the open-file numbered BX.  Return Carry if
+;   the write failed, with AX set to an error number.
+
+MWRITE:
+  MOV AH,040H       ; MSDOS function number for WRITE
+  JMP MSDOS         ; jump to call the operating system
+
+
+; EXIT exits the program back to the invoking process, with a status of AL.
+
+GOOD_EXIT:
+  MOV AL,0          ; zero status means success
+EXIT:
+  MOV AH,04CH       ; MSDOS function number for EXIT
+  JMP MSDOS         ; jump to call the operating system
+
+
+; ERROR_EXIT writes to the error-console the message of CX bytes at DS:DX;
+;   then exits the program with a status of 1.
+
+ERROR_EXIT:
+  MOV BX,2          ; handle-value for error-console is 2
+  CALL MWRITE       ; write message to the error-console
+  MOV AL,1          ; 1-code means failure
+  JMP EXIT          ; go back to operating system

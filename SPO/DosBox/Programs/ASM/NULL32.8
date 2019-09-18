@@ -1,0 +1,29 @@
+; Here is a do-nothing 32-bit application that can be invoked
+; from the DOS prompt running under Win95.  Thanks to Jeremy Gordon
+; for writing the short instruction sequence, and for working with
+; me to get it running.
+
+; For some reason unknown to us, the code segment *must* have the
+; name _TEXT, or else the program will generate a protection fault.
+
+; This source file NULL32.8 can be assembled, then linked to Borland's
+; KERNEL32.LIB library using Borland's Turbo Linker for Win32, Version
+; 1.50, using the commands:
+
+;    A386 +oc NULL32.8
+;    TLINK32 /Tpe /ap NULL32.OBJ,NULL32,,KERNEL32.LIB,,
+
+; The program file NULL32.EXE is produced, which can be run simply by
+; typing NULL32 to the DOS prompt.
+
+
+        DATA SEGMENT FLAT
+  hInst DD 0
+
+        _TEXT SEGMENT FLAT
+MAIN:
+  PUSHD 0
+  CALL GetModuleHandleA  
+  MOV hInst,EAX          
+  XOR EAX,EAX
+  RET

@@ -1,0 +1,21 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   RANDEAL                                      See EILIB.TXT for terms
+;---------------
+
+; RANDOM_DEAL "deals" one randomly-selected byte from the CX bytes at SI,
+;   outputting it to DI.  We decrement CX, preserve SI, and compactify
+;   the array at SI so that the remaining (return count CX) bytes occur
+;   consecutively.  NOTE we assume DS=ES whenever we are called.
+
+RANDOM_DEAL:
+  CALL RANDOM_CX    ; set AX to a random value from 0 to CX-1
+  PUSH SI           ; preserve the input array pointer
+  ADD SI,AX         ; advance SI to the array value selected
+  MOVSB             ; copy the selected byte to the output buffer
+  DEC CX            ; count down remaining bytes from the array
+  PUSH CX,DI        ; preserve the remaining count and the output pointer
+  SUB CX,AX         ; calculate the number of trailing bytes in the array
+  LEA DI,[SI-1]     ; destination is one byte down from the source
+  REP MOVSB         ; collapse the array to delete the byte we output
+  POP DI,CX,SI      ; restore clobbered registers
+  RET

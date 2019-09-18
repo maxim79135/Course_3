@@ -1,0 +1,47 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SCAN_HDEC                                    See EILIB.TXT for terms
+;---------------
+
+; VERIFY_HDEC verifies that the next non-blank field pointed to by SI is
+;   a decimal number, sets DXAX to the number, and advances SI beyond the
+;   number.  If there was no number we jump to USAGE_EXIT.
+
+; SCAN_HDEC sets DXAX to the value of the decimal-number argument
+;   pointed to by SI, and advances SI beyond the argument.
+
+L0:                 ; there was not a decimal argument at SI
+  JMP USAGE_EXIT    ; advise the user and exit the program
+
+VERIFY_HDEC:
+  CALL TAIL_BLANKS  ; advance SI to the next non-blank
+  SUB AL,'0'        ; reduce digit values to binary
+  CMP AL,9          ; was the non-blank a decimal digit?
+  JA L0             ; jump if not, to abort the program
+SCAN_HDEC:
+  PUSH BX,BP        ; preserve registers across call
+  SUB BX,BX         ; initialize BX, we will accumulate value there
+  SUB DX,DX         ; high word of value accumulated in DX
+L1:                 ; loop here for each digit of the number
+  LODSB             ; load the next digit
+  SUB AL,'0'        ; reduce the digit to a binary value
+  MOV BP,10         ; load multiplicand, it is also the digit-limit value
+  CBW               ; extend value AL to AX
+  CMP AX,BP         ; is it in fact another decimal digit?
+  JAE >L2           ; jump if not to exit this procedure
+  PUSH DX
+  XCHG AX,BX        ; swap previous accumulation into AX, new digit into BX
+  MUL BP            ; multiply the previous accumulation by 10
+  ADD BX,AX         ; add into the new digit value
+  ADC DX,0          ; carry the addition to the high word
+  POP AX            ; restore the previous high-word value
+  XCHG DX,BP        ; swap 10 into DX, carry-word into BP
+  MUL DX            ; multiply the old high word by 10
+  ADD AX,BP         ; add in the carry word
+  XCHG DX,AX        ; swap the new high word into DX
+  JMP L1            ; loop to accumulate another digit
+
+L2:                 ; non-digit was seen
+  DEC SI            ; retreat back to the non-digit
+  XCHG AX,BX        ; swap the accumulated value into AX
+  POP BP,BX         ; restore clobbered registers
+  RET

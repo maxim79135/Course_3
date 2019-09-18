@@ -1,0 +1,30 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HEXDUMP                                      See EILIB.TXT for terms
+;---------------
+
+; HEXDUMP outputs to DI a hex dump of the CX bytes at SI.  Input BL gives
+;   the number of bytes already output on this line; BH gives the indentation
+;   if we need to continue to the next line.  We call CHECK_OBUFF between
+;   lines.
+
+L1:                 ; loop here when there are more bytes to output
+  MOV AL,' '        ; load blank
+  STOSB             ; output an intervening blank
+  ADD BL,3          ; increment the line-column count
+  CMP BL,78         ; is there room for another hex display on this line?
+  JB HEXDUMP        ; skip if there is
+  DEC DI            ; line is full: retract the blank
+  CALL CRLF_OCHECK  ; output a CRLF, and flush OBUFF if necessary
+  PUSH CX           ; save the byte count
+  MOV CL,BH         ; fetch the indentation count
+  MOV CH,0          ; extend the count CL to CH
+  MOV AL,' '        ; load blank
+  REP STOSB         ; output the indentation
+  POP CX            ; restore the remaining byte count
+  MOV BL,BH         ; reset the current column count to the indentation
+HEXDUMP:
+  LODSB             ; fetch a byte
+  CALL HEX_AL       ; output the hex byte
+  LOOP L1           ; loop if there are more bytes to output
+  RET
+  

@@ -1,0 +1,83 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PF_FIND                                      See EILIB.TXT for terms
+;---------------
+
+; PF_FIND is the PFILE_REC procedure for a PROCESS_FILE call that acts
+;   upon each instance of a found string within a file.  Our caller must
+;   call PROCESS_FILE with ES:BP pointing to the target string, which is
+;   BX bytes long.  The caller must also define a find-routine PF_FIND_PROC
+;   (typically EQUated to either FIND_STRING or FIND_NOCASE) which finds
+;   the target BX--DS:SI within the array CX--ES:DI.  The caller must also
+;   supply a routine PF_FOUND_ACT, that processes the found string at DS:SI.
+
+        #if !ref PF_FIND_PROC
+PF_FIND_PROC EQU FIND_STRING
+        #endif
+
+PF_FIND:
+  MOV CX,DX             ; copy the input buffer limit to CX
+  CMP CX,0FFFE          ; is this a full buffer?
+  IF AE SUB CX,4K-512   ; if yes then reduce the find-count by 3.5K
+  SUB CX,SI             ; calculate the size of our search array
+        #if OUT_EXCEPT
+  PUSH SI
+        #endif
+  PUSH DI               ; save the caller's output pointer
+  MOV DI,SI             ; copy the array pointer to DI, for the find routine
+  MOV SI,BP             ; copy the target pointer to SI
+  XCHG DS,ES            ; swap segments to ES points to array; DS to target
+  SS_CALL PF_FIND_PROC  ; find the target string within this buffer
+  XCHG DS,ES            ; restore segments
+  MOV SI,DI             ; copy the revised array pointer to SI
+  POP DI                ; restore the caller's output pointer
+        #if OUT_EXCEPT
+  POP AX
+        #endif
+  JNZ >L1               ; jump if the string was not found in this buffer
+  PUSH BP,BX            ; save the string pointer and count across call
+        #if (TYPE PF_FOUND_ACT) EQ 2
+  SS                    ; supply override if this is an indirect jump
+        #endif
+  CALL PF_FOUND_ACT     ; perform the action for a found string
+  POP BX,BP             ; restore the string pointer and count
+        #if ONE_FOUND_ACT
+  SUB DX,DX             ; DX=0 signals an action was taken
+  MOV SI,DX             ; SI=DX=0 halts further scanning within this file
+        #endif
+  RET
+
+L1:                     ; the string was not found in this buffer
+  CMP DX,0FFFE          ; was this the last buffer of the file?
+  JAE RET               ; return if not, to continue processing the file
+  MOV SI,DX             ; last buffer: discard any trailing residual bytes
+L4:
+; drop into FEX_FLUSH if this is an "all line except" program
+;   else just return
+;
+        #if ref FEX_FLUSH
+; FEX_FLUSH is used by "find all lines except" style programs, to output
+;   file bytes that are about to be flushed from their buffer.  We are
+;   called with FEX_P pointing beyond all bytes that have already been
+;   dealt with, and SI pointing beyond the bytes about to be flushed.
+;   If SI is greater than FEX_P, we output the intervening bytes, and
+;   reset FEX_P to SI.
+
+        DATA SEGMENT
+FEX_P DW ?            ; pointer beyond all bytes already output or discarded
+        DATA ENDS
+
+FEX_FLUSH:
+  MOV AX,SI           ; point AX to the new flush point
+  SS SUB AX,FEX_P     ; calculate the number of intermediate output bytes
+  JB RET              ; return, doing nothing, if FEX_P is already beyond here
+  PUSH CX             ; there are bytes to be output: save register
+  XCHG CX,AX          ; swap the output count into CX
+  SUB SI,CX           ; retreat SI to the start of the output bytes
+  CALL OUT_BIG_CX     ; output the bytes
+  POP CX              ; restore clobbered register
+  CALL CHECK_OBUFF    ; check for buffer overflow
+SET_FEX_P:
+  SS MOV FEX_P,SI     ; reset FEX_P beyond the bytes output
+        #endif
+  RET
+

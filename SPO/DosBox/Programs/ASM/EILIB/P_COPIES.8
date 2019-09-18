@@ -1,0 +1,34 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   P_COPIES                                     See EILIB.TXT for terms
+;---------------
+
+; PRINT_COPIES outputs to the printer (BX-handle 4) several copies of
+;   of the file buffered from DX up to DI.  The copy-count has already
+;   been placed into PRINT_COUNT.
+
+; GET_PRINT_COUNT is called to fetch the optional PRINT_COUNT from the
+;   end of the invocation command tail.
+
+PRINT_COPIES:
+  MOV BX,4              ; open-file handle for printer is 4
+  MOV CX,DI             ; point beyond the buffered bytes
+  SUB CX,DX             ; calculate the number of buffered bytes
+  MOV AX,1              ; load the repeat count
+PRINT_COUNT EQU W[$-2]  ; repeat count is plugged into the above imm value
+L2:                     ; loop here to repeat each copy of the output
+  PUSH AX               ; save the repeat count
+  CALL MWRITE           ; send the output to the printer
+  POP AX                ; restore the repeat count
+  DEC AX                ; count down the copies
+  JNZ L2                ; loop to output the next copy
+  RET
+
+
+GET_PRINT_COUNT:
+  CALL TAIL_BLANKS      ; skip over intervening blanks
+  CMP AL,0D             ; was that all?
+  JE RET                ; skip if that was all
+  CALL VERIFY_DEC       ; more on the command tail: fetch repeat count
+  MOV PRINT_COUNT,AX    ; store the repeat count
+  JMP NO_MORE_ARGS      ; insure no more arguments
+

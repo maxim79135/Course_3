@@ -1,0 +1,98 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    DEL_OL2                                     See EILIB.TXT for terms
+;---------------
+
+; DEL_OL2 is called to maintain a single older version of a file.  The
+;   program is invoked as a part of a sequence of DOS commands, as shown
+;   in the usage message below.
+;
+; We accept a single file name as our invocation argument; the name can have
+; any extension (including no extension), except OLD or OL2.  We verify the
+; existence of the named file, and of the two files with extensions OLD and
+; OL2.  If the named file has the same date-time stamp as the OLD file, we
+; delete the OLD file and rename the OL2 file to the OLD file.  If the named
+; file has a different date-time stamp as the OLD file, we simply delete the
+; OL2 file.  The purpose of this is to ensure that the older file is preserved
+; even if the same newer file is installed more than once.
+
+  JMP DEL_O2    ; jump around the following messages
+
+  DB 0D,0A,0D,0A
+USAGE_MSG:
+  DB 'DEL_OL2 old-file maintenance tool, V1.1  Copyright 2000 Eric Isaacson'
+  DB 0D,0A,0D,0A
+  DB ' usage: COPY fname.OLD fname.OL2',0D,0A
+  DB '        COPY fname fname.OLD',0D,0A
+  DB '        (install new fname into the current directory)',0D,0A
+  DB '        DEL_OL2 fname',0D,0A,0D,0A
+  DB '  ensures that a single, older fname.OLD exists with a different',0D,0A
+  DB '  date-time stamp than the latest fname.',0D,0A,0,01A
+
+NO_DOSCHECK EQU 1   ; our DOS library files will not trap errors
+
+        DATA SEGMENT
+OLD_NAME:           ; buffer for the fname.OLD name
+  DB 256 DUP ?
+OL2_NAME:           ; buffer for the fname.OL2 name
+  DB 256 DUP ?
+        DATA ENDS
+
+OLD_EXT:            ; extension used for creating fname.OLD
+  DB '.OLD'
+OL2_EXT:            ; extension used for creating fname.OL2
+  DB '.OL2'
+
+E1:                 ; an invocation syntax error was detected
+  JMP USAGE_EXIT    ; output usage message and exit the program
+
+DEL_O2:
+  MOV SI,081            ; point to our invocation command tail
+  CALL FILE_ARG         ; null-terminate the file are and point DX to it
+  CALL NO_MORE_ARGS     ; ensure there are no more command arguments
+  MOV SI,DX             ; point SI to the main file name
+  CALL DATE_DX          ; open the main file and set CXDX to its date-time
+  JC E1                 ; error exit if the main file did not exist
+  PUSH CX,DX            ; save the date-time of the main file
+  MOV BX,OL2_EXT        ; point to the OL2 extension
+  MOV DX,DI,OL2_NAME    ; we will output to our OL2 name buffer
+  PUSH SI               ; save the main-file name pointer
+  CALL NEWEXT_MAKE      ; create the OL2 file name
+  POP SI                ; restore the main-file name pointer
+  CALL MOPEN_READ       ; open the OL2 file
+  JC >L9                ; exit, doing nothing, if the OL2 file does not exist
+  CALL MCLOSE           ; close the OL2 file
+  MOV BX,OLD_EXT        ; point to the OLD extension
+  MOV DX,DI,OLD_NAME    ; we will output to our OLD name buffer
+  CALL NEWEXT_MAKE      ; create the OLD file name
+  CALL DATE_DX          ; open the OLD file and set CXDX to its date-time
+  POP BX,AX             ; restore the main date-time to AXBX
+  JC RENAME_OL2         ; it OLD did not exist then name OL2 to OLD
+  XOR AX,CX             ; set AX to zero if the times are the same
+  XOR BX,DX             ; set BX to zero if the dates are the same
+  OR AX,BX              ; set Z if both the dates and the times are the same
+  JNZ >L1               ; jump if different date/times, simply to delete OL2
+RENAME_OL2:
+  MOV DX,OL2_NAME       ; we will rename the OL2 file
+  MOV DI,OLD_NAME       ; the new name of the OL2 file will be the OLD file
+  CALL MRENAME          ; delete the OLD file and rename OL2 to OLD
+L9:                     ; common exit
+  JMP GOOD_EXIT         ; exit the program with a success code
+
+L1:
+  MOV DX,OL2_NAME       ; we will delete the OL2 file
+  MOV AH,041            ; load MS-DOS function code for DELETE_FILE
+  INT 021               ; delete the OL2 file
+  JMP L9                ; jump to common exit
+
+
+DATE_DX:                ; open DX file, set CXDX to date-time, and close file
+  CALL MOPEN_READ       ; open the file
+  JC RET                ; return Carry if the file does not exist
+  MOV AX,05700          ; load MS-DOS function codes for GET_DATE_TIME
+  INT 021               ; set CXDX to the date/time stamp for the file
+  PUSH CX,DX            ; save the date-time stamp
+  CALL MCLOSE           ; close the file
+  POP DX,CX             ; restore the date-time stamp
+  RET
+
+

@@ -1,0 +1,137 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DIRSORT                                      See EILIB.TXT for terms
+;---------------
+
+; DIRSORT sorts by date a file that was output by the DOS dir command.  We
+;   account for Y2K years, the am-pm notation of the time of day, and the
+;   fact that 12 o'clock comes before 1 o'clock.
+
+DIRSORT:
+  MOV SI,081          ; point to our invocation command tail
+  CALL TAIL_BLANKS    ; advance to the first nonblank in the command tail
+  CMP AL,'!'          ; is it the ! flip-marker?
+  JNE >L1             ; skip if not
+  INC SI              ; advance past the flip marker
+  MOV FLIPCODE B,090  ; NOP out the RET so that COMPARE results are reversed
+L1:
+  PUSH SI             ; save file pointer, in case only one name is given
+  CALL OPEN_I_ARG     ; open the input file
+  CALL TAIL_BLANKS    ; skip over intervening blanks
+  CMP AL,0D           ; is there a second file name?
+  POP AX              ; restore first pointer, in case there isn't
+  IF E XCHG SI,AX     ; swap in the first pointer if there was no input name
+  CALL FILE_ARG       ; scan the SI-pointed file argument
+  CALL LSORT_IHANDLE  ; sort the file
+  JMP GOOD_EXIT       ; exit our program
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: DIRSORT [!] infile [outfile]',0D,0A
+  DB '  sorts a DOS directory listing by date',0D,0A
+  DB '  ! reverses the order',0D,0A
+  DB 0A,0,01A
+
+COPY_SORTREC EQU COPY_LINE        ; record output is a simple line-copy
+
+
+; COMPARE is the comparison routine we provide to satisfy SIDI_SORT and LSORT.
+;   We compare the directory lines BP-[BX], starting with the year at column
+;   34, the date at column 28, the am-pm marker at column 42, and the time
+;   at column 37.
+
+COMPARE:
+  MOV DI,28           ; load the offset for the date field
+  LEA SI,[BP+DI]      ; point SI to the first line's date field
+  ES ADD DI,[BX]      ; point DI to the second line's date field
+  ES MOV AX,[DI+6]    ; fetch the second line's year
+  MOV CH,50           ; rollover value for years is 50
+  CALL ROLL_AX        ; convert the second line's year to a numeric value
+  MOV AX,[SI+6]       ; fetch the first line's year
+  CALL ROLL_AX        ; convert the first line's year to a numeric value
+  JE >L2              ; jump if they matched, to compare the dates
+FLIPCODE:             ; common exit for the no-match case
+  RET                 ; return if we are not doing a reverse sort
+;
+; Reverse sort drops through to the following:
+;
+  CMC                 ; we are NZ so we just reverse the result of the compare
+  RET
+
+L2:                   ; the years matched
+  MOV CX,5            ; the date field has five bytes
+  REPE CMPSB          ; compare the dates
+  JNE FLIPCODE        ; jump if the dates did not match
+  MOV AL,[SI+9]       ; fetch the first line's am-pm indicator
+  ES CMP AL,[DI+9]    ; compare to the second line's am-pm indicator
+  JNE FLIPCODE        ; jump if the am-pm did not match
+  CMPSW               ; advance two bytes
+  CMPSW               ; advance two more bytes, to the hours field
+  ES MOV AX,[DI]      ; fetch the second line's hour
+  MOV CH,12           ; rollover value for hours is 12
+  CALL ROLL_AX        ; convert the second line's hour to a numeric value
+  LODSW               ; fetch the first line's hour
+  CALL ROLL_AX        ; convert the first line's hour to a numeric value
+  JNE FLIPCODE        ; jump if the hour did not match
+  SCASW               ; advance DI to the minutes
+  MOV CX,5            ; the minutes have three bytes 
+  REPE CMPSB          ; compare the minutes
+  JNE FLIPCODE        ; jump if the minutes did not match
+  RET                 ; all fields matched: return Z
+
+
+; ROLL_AX is called to convert a two-digit code, scanned into AX, into a
+;   numeric value.  We are called with CH set to a rollover value.  If
+;   we are converting a two-digit year, then CH is 50, and we add 100 to
+;   values less than 50.  If we are converting an hour number, then CH is 12,
+;   and we add 100 to values less than 12.  This way 12 will sort as the
+;   smallest hour, followed by 1,2,3, etc.
+
+ROLL_AX:
+  AND AX,0F0F         ; mask the digits down to their binary values
+  XCHG AL,AH          ; swap so the high-order digit is in AH, low in AL
+  AAD                 ; convert the digits to their binary value
+  CMP AL,CH           ; does the value exceed the rollover point?
+  IF B ADD AL,100     ; if not then add 100 to the value
+  CMP AL,CL           ; compare to the previous ROLL_AX value
+  MOV CL,AL           ; store the value for the next call's compare
+  RET
+
+
+; GEN_DIR_LINE is a GEN_SORTP routine, called by the LSORT module to
+;    define the bounds of the SI-pointed record, by advancing SI beyond
+;    the record, and by returning AX set to a key for the record, suitable
+;    for feeding to COMPARE.  In this case, a record is a simple line,
+;    terminated by a linefeed (0A).  If the line is not a dates directory
+;    line, we advance beyond the line and return NC/NZ signalling LSORT
+;    to ignore it.  Otherwise if SI reaches BX without a linefeed being 
+;    seen, we return Carry to signal an incomplete record.
+
+GEN_SORTP:
+GEN_DIR_LINE:
+  PUSH SI           ; save the starting record pointer
+L1:                 ; loop here to scan each succeeding character of the line
+  LODSB             ; fetch the character
+L3:
+  CMP AL,0A         ; is it the terminating linefeed?
+  JE >L2            ; skip if it is
+  CMP SI,BX         ; have we reached the end of the buffer?
+  JB L1             ; loop if not, to scan another character
+  STC               ; incomplete record: set Carry to signal it
+  POP AX            ; return the line's starting pointer in AX
+  RET
+
+L2:                 ; we have scanned this line
+  XCHG AX,SI        ; swap the beyond-pointer into AX
+  POP SI            ; pop the starting pointer into SI
+  CMP B[SI+30],'-'  ; a dated directory line has a dash in column 30
+  JNE >L4           ; return NZ/NC if there is no dash
+  CMP B[SI+33],'-'  ; a dated directory line also has a dash in column 33
+  JNE >L4           ; return NZ/NC if there is no dash
+  CMP B[SI+39],':'  ; a dated directory line also has a colon in column 39
+L4:
+  XCHG SI,AX        ; return beyond-pointer in SI, starting pointer in AX
+  CLC               ; NoCarry signals a complete record was scanned
+  RET
+
+
+

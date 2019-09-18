@@ -1,0 +1,37 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   UL_CMP                                       See EILIB.TXT for terms
+;---------------
+
+; UL_COMPARE is a COMPARE routine, called by the LSORT module, to effect
+;   case-insensitive sorting of lines.  We set the Z and C flags according
+;   to the unsigned comparison of key BP - key [BX].  If the caller wants
+;   the sort to begin at a nonzero column, it should store the displacement
+;   in both the byte variables UL_COL1 and UL_COL2, declared below.
+
+UL_COMPARE:
+  LEA SI,[BP+1]         ; point SI to the column within the first line
+  ORG $-1               ; retreat program output to above immediate value
+UL_COL1 DB 0            ; declare UL_COL1 and substitute a zero default
+  ES MOV DI,[BX]        ; point DI to the second line
+  ADD DI,0              ; advance DI to the column within the line
+UL_COL2 EQU B[$-1]      ; column number is store in above immediate value
+  MOV CH,1              ; load large value for a line
+L3:                     ; loop here to continue scanning matched lines
+  REPE CMPSB            ; scan over any identical bytes
+  IF E RET              ; return E if the match-count exceeded the 256 bytes
+  ES MOV AH,[DI-1]      ; fetch the last nonmatching byte from the second line
+  CMP AH,'a'            ; is it too low to be lower-case?
+  JB >L1                ; skip if it was too low
+  CMP AH,'z'            ; is it lower case?
+  IF BE AND AH,0DF      ; if yes then coerce it to upper case
+L1:
+  MOV AL,[SI-1]         ; fetch the last nonmatching byte from the first line
+  CMP AL,'a'            ; is it too low to be lower case?
+  JB >L2                ; skip if it was too low
+  CMP AL,'z'            ; is it lower case?
+  IF BE AND AL,0DF      ; if yes then coerce it to upper case
+L2:
+  CMP AL,AH             ; compare the coerced values
+  JE L3                 ; loop if they matched, to continue scanning
+  RET
+

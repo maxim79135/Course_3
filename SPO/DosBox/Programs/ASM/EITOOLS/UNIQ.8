@@ -1,0 +1,298 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   UNIQ                                         See EILIB.TXT for terms
+;---------------
+
+; UNIQ is a filter that compares adjacent lines of the sorted input.  If no
+;   flags are given, we eliminate duplicate lines (if a line is duplicated,
+;   only the first instance of it is output).  If -u is given, only unique
+;   lines are output (if a line is duplicated, no instances are output).  If
+;   -d is given, only the duplicated lines are output.  If -c is given, we
+;   compress the file by telescoping duplicate lines into a single copy with
+;   with a trailing " *N", where N is the decimal duplication count.  If -x is
+;   given, we expand the file by reversing the effects of a previous -c call.
+
+; For all modes except -x, we maintain the count of consecutive duplicate lines
+; in the BP register, and the length of the previous line in the BX register
+; (those registers are preserved for us by PFILE_IOARG and PROCESS_LINE).  We
+; defer the decision to output a line until after it has become the "previous
+; line", and has been compared to the current line.  Because of this deferral,
+; we must preform a final call to our action routine after the last line has
+; been scanned, to provoke a "current-line-does-not-match" action, to see if
+; the last line needs to be output.  We have coded all our action routines so
+; that the current-line-does-not-match code is exactly 5 bytes after the main
+; entry point for the action routine.
+
+LONG_FNAMES EQU 1
+
+UNIQ:
+  MOV SI,081            ; point to our invocation command tail
+  MOV BX,UNIQ_SWITCHES  ; point to our switch table
+  CALL BX_SWITCHES      ; scan any switches
+  MOV BP,1              ; initial duplicate-lines count is one
+  SUB BX,BX             ; initial "previous line size" is zero
+  JMP PFILE_IOARG       ; scan any file names, and process the input file
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: UNIQ [+colnum] [-limit] [-udcx] [infile] [outfile]',0D,0A
+  DB '  colnum is starting column for comparison',0D,0A
+  DB '  limit is the ending column for comparison',0D,0A
+  DB '  -u for unique lines only',0D,0A
+  DB '  -d for duplicated lines only',0D,0A
+  DB '  -c for telescoping duplicated lines to a trailing " *N"',0D,0A
+  DB '  -x for expanding a telescoped file',0D,0A
+  DB 0,01A
+
+IFILE_OPTIONAL EQU 1      ; named input file is an option
+OWR_OPTIONAL   EQU 1      ; named output file is an option
+
+PFILE_REC  DW NO_SWITCH_ACT   ; action called by PROCESS_FILE for each line
+
+UNIQ_SWITCHES:      ; command-tail switches we recognize
+  DB '+'            ; plus-sign: reset the starting column for compares
+  DW PLUS_SWITCH    ; scan the number following the +
+  DB '-'            ; minus sign: either ending column or a letter-switch
+  DW MINUS_SWITCH   ; scan the number or the letter-switch
+  DB '/'            ; slash: putput usage message for /?
+  DW USAGE_EXIT
+
+LETTER_SWITCHES:    ; switch letters that can follow the minus sign
+  DB 'u'            ; -u: output only the lines that are unique
+  DW U_SWITCH       ; set PFILE_REC to the unique-only action code
+  DB 'd'            ; -d: output only the lines that are duplicated
+  DW D_SWITCH       ; set PFILE_REC to the dups-only action code
+  DB 'c'            ; -c: compress by telescoping duplicated lines
+  DW C_SWITCH       ; set PFILE_REC to the telescoping action code
+  DB 'x'            ; -x: expand previously-telescoped duplicate lines
+  DW X_SWITCH       ; set PFILE_REC to the expanding action code
+  DB 0
+
+
+PLUS_SWITCH:          ; plus sign is seen in the command tail
+  CALL VERIFY_DEC     ; fetch the following number
+  MOV COLNUM W,AX     ; number is the starting column for comparison
+  RET
+
+
+MINUS_SWITCH:             ; minus sign is seen in the command tail
+  CALL TAIL_BLANKS        ; skip over intervening blanks
+  CALL AL_DIGIT?          ; is there a number following the minus sign?
+  IF NC JMP LETTER_SWITCH ; jump if not, to process a letter
+  CALL SCAN_DECIMAL       ; fetch the following number
+  MOV CMP_LIMIT W,AX      ; store the limit column number for comparison
+  RET
+
+
+; NO_SWITCH_ACT is the action routine for the no-switches invocation of UNIQ.
+;   We output one copy of every line in the input file.  Our output action
+;   is the same whether the current line matched the previous line or not: we
+;   output the previous line if and only if *it* was not a duplicate.
+;   Therefore, since we do not need a JE test following the CALL CMP_PREV, we
+;   provide a MOV AL,AL spaceholder, so that LAST_LINE will call the correct
+;   code.
+
+NO_SWITCH_ACT:        ; called with buffered input from SI--DX
+  CALL CMP_PREV       ; compare to the previous line and update dup count BP
+  MOV AL,AL           ; drop into code in either match case (see note above)
+L7:                   ; output previous line if it was not a duplicate
+  JC >L9              ; no output if the previous line was a duplicate
+YES_OUT_PREV:
+  CALL OUTPUT_PREV    ; output the previous line
+  JMP >L9             ; jump to common exit code
+
+
+; U_SWITCH defines the action routine for the -u invocation of UNIQ.  That
+;   routine will output only those lines that were unique, eliminating all
+;   copies of any duplicated lines.
+
+U_SWITCH:
+  CALL NEXT_PFILE_HERE    ; set PFILE_REC to the following code
+; RET is implicitly effected by the above call
+;
+; Now PROCESS_FILE will call the following for each line, buffered at SI:
+;
+  CALL CMP_PREV       ; compare to the previous line and update dup count BP
+  JE >L9              ; if the current line matched do not output previous line
+  JMP L7              ; output the prev line only if it was not a dup
+
+
+; D_SWITCH defines the action routine for the -d invocation of UNIQ.  That
+;   routine will output only those lines that were duplicated (including all
+;   the duplicates).  Thus, a line will be output under this switch if and
+;   only if it would not have been output under the -u switch.
+
+D_SWITCH:
+  CALL NEXT_PFILE_HERE    ; set PFILE_REC to the following code
+; RET is implicitly effected by the above call
+;
+; Now PROCESS_FILE will call the following for each line, buffered at SI:
+;
+  CALL CMP_PREV       ; compare to the previous line and update dup count BP
+  JE YES_OUT_PREV     ; output the prev line if if matched the current
+  JC YES_OUT_PREV     ; also outout the prev line if it was already a dup
+  JMP >L9             ; prev line was unique: do not output it
+
+
+; C_SWITCH defines the action routine for the -c invocation of UNIQ.  That
+;   routine will output all lines, except that we telescope all duplicates
+;   into a single line containing a "* " followed by a decimal count of the
+;   number of duplicates.
+
+C_SWITCH:
+  CALL NEXT_PFILE_HERE  ; set PFILE_REC to the following code
+; RET is implicitly effected by the above call
+;
+; Now PROCESS_FILE will call the following for each line, buffered at SI:
+;
+  CALL CMP_PREV       ; compare to the previous line and update dup count BP
+  JE >L9              ; no output yet, if the current line matched
+  JNC YES_OUT_PREV    ; simple output if the previous line was unique
+  CALL OUTPUT_PREV    ; previous line was a dup: first output it
+  ES MOV [DI-2],'* '  ; retract the trailing CRLF and put " *" instead
+  CALL OUT_DEC_AX     ; output the dup count
+  MOV AX,0A0D         ; load CRLF
+  STOSW               ; output CRLF
+; JMP >L9             ; join common exit code
+;
+;
+; CMP_PREV compares the current SI-pointed line to the previous SI-BX line.
+;   We return with AX set to the previous dup count BP, and with the Carry Flag
+;   set if that dup count was greater than 1.  If the lines match, we return Z
+;   and increment BP.  If they don't match, we return NZ and reset BP to 1.
+;
+L9:                   ; common exit code for all action routines except -x
+  MOV BX,CX           ; the current size will now become the previous size
+  ADD SI,CX           ; advance SI to the next line
+  CMP SI,DX           ; have we reached the end of the file?
+  JB RET              ; return if we have not
+LAST_LINE:            ; the end of the file has been reached
+  TEST DX             ; have we already executed this last-line code?
+  JE RET              ; return if we have
+  SUB DX,DX           ; load null DX, to signal we have been here  
+  SS MOV AX,PFILE_REC ; fetch the action-routine pointer
+  ADD AX,5            ; advance the action to the no-matching code
+  PUSH AX             ; now CMP_PREV will return to the no-matching action code
+CMP_PREV:
+  MOV CX,SI           ; save the current line pointer in CX
+  CALL SKIP_LINE      ; advance SI beyond the current line
+  XCHG SI,CX          ; swap the line pointer to SI, beyond pointer to CX
+  SUB CX,SI           ; set CX to the length of the current line
+  INC BP              ; increment the dup-lines counter
+  MOV AX,-3           ; load a 3-or-greater-will-Carry addend
+  ADD AX,BP           ; set Carry if BP had been >= 2 before the increment
+  PUSHF               ; save the Carry-flag setting
+  PUSH BX,CX          ; save line sizes during compare
+  MOV AX,0            ; load the starting column number
+COLNUM EQU W[$-2]     ; starting colnum is stored in above imm value
+  SUB CX,AX           ; reduce the current size by the skipped columns
+  JBE >L1             ; jump if the current line is too short
+  SUB BX,AX           ; reduce the previous size by the skipped columns
+  JBE >L9             ; automatic mismatch if the previous line is too short
+  PUSH SI,DI          ; save the main input and output pointers
+  MOV DI,SI           ; point DI to the current line
+  SUB DI,BX           ; retreat DI to the previous line's starting column
+  ADD SI,AX           ; advance the current line to the starting column
+  NEG AX              ; negate the column number, to compute the field size
+  ADD AX,08000        ; add in the ending column number, for the field size
+CMP_LIMIT EQU W[$-2]  ; ending colnum is stored in the above imm value
+  CMP CX,AX           ; does the current line run to the end of the field?
+  IF AE MOV CX,AX     ; if yes then reduce the compare-count to the field size
+  CMP BX,AX           ; does the previous line run to the end of the field?
+  IF B MOV AX,BX      ; if not then set the prev-field count to the line size
+  CMP CX,AX           ; do the field sizes for the lines match?
+  JNE >L6             ; return NZ of they do not match
+  PUSH ES             ; field sizes match: save the output segment
+  MOV ES,DS           ; point ES to the input-buffer segment, for compare
+  REPE CMPSB          ; compare the lines (fields)
+  POP ES              ; restore ES to the main segment
+L6:
+  POP DI,SI           ; restore the main input-output pointers
+  JMP >L7             ; join common exit code
+
+L1:                   ; the current line is to short for the compare field
+  SUB BX,AX           ; is the previous line also too short?
+  JBE >L8             ; return Z (matching lines) if it was
+L9:                   ; sizes provoke an automatic mismatch
+  DB 03D              ; CMP AX,iw opcode will always set the NZ flag
+L8:                   ; sizes provoke an automatic match
+  CMP SI,SI           ; set the Z flag to signal a match
+L7:                   ; common size
+  POP CX,BX           ; restore line sizes
+  POP AX              ; restore dup-count Carry flag to the low bit of AL
+  ROR AL,1            ; now Carry is restored without affecting the Z setting
+  LEA AX,[BP-1]       ; set AX to the previous dup count
+  IF NE MOV BP,1      ; if lines did not match reset the dup count to 1
+  RET
+
+
+; X_SWITCH defines the action routine for the -x invocation of UNIQ.  That
+;   routine will undo the effect of a previous -c invocation, by expanding
+;   all lines having a " *" followed by a number at the end.  This is the
+;   only action case that does not need to maintain and compare the previous
+;   line.
+
+X_SWITCH:
+  CALL NEXT_PFILE_HERE    ; set PFILE_REC to the following code
+; RET is implicitly effected by the above call
+;
+; Now PROCESS_FILE will call the following for each line, buffered at SI:
+;
+  PUSH SI             ; preserve the line pointer
+  CALL SKIP_LINE      ; advance SI beyond this line
+  MOV CX,SI           ; save the beyond-pointer in CX, for later output
+  DEC SI,2            ; retreat to the last byte of the line
+  CALL DEC_SI_DIGIT?  ; is the last byte a decimal digit?
+  JAE >L5             ; jump if not, to simply copy the line
+L1:                   ; loop backwards to scan the ending number
+  CALL DEC_SI_DIGIT?  ; is there another decimal digit?
+  JB L1               ; loop if there is
+  DEC SI              ; no more digits: retreat to two back of the number
+  MOV BP,SI           ; point BP beyond the line without the count
+  LODSW               ; fetch the two bytes preceding the number
+  CMP AX,'* '         ; are they a blank and a multiplication-sign?
+  JNE >L5             ; jump if not, to simply copy the line
+  CALL SCAN_DECIMAL   ; scan the duplication count
+  POP SI              ; restore the pointer to the line
+  SUB BP,SI           ; calculate the size of the truncated line
+  JBE >L6             ; jump if the duplication count was before the line
+  PUSH CX             ; the line has content: save the beyond-pointer
+  MOV CX,BP           ; set CX to the line size
+  XCHG BP,AX          ; swap the dup count into BP
+L2:                   ; loop here to output copies of the line
+  PUSH CX,SI          ; save the line size and pointer
+  REP MOVSB           ; output the line
+  MOV AX,0A0D         ; load CRLF
+  STOSW               ; output the terminating CRLF
+  POP SI,CX           ; restore the pointer and line size
+  CALL CHECK_OBUFF    ; check for output buffer overflow
+  DEC BP              ; count down duplicate lines
+  JNZ L2              ; loop to output the next duplicate
+  POP SI              ; restore the pointer to the next line
+  RET
+
+L5:                   ; there was no duplication count on the line
+  POP SI              ; restore the line pointer
+L6:
+  SUB CX,SI           ; calculate the simple size of the line
+  REP MOVSB           ; output the line as-is
+  RET
+
+
+; DEC_SI_DIGIT? decrements SI, and returns B if the SI-pointed byte is a
+;   decimal digit, AE if not.
+
+DEC_SI_DIGIT?:
+  DEC SI            ; decrement the pointer
+  MOV AL,[SI]       ; fetch the SI-pointed byte
+AL_DIGIT?:
+  SUB AL,'0'        ; reduce the digits-range to zero
+  CMP AL,10         ; set B if it was a decimal digit, AE if not
+  RET
+
+
+OUTPUT_PREV:        ; output the previous line
+  XCHG CX,BX        ; swap the previous-line count into CX
+  SUB SI,CX         ; retreat SI to the previous line
+  REP MOVSB         ; output the previous line
+  XCHG BX,CX        ; restore the current line count
+  RET

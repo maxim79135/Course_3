@@ -1,0 +1,24 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    RHBOOT                                      See EILIB.TXT for terms
+;---------------
+
+; RHBOOT reads the boot sector of the first hard drive, and outputs
+;   the sector to standard output.
+
+RHBOOT:
+  MOV DX,0 BY 080
+  MOV CX,0 BY 1        ; sector CL is 1, track CH is 0
+  MOV BX,01000         ; we will read the sector to 01000
+  MOV AX,0A04          ; we are reading AL=4 sectors, function 0A is READ
+  INT 013
+  IF C JMP USAGE_EXIT  ; error exit if the call failed
+  MOV DX,BX            ; point DX to the memory buffer
+  MOV CX,0810          ; fetch the sector size from the record we just read
+  CALL OWRITE          ; output the sector to standard output
+  JMP GOOD_EXIT        ; exit back to the operating system
+
+USAGE_MSG:
+  DB 'usage: RHBOOT >file',0D,0A
+  DB '    saves boot sector of first hard drive to file',0D,0A
+  DB 0
+

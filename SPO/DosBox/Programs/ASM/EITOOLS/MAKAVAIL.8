@@ -1,0 +1,31 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MAKAVAIL                                     See EILIB.TXT for terms
+;---------------
+
+; MAKAVAIL is a diagnostic tool that reduces available memory to the number
+;   of kilobytes given as a decimal value in the command tail.
+
+MAKAVAIL:
+  MOV SI,081          ; point to our command tail
+  CALL VERIFY_1_DEC   ; fetch the number of K we want to reduce to
+  INC AX              ; fudge factor
+  SHL AX,CL,6         ; convert to a number of paragraphs
+  MOV DX,W[2]         ; point DX beyond available memory
+  SUB DX,AX           ; reduce DX to a future start of available memory
+  MOV AX,SS           ; fetch the current start of available memory
+  SUB DX,AX           ; calculate the number of paragraphs we need to use up
+  JC >L5              ; error if the total is less than zero
+  MOV AX,03100        ; DOS function codes for EXIT_TSR
+  INT 021             ; exit program, leaving enough resident memory
+
+L5:                   ; there is already less than the indicated amount
+  MOV AX,ALREADY_MSG  ; point to message saying so
+  JMP ERROR_EXIT      ; output the message and exit the program
+
+
+USAGE_MSG:
+  DB 'usage: MAKAVAIL n',0D,0A
+  DB '  reduces available memory to decimal nK bytes',0D,0A,0
+
+ALREADY_MSG:
+  DB 'Sorry, memory is already reduced below that amount.',0D,0A,0

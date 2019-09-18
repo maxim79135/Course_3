@@ -1,0 +1,230 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    BBSCMT                                      See EILIB.TXT for terms
+;---------------
+
+; BBSCMT changes the comment field of a BBS listing line.  We accept in
+;   our command tail the name of the listing file, the number of columns
+;   preceding the comment field (which ends the line), and the new comment
+;   to be given.  If the new comment consists of a single letter from the
+;   BBS_EXPAND table, we substitute the comment from that table.
+
+; This is an older program, not tested or used recently.  There is a fair
+; amount of I/O buffering code within this program, that could be rewritten
+; to use the library's buffering mechanisms instead.  But, in view of the fact
+; that there is very little new activity on BBSs any more, I didn't deem it
+; worth the effort.
+
+        DATA SEGMENT
+    DB ?,?
+IBUFF:                ; input buffer
+    DB 0B000 DUP ?
+ILIMIT EQU $-0400
+IBUFF_END:            ; end of input buffer
+
+IBUFF_LIMIT   DW ?    ; refill limit for input
+ENDREAD       DW ?    ; end of actual input
+BBS_COUNT     DW ?    ; size of the target string
+BBS_TARGET:           ; contents of the target string
+              DB 64 DUP ?
+        DATA ENDS
+
+  JMP BBSCMT        ; skip over the following messages
+
+USAGE_MSG:
+  DB 0D,0A
+  DB 'BBSCMT V0.3 Copyright 2000 Eric Isaacson.  All rights reserved.',0D,0A
+        #if AB18
+  DB '  usage: B18 find_string new_string',0D,0A
+        #else
+  DB '  usage: BBSCMT listfile n_cols find_string new_string',0D,0A
+        #endif
+  DB '    replaces a comment within a BBS listing file',0D,0A
+  DB 0D,0A
+  DB 'Special codes for new_string:',0D,0A,0D,0A
+BBS_EXPAND:
+  DB 'C = DELETED -- copyrighted material',0D,0A
+  DB 'L = DELETED -- chain letter scheme',0D,0A
+  DB 'P = DELETED -- pirated program',0D,0A
+  DB 'X: remove entire listing line',0D,0A
+  DB 01A
+
+E1:
+  DB 'Sorry, could not find ',0
+E2:
+  DB ' within the file ',0
+E3:
+  DB 0D,0A,0
+
+        #if AB18
+B18_PATH:
+  DB 'F:\BBS\GEN\DIR18',0
+        #endif
+
+
+BBSCMT:
+        #if AB18
+  MOV SI,B18_PATH   ; alternate message when this program is called "B18"
+        #else
+  MOV SI,081        ; point to our invocation command tail
+  CALL TAIL_BLANKS  ; skip over leading blanks
+        #endif
+  MOV IFILE_PTR,SI  ; mark the pointer to the input file
+  JMP MODBAK        ; jump to modify-with-BAKfile handling code      
+
+
+PROCESS_MODBAK:
+        #if AB18
+  MOV SI,081        ; point to our invocation command tail
+  MOV AX,33
+        #else
+  CALL VERIFY_DEC       ; fetch the column skip-count
+        #endif
+  MOV COL_CT,AX         ; store the column skip-count
+  MOV DI,BBS_TARGET     ; point to slot where the target string will go
+  CALL SCAN_STRING      ; scan the target specification
+  CALL GET_NEW_STRING   ; scan and set up the replacement string
+  MOV DI,IBUFF-1        ; point to pre-IBUFF delimiter byte
+  MOV AL,0A             ; load linefeed delimiter
+  STOSB                 ; output a linefeed delimiter
+  CALL INIT_IO          ; read the first bufferfull
+L1:                     ; loop here to search in each bufferfull
+  MOV SI,BBS_TARGET     ; load target pointer
+  MOV BX,BBS_COUNT      ; load target count
+  CALL FIND_NOCASE      ; find the target string in the buffer
+  JZ >L4                ; jump if we succeeded
+  CMP ENDREAD,IBUFF_END ; is there any more input to be read?
+  JB >L8                ; jump if not-- failure
+L2:
+  MOV DI,SI,ILIMIT      ; set up the flush and copy points
+  CALL FLUSH_IO         ; flush buffer and input another buffer
+  JMP L1                ; loop to look in the new input buffer
+  
+L4:                     ; success
+  CMP DI,ILIMIT+0200    ; are we too near the end of the buffer?
+  JAE L2                ; jump if yes, to flush and re-find the target
+  MOV CH,0FF            ; load huge count for finding line delimiters
+  MOV AL,0A             ; load linefeed to search for delimiters
+  STD                   ; scanning is backwards
+  REPNE SCASB           ; find the previous linefeed
+  CLD                   ; restore forward scanning
+  INC DI,2              ; advance DI back up to this line's start
+  MOV BX,0              ; load the column-skip count
+COL_CT EQU W[$-2]       ; count is inserted by the initialization code
+  MOV DX,DI             ; point DX to the line
+  ADD DI,BX             ; advance DX to the comment field
+  REPNE SCASB           ; find the end of the line
+  MOV CX,SI,DI          ; point CX and SI beyond this line
+  SUB CX,DX             ; calculate the number of bytes in the existing line
+  CALL EWRITE           ; display the existing line to the console
+  MOV CX,BX             ; fetch the skip count
+  CALL EWRITE           ; display the new line up to the comment field
+  MOV DI,DX             ; reload the line pointer
+  ADD DI,BX             ; we will output only up to the comment field
+  CALL FLUSH_IO         ; flush the output up to the line, and read more beyond
+  MOV DX,0              ; point to the new string
+NEW_PTR EQU W[$-2]      ; pointer is plugged in by our initialization
+  MOV CX,0              ; load the size of the new string
+NEW_CT EQU W[$-2]       ; count is plugged in by our initialization
+  CALL EWRITE           ; display the new string to the console
+  CALL OWRITE           ; output the new string to the new file
+L5:                     ; loop here to pass through the remainder of the file
+  MOV DI,SI,ENDREAD     ; we will flush everything, no residual bytes needed
+  CALL FLUSH_IO         ; flush the buffer
+  CMP ENDREAD,IBUFF     ; was anything more read?
+  JNE L5                ; loop if it was, to flush it
+  RET
+
+L8:                     ; file exhausted, didn't find the target string
+  MOV AX,E1             ; point to "Sorry, could not find "
+  CALL EMESSAGE         ; output it
+  MOV CX,BX             ; load target string length
+  MOV DX,SI             ; load target pointer
+  MOV BX,2              ; open-file handle for error output
+  CALL MWRITE           ; output the target string
+  MOV AX,E2             ; point to " within the file "
+  CALL EMESSAGE         ; output it
+  MOV AX,0              ; load pointer to the file
+IFILE_PTR EQU W[$-2]    ; pointer is plugged in during initialization
+  CALL EMESSAGE         ; output the name of the input file
+  MOV AX,E3             ; point to CRLF
+  CALL EMESSAGE         ; output CRLF
+  JMP MODBAK_ABORT      ; close files and exit
+
+
+; FLUSH_IO outputs to OHANDLE the buffered bytes from IBUFF up to DI,
+;   moves the block from SI to ENDREAD down, and reads more bytes into
+;   the remaining buffer space.  We return with SI pointing beyond the
+;   new bytes read, and DI set to IBUFF, and CX = SI-DI = the number of
+;   buffered bytes.
+
+FLUSH_IO:
+  MOV DX,IBUFF          ; point to the input buffer
+  CALL OWRITE_DI        ; output from IBUFF up to DI
+  MOV CX,ENDREAD        ; point CX beyond the actual bytes read
+  SUB CX,SI             ; calculate the number of residual bytes
+  MOV DI,IBUFF          ; we will copy the bytes to the buffer bottom
+  REP MOVSB             ; move the residual bytes down
+INIT_IO:                ; alternate entry for the first read operation
+  MOV DX,IBUFF          ; point DX to the buffer, for reading
+  XCHG DX,DI            ; swap beyond-residual into DX, IBUFF into DI
+  MOV CX,IBUFF_END      ; point CX beyond the available buffer bytes
+  MOV BX,IHANDLE W      ; fetch the open-file handle for input
+  CALL MREAD_CX         ; read input up to the buffer
+  ADD AX,DX             ; point AX beyond the actual bytes read
+  MOV ENDREAD,AX        ; store the beyond-actual pointer
+  XCHG SI,AX            ; swap ENDREAD into SI
+  MOV CX,SI             ; copy ENDREAD to CX
+  SUB CX,DI             ; calculate the number of bytes now buffered
+  RET
+
+
+; GET_NEW_STRING obtains the pointer and count for the new string to
+;   be plugged into the comment field.  If the SI-pointed command tail
+;   is a single letter from the BBS_EXPAND table, we use the string in
+;   that table.  Otherwise, we use the remaining command tail as-is.
+
+GET_NEW_STRING:
+  MOV CH,0FF          ; load huge count for all the following scans
+  CALL TAIL_BLANKS    ; skip over intervening blanks
+  MOV AH,0DF          ; load upper-case coercion mask
+  AND AH,AL           ; coerce the first letter into AH
+  MOV BX,SI           ; make a copy of the command-tail pointer
+  CMP AL,0D           ; is there no more command tail?
+  JE >L9              ; jump if no more-- we will use the null tail
+  CMP B[SI+1],020     ; there is a command tail-- is it a single letter?
+  JA >L9              ; jump if not, to use the tail
+  INC SI              ; advance beyond the letter
+  CALL TAIL_BLANKS    ; skip over intervening blanks
+  CMP AL,0D           ; is there anything beyond the letter?
+  JNE >L9             ; jump if there is, to use the command tail
+  MOV DI,BBS_EXPAND   ; single letter seen-- look it up in the table
+  MOV AL,0A           ; load linefeed, for table searching
+L1:                   ; loop here to look at each table entry
+  LEA BP,[DI+4]       ; make a copy of the table-entry pointer
+  CMP AH,[DI]         ; does this table entry match the command-tail letter?
+  JE >L2              ; jump if it does
+  REPNE SCASB         ; scan to the next table entry
+  TEST B[DI]          ; are we at the end of the table?
+  JNZ L1              ; loop if not, to check the next entry
+L9:                   ; a table entry was not found
+  MOV DI,BP,BX        ; use the command tail for our new string
+  MOV AL,0D           ; load carriage return, for search
+  REPNE SCASB         ; scan past the carriage return
+  MOV AL,0A           ; load linefeed
+  STOSB               ; append a linefeed to the command tail
+  JMP >L4             ; join common code
+
+L2:                   ; the new string is pointed to by BP
+  MOV DI,BP           ; point DI to the line
+  REPNE SCASB         ; scan past the linefeed
+  CMP B[DI],01A       ; was it the final X null-string?
+  JNE >L4             ; skip if not
+  MOV COL_CT,0        ; it was: eliminate the columns count
+  MOV DI,BP           ; retreat so that the new string will be null
+L4:
+  SUB DI,BP           ; calculate the number of bytes in the new string
+  MOV NEW_PTR,BP      ; store the pointer to the new string
+  MOV NEW_CT,DI       ; store the byte count of the new string
+  RET
+                
+

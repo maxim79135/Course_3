@@ -1,0 +1,98 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  SCAN_STR                                      See EILIB.TXT for terms
+;---------------
+
+; SCAN_STRING copies the string-argument pointed to by SI, filtered, to DI.
+;   We return with CX = W[DI-2] set to the number of filtered bytes in the
+;   string.  Filtering consists of the following:
+;       #  is converted to 0D 0A -- a CRLF end-of-line marker
+;       \  followed by a non-hex-digit literalizes the non-hex-digit
+;       \  followed by 2 hex digits is converted to the value given by the
+;          digits
+
+        #if ref STRING_TARGET
+        DATA SEGMENT
+STRING_TARGLEN  DW ?     ; length of the string we are searching for
+STRING_TARGET:           ; contents of the string we are searching for
+  DB 128 DUP ?
+        DATA ENDS
+        #endif
+
+SCAN_STRING:
+  CALL TAIL_BLANKS  ; skip over any leading blanks
+  CMP AL,0D         ; is there an argument?
+  JE >L8            ; error if not
+  MOV AH,' '        ; load default blank delimiter
+  CMP AL,''''       ; is the first character a single quote?
+  JE >L0            ; jump if yes, to make single-quote the delmiter
+  CMP AL,""""       ; is the first character a double-quote?
+  JNE >L1           ; skip if not, to use a blank as the delimiter
+L0:                 ; the frist character is a quote mark
+  MOV AH,AL         ; use it as the delimiter
+  INC SI            ; advance beyond the opening delimiter
+L1:
+  PUSH DI           ; preserve output pointer across call
+L2:                 ; loop here for each character of the argument
+  LODSB             ; fetch the character
+  CMP AL,0D         ; is it the line-terminator?
+  JE >L5            ; jump if it is
+  CMP AL,9          ; is it a tab character?
+  IF E MOV AL,' '   ; if yes then convert it to a blank
+  CMP AL,'\'        ; is it the special escape-character?
+  JE >L6            ; jump if yes
+L9:
+  CMP AL,'#'        ; is it a CRLF marker?
+  JNE >L3           ; skip if not
+  MOV AL,0D         ; it is a CRLF marker: output a CRLF
+  STOSB             ; CR is output
+  MOV AL,0A         ; linefeed is loaded and ready for output
+L3:
+  STOSB             ; output the character
+  CMP AL,AH         ; is it the delimiter?
+  JNE L2            ; loop if not, to scan the next character
+  DEC DI            ; retreat output pointer back to delimiter
+L4:                 ; common exit point
+  MOV CX,DI         ; fetch the beyond-pointer
+  POP DI            ; restore the starting output pointer
+  SUB CX,DI         ; calculate the argument length
+        #if !NO_STRLEN
+  ES MOV W[DI-2],CX ; store the length before the output string
+        #endif
+  RET
+
+L5:                ; string was terminated by 0D end-of-tail
+  DEC SI           ; retreat input pointer back to the terminator
+  CMP AH,' '       ; string delimiter had better be blank
+  JE L4            ; normal exit if yes
+L8:
+        #if UNCLOSED_STRING
+  JMP UNCLOSED_STRING
+        #else
+  JMP USAGE_EXIT
+        #endif
+
+L6:                 ; special "\" escape character was seen
+        #if STR_PATHWORD
+  CMP AH,' '        ; is this a single-word string?
+  JE L9             ; pass \ as-is if it is: the word might be a file-path
+        #endif
+  CALL SI_HEX_DIGIT ; scan the following hex digit
+  JC >L7            ; jump if it was not a hex digit
+  PUSH AX           ; save AH delimiter byte
+  MOV AH,AL         ; move first binary value to AH
+  CALL SI_HEX_DIGIT ; get the second binary value
+  JC >L9            ; jump if the second byte was not a hex digit
+  MOV CL,4          ; load the shift count
+  SHL AH,CL         ; shift first digit into the high nibble
+  OR AL,AH          ; combine the two digit values into AL
+  STOSB             ; output the value
+  POP AX            ; restore the AH delimiter
+  JMP L2            ; loop to scan more characters
+
+L9:                 ; second following non-hex-digit was seen
+  POP AX            ; restore AH delimiter
+  DEC SI            ; retreat to the non-hex digit, drop to go to false hex
+L7:                 ; \ followed by non-hex-digit was seen
+  DEC SI            ; retreat to the non-hex-digit
+  MOVSB             ; copy the literalized character to the output
+  JMP L2            ; loop to scan more characters

@@ -1,0 +1,11 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  ERREXIT                                       See EILIB.TXT for terms
+;---------------
+
+; ERROR_EXIT outputs the CS:AX pointed error message, and exits the program
+;   with a code of 1.
+
+ERROR_EXIT:
+  CALL EMESSAGE       ; output the CS:AX-pointed, null-terminated message
+  JMP BAD_EXIT        ; exit the program with a nonzero exit code
+

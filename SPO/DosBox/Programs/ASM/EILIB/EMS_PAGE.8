@@ -1,0 +1,59 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  EMS_PAGE                                      See EILIB.TXT for terms
+;---------------
+
+; EMS_SAVE and EMS_RESTORE are called by interrupt and TSR code to preserve
+;   the context of EMS memory as it exists in the interrupted program.
+
+; EMS_HANDLE_FUNC executes EMS function AH, with the handle returned by the
+;   previous call to EMS_ALLOC.  We jump to EMS_ERROR, supplied by the calling
+;   program, if there was an error code AH returned by the EMS handler.
+
+; EMS is a DOS-based memory-expansion technique that is no longer commonly
+;   used.  I am including these library routines because they had appeared
+;   in an earlier version of EILIB.
+
+EMS_CLOSE:
+  MOV AH,045            ; EMS function number for CLOSE
+  DB 03D                ; skip over other MOV AH's, to EMS_HANDLE_FUNC
+EMS_SAVE:
+  MOV AH,047            ; EMS function number for SAVE_CONTEXT
+EMS_HANDLE_FUNC:
+  CALL EMS_INT          ; perform the EMS service
+  JNZ >E1               ; jump if there was an error
+  RET
+
+E1:                     ; an error code was returned by the EMS handler
+  JMP EMS_ERROR         ; jump to code provided by the calling program
+
+
+EMS_RESTORE:
+  MOV AH,048            ; EMS function number for RESTORE_CONTEXT
+EMS_INT:
+  CMP AL,AL             ; default Z in case we are disabled
+EMS_ENABLE DB
+  RET                   ; replaced with NOP by EMS_ALLOC
+  PUSH DX               ; save register across call
+  MOV DX,0              ; fetch our EMS handle
+EMS_HANDLE EQU W[$-2]   ; the handle is plugged in above by EMS_ALLOC
+  INT 067               ; perform the function
+  TEST AH               ; set NZ if the call failed
+  POP DX                ; restore clobbered register
+  RET
+
+
+
+; MAP_EMS_PAGE assigns logical page number BL (where BL is less than the number
+;   of pages allocated) to physical frame number AL (where AL is 0--3).
+
+MAP_EMS_PAGE:
+  PUSH BX               ; save register across call
+  MOV BH,0              ; high byte of logical page is always zero
+  MOV AH,044            ; EMS function number for MAP_MEMORY
+  CALL EMS_HANDLE_FUNC  ; map the page
+  MOV AX,0              ; fetch the segment register frame address
+EMS_FRAME EQU W[$-2]    ; the address is plugged in above by EMS_ALLOC
+  POP BX                ; restore clobbered register
+  RET
+
+

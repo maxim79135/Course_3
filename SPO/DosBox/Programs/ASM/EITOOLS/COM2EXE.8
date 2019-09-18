@@ -1,0 +1,62 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COM2EXE                                      See EILIB.TXT for terms
+;---------------
+
+; COM2EXE converts a COM file into an equivalent EXE file.  This is only
+;   needed when there is some outside reason why a program should be named
+;   as an EXE file-- there is no functional advantage to be gained by this
+;   process.
+
+        DATA SEGMENT
+COM_NAME:               ; buffer for constructing the COM name
+  DB 20 DUP ?           ; no subdirectories, so 20 bytes suffices
+EXE_NAME:               ; buffer for constructing the EXE name
+  DB 20 DUP ?           ; no subdirectories, so 20 bytes suffices
+FHEADER:                ; EXE file header
+  DB 512 DUP ?          ; header occupies 512 bytes
+FCONTENT:               ; buffer for COM program contents
+  DB 58000 DUP ?        ; limit of COM size is 58000 bytes
+        DATA ENDS
+
+COM2EXE:
+  MOV SI,081              ; point to our invocation command tail
+  MOV DX,DI,COM_NAME      ; we will output to COM_NAME and then open that file
+  PUSH SI                 ; save the command tail pointer
+  MOV BX,COM_EXT          ; point to the COM extension
+  CALL COPY_FILE_ROOT     ; construct the COM file name
+  POP SI                  ; restore the command tail pointer
+  MOV DI,EXE_NAME         ; we will output to EXE name
+  MOV BX,EXE_EXT          ; point to the EXE extension
+  CALL COPY_FILE_ROOT     ; construct the EXE file name
+  CALL MOPEN_READ         ; open the input COM file
+  MOV CX,48000            ; load the size limit for the COM file
+  MOV DX,FCONTENT         ; point to the buffer for the COM file
+  CALL MREAD              ; read the entire COM file
+  XCHG BP,AX              ; swap the actual count into BP
+  CALL MCLOSE             ; close the input file
+  CALL NO_MORE_ARGS       ; insure there is nothing else on the command line
+  MOV DI,FHEADER          ; initialize the output pointer
+  PUSH DI                 ; save the output pointer
+  CALL OUT_COM2EXE        ; output the converted EXE file
+  MOV DX,EXE_NAME         ; point to the name of the EXE file
+  CALL MCREAT             ; create the open the EXE file
+  POP DX                  ; restore the starting output pointer
+  CALL MCLOSE_DI          ; write and close the EXE file
+  MOV DX,COM_NAME         ; point to the COM file name
+  MOV AH,041              ; MS-DOS function number for DELETE
+  INT 021                 ; delete the COM file
+  RET
+
+
+COM_EXT:            ; extensions to be fed to COPY_FILE_ROOT
+  DB 'COM',0
+EXE_EXT: 
+  DB 'EXE',0
+
+
+USAGE_MSG:
+  DB 'usage: COM2EXE progname',0D,0A
+  DB '   converts progname.COM to an equivalent progname.EXE',0D,0A
+  DB 0
+
+

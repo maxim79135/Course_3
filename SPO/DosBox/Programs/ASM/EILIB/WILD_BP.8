@@ -1,0 +1,26 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   WILD_BP                                      See EILIB.TXT for terms
+;---------------
+
+; WILD_BP_ACT calls the BP action routine once for every file conforming
+;   to the SI-pointed wildcard specification.  BP is called with DX pointing
+;   to the name of the individual file to be processed.  We leave the DI
+;   register untouched, for the BP routine to maintain as it chooses.
+
+WILD_BP_ACT:
+  PUSH DI,BP            ; save registers across call
+  SUB CX,CX             ; we will copy all the stack to the the end of SS
+  CALL WILD_ARGS        ; expand wildcard specifications in the command tail
+  POP BP,DI             ; restore clobbered regsiters
+  JCXZ RET              ; skip if there were no arguments
+L1:                     ; loop here to pop and process each file name
+  LODSW                 ; fetch the file name pointer
+  XCHG DX,AX            ; swap the pointer into DX, for DOS's convenience
+  PUSH CX,SI,BP         ; save our pointers count, pointer, and action pointer
+  CALL BP               ; call the action routine supplied by our caller
+  POP BP,SI,CX          ; restore clobbered registers
+  LOOP L1               ; loop to process another file
+  RET
+
+
+

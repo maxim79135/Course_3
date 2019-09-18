@@ -1,0 +1,69 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   TOTAL                                        See EILIB.TXT for terms
+;---------------
+
+; TOTAL is a program that adds up the total size of the files given as its
+;   arguments.  The wild-card characters * and ? are allowed. The total is
+;   reported as a single-line sentence to standard output.  If no argument
+;   is given, *.* is assumed.
+
+TOTAL:
+  MOV SI,081            ; point to our invocation command tail
+  CALL COPY_TAIL        ; copy the command tail to another buffer
+  CALL TAIL_BLANKS      ; skip over leading blanks
+  CMP AL,0D             ; is the command tail empty?
+  IF E MOV SI,ALL       ; use *.* if it is empty
+L1:                     ; loop here for each file specification
+  CALL FILE_ARG         ; scan and terminate the file specification
+  CALL TOTAL_FILES      ; total all the file sizes for this specification
+  CALL TAIL_BLANKS      ; skip over intervening blanks
+  CMP AL,0D             ; have we reached the end of the command tail?
+  JNE L1                ; loop if not, to total the next specification
+  MOV AX,LOW_TOTAL W    ; total is complete: fetch the low word
+  MOV DX,HIGH_TOTAL W   ; fetch the high word
+  MOV DI,NUM_BUFF       ; point to number buffer, for output
+  CALL OUT_DECIMAL8     ; output the total of the file sizes
+  MOV AX,0A0D           ; load terminating CRLF
+  STOSW                 ; terminate the message with the CRLF
+  MOV DX,MESSAGE        ; point to the output message
+  CALL OWRITE_DI        ; output the message
+  JMP GOOD_EXIT         ; exit the program
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: TOTAL fnames',0D,0A
+  DB '   gives the total size of files',0D,0A
+  DB 0D,0A,0,01A
+
+
+ALL:                ; string that is used if no argument given
+  DB '*.*',0D,0
+
+LOW_TOTAL  DW 0     ; low word of accumulated answer
+HIGH_TOTAL DW 0     ; high word of accumulated answer
+
+
+; TOTAL_FILES calls the MS-DOS wildcard-find function to find all files matching
+;   the DX-pointed specification.  If any are found, we add the file size into
+;   our variables LOW_TOTAL and HIGH_TOTAL.
+
+TOTAL_FILES:
+  MOV AH,04E        ; function number for FIND FIRST WILDCARD
+  INT 021           ; call MS-DOS to find the first wildcard
+  JC RET            ; return if there was no wildcard
+L1:                 ; loop here for every file found
+  MOV AX,W[09A]     ; fetch the low word of the file size
+  MOV BX,W[09C]     ; fetch the high word of the file size
+  ADD LOW_TOTAL,AX  ; add it into the low word of our total
+  ADC HIGH_TOTAL,BX ; add it, with carry, into our high word
+  MOV AH,04F        ; function number for FIND NEXT WILDCARD
+  INT 021           ; call MS-DOS to find the next wildcard
+  JNC L1            ; loop if another file was found
+  RET
+
+MESSAGE:
+  DB 'Total size of files is '
+NUM_BUFF EQU $
+  DB 10 DUP ?
+
+

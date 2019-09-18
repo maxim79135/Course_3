@@ -1,0 +1,96 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OMODBAK                                      See EILIB.TXT for terms
+;---------------
+
+; OPEN_MODBAK opens for output a temporary file that will become the file
+;   whose name is pointed to by SI.
+
+; RENAME_MODBAK is called after calling OPEN_MODBAK, writing the file,
+;   and closing the file.  We rename the original file to its .BAK equivalent,
+;   and rename the temporary file to the original name.
+
+        DATA SEGMENT
+BAK_NAME:                 ; buffer for the constructed .BAK file name
+  DB 128 DUP ?            ; plenty of room for subdirectory names
+TMP_NAME:                 ; buffer for the constructed .TMP file name
+  DB 128 DUP ?
+        DATA ENDS
+
+L1:                       ; extension fed to NEWEXT_NAME
+  DB '.BAK'
+L2:                       ; extension fed to NEWEXT_NAME
+  DB '.TMP'
+
+OPEN_MODBAK:
+  CALL TAIL_BLANKS        ; skip over any leading blanks
+  MOV >L7 W,SI            ; store the file name pointer for later rename
+  MOV DI,TMP_NAME         ; point to our temporary-name buffer
+  PUSH DI,SI              ; save TMP_NAME and source pointer
+  MOV BX,L2               ; point to .TMP
+  CALL NEWEXT_MAKE        ; create the .TMP file name
+  POP SI                  ; restore the source pointer
+  MOV DI,BAK_NAME         ; point to BAK buffer
+  MOV BX,L1               ; point to .BAK
+  CALL NEWEXT_MAKE        ; create the .BAK file name
+  INC SI                  ; advance past the terminating null
+  POP DX                  ; point DX to the .TMP file name
+  JMP MCREAT              ; open the temporary file for output
+
+RENAME_MODBAK:  
+  PUSH DS                 ; save register across call
+  MOV DS,SS               ; point DS to the main segment
+  MOV DX,BAK_NAME         ; restore BAK pointer
+  MOV DI,DX               ; copy BAK pointer to DI
+        #if LONG_FNAMES
+  PUSH CX,SI        ; save registers during delete
+  SUB CX,CX         ; no attribute matching
+  SUB SI,SI         ; no wildcard action
+  MOV AX,07141      ; MS-DOS function number for RENAME
+  INT 021           ; delete the second file
+  POP SI,CX         ; restore clobbered registers
+        #else
+  MOV AH,041        ; MS-DOS function number for DELETE
+  INT 021           ; delete the second file
+        #endif
+  POP DS                  ; restore clobbered register
+  MOV DX,0                ; point DX to the original file name
+L7 EQU W[$-2]             ; original-name pointer plugged into above imm value
+  CALL TRY_RENAME         ; rename the original file to a .BAK file
+  MOV DI,DX               ; copy the modify-pointer to DI
+  MOV DX,TMP_NAME         ; point to temporary name
+TRY_RENAME:
+  PUSH DS                 ; save register across call
+  MOV DS,SS               ; point DS to the main segment
+  MOV CX,10               ; we will try 10 times to rename the file
+L2:                       ; loop here to each attempt
+  PUSH CX                 ; save the attempt counter
+        #if LONG_FNAMES
+  MOV AX,07156      ; long-names MS-DOS function number for RENAME
+        #else
+  MOV AH,056        ; MS-DOS function number for RENAME
+        #endif
+  INT 021                 ; rename the modify-file to the BAK file
+  POP CX                  ; restore the attempt counter
+  JNC >L6                 ; if we succeeded then simply return
+  LOOP >L3                ; jump if there are more attempts
+  MOV AX,>L5              ; attempts are exhausted: load error message
+  CALL EMESSAGE           ; output the error message
+  MOV AL,2                ; load a non-zero return code
+  JMP EXIT                ; exit the program with a nonzero code
+
+L6:
+  POP DS                  ; restore clobbered register
+  RET
+
+L3:                       ; jump here if there are more attempts to be made
+  MOV AX,20000            ; load a loop counter
+L4:                       ; loop here to waste time
+  DEC AX                  ; count down the time-wasting counter
+  JNZ L4                  ; loop to waste more time
+  JMP L2                  ; jump to retry the renaming operation
+
+L5:
+  DB 'Sorry, rename failed.',0D,0A,0
+
+
+

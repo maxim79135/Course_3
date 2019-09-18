@@ -1,0 +1,30 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FHEAD                                        See EILIB.TXT for terms
+;---------------
+
+; FHEAD outputs the head of its input file, up to but not including the line
+;   containing the first instance of the command-tail string.
+
+FHEAD:
+  MOV SI,081              ; point to our invocation command tail
+  MOV BP,DI,STRING_TARGET ; point to destination for the first (string) arg
+  CALL SCAN_STRING        ; scan the string-argument
+  MOV BX,CX               ; set BX to the string length, for PF_FIND
+  JMP PFILE_IOARG         ; scan file argument(s) and call PROCESS_FILE
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FHEAD string filename [>]outfile',0D,0A
+  DB '  outputs the start of a file, up to but not including',0D,0A
+  DB '  the first line containing the found string.',0D,0A
+  DB 0,01A
+
+PF_FIND_PROC EQU FIND_NOCASE    ; string searching is non case-sensitive
+PFILE_REC EQU PF_FIND           ; our PROCESS_FILE action is to find a string
+ONE_FOUND_ACT EQU 1             ; we need only act on the first string
+OWR_OPTIONAL EQU 1              ; output file command argument is optional
+
+PF_FOUND_ACT:
+  CALL SET_RECORD_P       ; point SI to the data record containing the string
+  JMP FEX_FLUSH           ; flush to output any unoutput bytes up to SI

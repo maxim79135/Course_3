@@ -1,0 +1,155 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FUPDATE                                      See EILIB.TXT for terms
+;---------------
+
+; FUPDATE updates a database file, as controlled by an update file.  Our
+;   command tail consists of a sequence of decimal numbers defining the
+;   parameters for the fields to be updated, followed by the names of
+;   the update, input (old) database, and output (new) database files.
+;   The parameters are: skip count, record size, and the offset and size
+;   of each field within a database record.  The first field given is the
+;   "key field": the database must be sorted on that field.
+;
+;   The update file must consist of a sequence of lines, coming in pairs.
+;   The first line of each pair is a minus sign followed by fields from
+;   the old database.  The fields are separated by blanks.  The second
+;   line of each pair is a plus sign followed by the replacement fields,
+;   also spearated by blanks.  The update file must be sorted by the
+;   key field of each minus-line.
+
+        DATA SEGMENT
+
+DTABLE:
+  RSKIP   DW ?          ; number of initial records to skip
+  RSIZE   DW ?          ; size of each record
+R_OFFSETS:
+          DW 100 DUP ?  ; offset and size of each field within a record
+        DATA ENDS
+
+FUPDATE:
+  CALL READ_DTABLE      ; read the field parameters
+  CALL MERGE_21         ; set up buffers and call PROCESS_MERGE repeatedly
+  JMP GOOD_EXIT         ; exit the program
+
+
+L0:                           ; jump here on the first PROCESS_MERGE
+  MOV PROCESS_MERGE W,09090   ; disable the jump to this code
+  MOV CX,RSKIP                ; load the skip size
+  JMP >L7                     ; jump to flush the skip bytes
+
+PROCESS_MERGE:
+  JMP L0            ; jump to initial-skipping code
+;
+; after the first call, code drops through to the following:
+;
+  MOV CX,BP         ; fetch the pointer beyond the database buffer
+  SUB CX,BX         ; calculate the number of available database bytes
+  JZ >L8            ; jump if there are no database bytes, to flush updates
+  CMP CX,RSIZE      ; is there a full database record?
+  JB >L7            ; jump if not, to flush what there is
+  CMP SI,DX         ; are there any update bytes?
+  JAE >L7           ; jump if not, to flush the database
+  CMP B[SI],'-'     ; do the update bytes constitute a valid record?
+  JNE >L8           ; jump if not, to flush those bytes
+  PUSH SI,DI        ; preserve database and output pointers
+  CALL KEY_SETUP    ; set up to compare key fields
+  REPE CMPSB        ; compare update key minus database key
+  JB >L6            ; flush the update so it is less than the database
+  JA >L5            ; flush the database if the update is greater
+L2:                 ; keys match: loop here for each other field's match
+  CALL BP_SETUP     ; set up to compare the next field
+  JC >L3            ; jump if there are no more fields: we have a perfect match
+  REPE CMPSB        ; compare the field
+  JE L2             ; loop if the fields match
+  CALL NEXT_LINES   ; no match: advance the update pointer
+  CALL KEY_SETUP    ; set up to compare the next update key field
+  REPE CMPSB        ; is the next update key field the same?
+  JE L2             ; loop if it is, to compare subsequent fields
+L5:                 ; no match was found
+  POP DI            ; restore the output pointer
+  MOV CX,RSIZE      ; load the size of a database record
+L7:                 ; output CX bytes of the database buffer
+  MOV SI,BX         ; swap the database pointer into SI
+  REP MOVSB         ; copy the database record
+  MOV BX,SI         ; restore the database pointer
+  POP SI            ; restore the update pointer
+  RET  
+
+L8:                 ; database exhausted; or update buffer has garbage
+  MOV SI,DX         ; flush the update buffer
+  RET
+
+L3:                 ; we have a matching field: update the database buffer
+  CALL NEXT_LINE    ; advance SI to the next, insertion line
+  CALL KEY_SETUP    ; set up for copying the key field
+L4:                 ; loop here to copy each field
+  REP MOVSB         ; copy the field to the output buffer
+  CALL BP_SETUP     ; set up the next field for copying
+  JNC L4            ; loop if the fields were not exhausted
+  JMP L5            ; database field is updated: jump to output it
+
+L6:                 ; we need to flush the update record
+  POP DI,SI         ; restore output and update pointers
+NEXT_LINES:         ; advance SI to the second-next line
+  CALL NEXT_LINE    ; advance to the next line
+NEXT_LINE:          ; advance SI beyond the next linefeed
+  LODSB             ; fetch a character
+  CMP AL,0A         ; is it the terminating linefeed?
+  JNE NEXT_LINE     ; loop if not, to fetch another character
+  RET
+
+
+; BP_SETUP fetches the BP-pointer record offset and size, points DI to
+;   the record (at BX+offset), and sets CX to the size.  We return Carry
+;   if there was a terminating 0FFFF at BP.
+
+KEY_SETUP:          ; alternate entry to start at the offsets table
+  MOV BP,R_OFFSETS  ; point BP to the offsets table
+BP_SETUP:
+  INC SI            ; increment SI beyond the separator byte
+  MOV DI,[BP]       ; fetch the offset
+  MOV CX,[BP+2]     ; fetch the size
+  ADD BP,4          ; advance the offsets pointer
+  ADD DI,BX         ; point DI to the record -- sets Carry if offset was 0FFFF
+  RET
+
+
+; READ_DTABLE reads the field parameters from the command tail into our
+;   DTABLE buffer, and returns SI pointing to the first file name, beyond
+;   the decimal nuumbers.
+
+READ_DTABLE:
+  MOV SI,081            ; point to the start of the command tail
+  MOV DI,DTABLE         ; point to the parameters buffer, for output
+  CALL DECIMAL_PAIR     ; gather the skip count and record size
+L1:                     ; loop here to gather each field
+  CALL DECIMAL_PAIR     ; gather the offset and size for this field
+  CALL DEC?             ; is there anouther field?
+  JBE L1                ; loop if there is, to gather it
+  MOV AX,0FFFF          ; no more fields: load terminator
+  STOSW                 ; output the terminator to the field offsets
+  RET
+  
+
+DECIMAL_PAIR:
+  CALL VERIFY_DEC     ; fetch the next decimal number
+  STOSW               ; output to our parameters array
+  CALL VERIFY_DEC     ; fetch the next decimal number
+  STOSW               ; output to our parameters array
+  RET
+
+
+; DEC? returns BE if the next SI-pointed nonblank is a decimal digit.
+
+DEC?:
+  CALL TAIL_BLANKS  ; skip to the non-blank
+  SUB AL,'0'        ; reduce digits range to zero
+  CMP AL,9          ; set BE if we had a digit
+  RET
+
+
+USAGE_MSG:
+DB 'usage: FUPDATE skipct recsize [... f_offset f_size] updates old_dbf new_dbf'
+DB 0D,0A
+DB 0
+

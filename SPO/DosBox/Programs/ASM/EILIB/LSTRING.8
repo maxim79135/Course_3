@@ -1,0 +1,21 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   LSTRING                                      See EILIB.TXT for terms
+;---------------
+
+; LSTRING_AX outputs to DI-pointed memory the CS:AX-pointed string.  The
+;   string consists of a length byte, followed by the number of characters
+;   indicated by the length byte.
+
+LSTRING_AX:
+  PUSH DS,CX        ; preserve registers across call
+  MOV DS,CS         ; point to our own program's segment
+  XCHG SI,AX        ; swap pointer into SI
+  XCHG CX,AX        ; swap caller's SI into CX
+  LODSB             ; load the length of the message
+  CBW               ; extend the length AL to AX
+  XCHG AX,CX        ; restore caller's CX, swap caller's SI back to AX
+  REP MOVSB         ; output the string
+  XCHG SI,AX        ; restore caller's SI
+  POP CX,DS         ; restore caller's CX and DS
+  RET
+

@@ -1,0 +1,180 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FREFS                                        See EILIB.TXT for terms
+;---------------
+
+; FREFS is a tool that finds the instances of a string within a sequence
+;   of files, and prepares an report of found instances, with one report
+;   line for each instance.  The report line contains the name of the
+;   containing file, some bytes before the found string, the found
+;   string (aligned to a fixed column within the line), and some bytes
+;   after the string.  Control characters (CR, LF, Tab, etc.) are converted
+;   to ^ in the display.  The resulting file can be fed to CSORT to obtain
+;   a sorted list of references to the found word.
+;
+;   To assist numerical sorting, a number is right-justified within a
+;   fixed-sized field if that number immediately follows the found string.
+;   
+;   You invoke FREFS by typing
+;
+;    FREFS n1 n2 n3 n4 string filelist >outfile
+;
+;   where n1 through n4 are decimal numbers giving the size of each output
+;   field in succession:
+;
+;   n1 gives the size of the file name display field.  If the name is shorter
+;     than the field, it will be blank padded; if longer, truncated.  There
+;     will always be at least one blank at the end of the field.
+;     
+;   n2 gives the number of bytes displayed before and including the found
+;     string.
+;
+;   n3 gives the number of digits of the largest possible following number.
+;     If 0, no right-justification will be done.
+;
+;   n4 gives the number of bytes displayed after the found string and
+;     number.  If a number does not follow the found string, there
+;     are n3+n4 bytes displayed, immediately following the found string.
+;
+;   Thus, each display line will occupy n1+n2+n3+n4 bytes; so that the
+;   sum should not exceed the display width of the printer or screen to
+;   be used to view the results.
+
+;   There is an option to leave out all the numbers, in which case default
+;   values of 12 30 7 30 are used.  If any number is given, all four numbers
+;   must be given.
+
+;   "string" is any string of characters, whose definition starts with
+;   the first non-blank character after the FC program name.  If the string
+;   defintion starts with a digit or letter (actually, any character whose
+;   ASCII code is >= '0'), then the definition consists of that character
+;   up to but not including the next blank. If the string begins with a
+;   punctuation mark (less than '0', which includes single-quote and
+;   double-quote), then the character is the delimiter-- the string runs from
+;   the following character up to but not including the next instance of that
+;   delimiter.
+
+;   "filelist" is any number of file names to be searched.  Wildcards are
+;   allowed.
+
+FREFS:
+  MOV SI,081              ; point to our invocation command tail
+  CALL SCAN_NUMS          ; scan the numeric arguments, if given
+  MOV BP,DI,STRING_TARGET ; point to destination for the first (string) arg
+  CALL SCAN_STRING        ; scan the string-argument
+  MOV BX,CX               ; set BX to the count, for PFOUND_WILD_HERE
+  MOV DI,OBUFF            ; initialize our output pointer
+  CALL FIND_STRINGS       ; scan wildcard file args and find the strings there
+  CALL FLUSH_OBUFF        ; flush any pending output content
+  JMP GOOD_EXIT           ; exit the program
+
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FREFS [n1 n2 n3 n4] string filenames',0D,0A
+  DB '  finds string, ignoring case',0D,0A
+  DB '  output summary is in aligned lines, with',0D,0A
+  DB '    n1 bytes of file name',0D,0A
+  DB '    n2 bytes preceding and including found string',0D,0A
+  DB '    n3 bytes of right-justified number, if it follows the string',0D,0A
+  DB '    n4 bytes following the string-and-number',0D,0A
+  DB '     (defaults 12 30 7 30)',0D,0A
+  DB 0,01A
+
+
+; FIND_STRINGS is called with SI pointing to one or more file names, possibly
+;   containing wildcard characters.  The PFOUND_WILD_HERE routine handles
+;   all the name parsing, wildcard expansion, file reading and buffering,
+;   and string searching for us.  It will call the code following its CALL
+;   instruction, for every string found within any file named.  The code is
+;   called with SI pointing to an instance of a found string within a file.
+;   We output the containing record to the DI-pointed output buffer.
+
+FIND_STRINGS:
+  CALL PFOUND_WILD_HERE   ; call following code when string found in any file
+  ADD SI,BX               ; string found: advance SI beyond the string
+  CALL OUT_FNAME          ; output the file name
+  MOV CX,30               ; load the before-count
+NDIS_BEFORE EQU W[$-2]    ; count is plugged in during command-tail scanning
+  SUB SI,CX               ; retreat the input pointer by the before-count
+  CALL OUT_DISCHARS       ; output the characters before the string
+  MOV BP,SI               ; save the pointer just beyond the found string
+  MOV CX,7                ; load the numeric-field count
+NDIS_NUMBER EQU W[$-2]
+  JCXZ >L7                ; skip if there will be no numeric field
+  CALL TAIL_BLANKS        ; skip past any intervening blanks beyond string
+  SUB AL,'0'              ; reduce the digits range to zero
+  CMP AL,10               ; is there a number?
+  JAE >L7                 ; skip if not
+  MOV BP,SI               ; there is a number: point BP to it
+  SUB BX,BX               ; initialize numeric field counter
+L5:                       ; loop here to scan the digits of the number
+  LODSB                   ; fetch a character
+  SUB AL,'0'              ; reduce digits-range to zero
+  CMP AL,10               ; is it a digit?
+  JAE >L2                 ; exit loop if not a digit
+  INC BX                  ; it is a digit: count it
+  LOOP L5                 ; loop to scan for another digit
+L2:                       ; scanning is complete
+  MOV AL,' '              ; load blank
+  REP STOSB               ; pad the leading part of the field with blanks
+  MOV CX,BX               ; load the digits count
+L7:
+  MOV SI,BP               ; point SI to the trailing buffer part
+  ADD CX,30               ; add the trailing size into the digits count
+NDIS_AFTER EQU B[$-1]
+L8:
+  CALL OUT_DISCHARS       ; output the trailing part
+  MOV AX,0A0D             ; load CRLF
+  STOSW                   ; output CRLF
+  RET
+
+
+; OUT_FNAME outputs the current file name, right-justified, to DI.
+
+OUT_FNAME:
+  LEA CX,[DI+11]          ; point CX beyond the field
+NDIS_PATH EQU B[$-1]      ; field size is plugged into above imm value
+  SS MOV AX,PFILE_NAME W  ; point SI to this file name
+  CALL COPYZ_AX           ; output the file name
+  SUB CX,DI               ; did the name fill the field?
+  JAE >L1                 ; skip if not
+  ADD DI,CX               ; the name was too long: retreat the output pointer
+  SUB CX,CX               ; zero out the padding count
+L1:
+  MOV AL,' '              ; load another separator-space
+  INC CX                  ; we will output at least one space
+  REP STOSB               ; pad out the file-name field
+  RET
+
+
+OUT_DISCHARS:         ; output CX chars, converting control-chars to ^
+  JCXZ RET            ; return if the count is zero
+L1:                   ; loop here to copy each character
+  LODSB               ; fetch a character
+  CMP AL,' '          ; is it a control-char?
+  IF B MOV AL,'^'     ; if yes then change it to a ^
+  STOSB               ; output the character
+  LOOP L1             ; loop to copy the next character
+  RET
+
+
+SCAN_NUMS:            ; scan numbers in our command tail
+  CALL TAIL_BLANKS    ; advance to the first argument
+  SUB AL,'0'          ; reduce digits-range to zero
+  CMP AL,9            ; is it a digit?
+  JA RET              ; return if not: we will use the defaults
+  CALL SCAN_DECIMAL   ; it is a digit: scan the number n1
+  AND AL,07F          ; mask the number down to byte size
+  IF NZ DEC AX        ; reduce the count by the trailing blank always output
+  MOV NDIS_PATH,AL    ; store the file-name field size
+  CALL VERIFY_DEC     ; fetch the next number n2
+  MOV NDIS_BEFORE,AX  ; store the before-field size
+  CALL VERIFY_DEC     ; fetch the next number n3
+  MOV NDIS_NUMBER,AX  ; store the numeric field size
+  CALL VERIFY_DEC     ; fetch the last number n4
+  MOV NDIS_AFTER,AL   ; store the after-field size
+  RET
+
+
+

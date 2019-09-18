@@ -1,0 +1,52 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  FILEROOT                                      See EILIB.TXT for terms
+;---------------
+
+; COPY_FILE_ROOT copies the SI-pointed file name to DI, filtering out all
+;   but the root part-- skipping any leading drive or directory specifications,
+;   and any trailing extension.  We append the BX-pointed, null-terminated
+;   extension (including the null) to the name.  We return Z if no name was
+;   output.
+
+COPY_FILE_ROOT:
+  CALL TAIL_BLANKS    ; skip over any leading blanks
+  PUSH BX,CX          ; preserve registers across call
+  MOV BX,DI           ; save the starting pointer
+L1:                   ; loop here if a drive colon or subdir \ was seen
+  MOV DI,BX           ; reset the output back to the start
+  MOV CX,8            ; there are at most 8 characters in the name
+L2:                   ; loop here to copy each character of the name
+  LODSB               ; fetch a character
+  CMP AL,' '          ; is it a terminating blank or control char?
+  JBE >L6             ; jump if it is
+  CMP AL,07E          ; is it too high?
+  JAE >L6             ; jump if it is, to terminate the name
+  CMP AL,'.'          ; is it a file-extension period?
+  JE >L5              ; jump if it is, to ignore extension
+  CMP AL,':'          ; is it a drive-specifying colon?
+  JE L1               ; loop if it is, to retract the output
+  CMP AL,'\'          ; is it a subdirectory specifier?
+  JE L1               ; loop if it is, to retract the output
+  CMP AL,'a'          ; is it too low to be a lower case letter?
+  JB >L7              ; jump if too low
+  CMP AL,'z'          ; is it too high to be a lower case letter?
+  IF BE AND AL,0DF    ; if not then coerce the letter to upper-case
+L7:
+  STOSB               ; output the character
+  LOOP L2             ; loop for another character
+L5:                   ; loop here to scan past the tail of the name
+  LODSB               ; fetch a character
+  CMP AL,' '          ; is it a blank or control character?
+  JA L5               ; loop if not
+L6:
+  DEC SI              ; retreat back to the terminating character
+  CMP DI,BX           ; set NZ if there was a name that was output
+  POP CX,BX           ; restore clobbered registers
+  JZ RET              ; skip if there was no name output
+  MOV AL,'.'          ; there was a name: load extension dot
+  STOSB               ; output the dot
+  MOV AX,[BX]         ; load the first two letters of the extension
+  STOSW               ; output the first two letters of the extension
+  MOV AX,[BX+2]       ; load the last two letters of the extension
+  STOSW               ; output the last two letters
+  RET

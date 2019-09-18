@@ -1,0 +1,50 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FILE_ARG                                     See EILIB.TXT for terms
+;---------------
+
+; FILE_ARG assumes that SI is pointing somewhere within a command tail.
+;   We advance SI to the next nonblank, which should be a file name.
+;   We point DX to the name, null-terminate it, and return with SI
+;   pointing beyond the name.  We return Carry if there was
+;   no name pointed to by SI.
+
+        #if !NO_DOSCHECK
+E1:                 ; file argument was not seen
+  JMP USAGE_EXIT    ; output a usage message and exit the program
+        #endif
+
+FILE_ARG:
+  CALL TAIL_BLANKS  ; skip any leading blanks
+        #if def NO_DOSCHECK or def IFILE_OPTIONAL
+  SUB DX,DX         ; load null pointer, in case we return a failure
+  CMP AL,0D         ; are we at the end of the command tail?
+  STC               ; set Carry in case we are
+  JE RET            ; return Carry if we are
+        #else
+  CMP AL,0D         ; are we at the end of the command tail?
+  JE E1             ; exit the program if we are
+        #endif
+        #if LONG_FNAMES
+  CMP AL,'"'        ; is this a quoted long filename?
+  JNE >L2           ; skip if not, to perform normal scanning
+  INC SI            ; quote is seen: advance beyond it
+  MOV DX,SI         ; point DX to the first character within the quoted string
+L3:                 ; loop here to scan over the quoted string
+  LODSB             ; fetch a character
+  CMP AL,'"'        ; is it the closing quote?
+  JNE L3            ; loop if not, to continue scanning
+  JMP >L4           ; terminating quote is seen: join common code
+        #endif
+L2:
+  MOV DX,SI         ; point DX to the start of the file name
+L1:                 ; loop here to scan each character of the file name
+  LODSB             ; fetch the character
+  CMP AL,' '        ; is it a blank?
+  JA L1             ; loop if not
+L4:
+  MOV B[SI-1],0     ; terminator seen: convert it to a null terminator
+  CMP AL,0D         ; was it the end of the command line?
+  IF E MOV B[SI],AL ; if yes then terminate the SI-pointed buffer as well
+  CLC               ; NoCarry signals success
+  RET
+

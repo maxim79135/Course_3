@@ -1,0 +1,35 @@
+A86LIB library creation tool  V2.1      December 30, 1994
+Copyright 1987--1994 Eric Isaacson.  All rights reserved.
+
+
+Introduction
+
+A86LIB is a tool used to create source-file libraries for the A86 
+assembler.  It is a "bonus" supplied to registered A86 users 
+only.
+
+Version 2.1 has been revised to place the names of defined macros
+within A86LIB source files into the library, to accommodate A86's
+feature whereby such files will be automatically INCLUDEd just
+before any source line containing a call to a macro that is
+undefined so far in the assembly, but contained in the library.
+
+
+Legal Terms and Conditions 
+
+Although the main A86 package is free-distribution software, this 
+A86LIB package is NOT.  Execution of this program on unregistered 
+computers is illegal.  Uploading this program to bulletin-board 
+systems is illegal. 
+
+Please support A86 and the shareware concept by honoring this 
+restriction, and thus encouraging people to send in 
+registrations.  If you do so, I will have the means to continue 
+supporting and improving my products. 
+
+
+Instructions For Use
+
+The instructions for using A86LIB are in Chapter 13 of the A86
+manual.
+

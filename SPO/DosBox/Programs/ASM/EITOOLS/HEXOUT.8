@@ -1,0 +1,87 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HEXOUT                                       See EILIB.TXT for terms
+;---------------
+
+; HEXOUT is a program that accepts a sequence of hexadecimal numbers in its
+;   invocation line, and outputs the associated binary values to standard
+;   output.  This is useful, for example, to send a sequence of control
+;   codes to your printer.  You could type HEXOUT >PRN followed by the hex
+;   values you want to be sent.
+
+; HEXOUT assumes correct input; it does not support error detection.
+
+
+TAIL_BUFF EQU 081   ; we'll read command tail right where MSDOS gives it to us
+
+HEXOUT:
+  MOV SI,TAIL_BUFF  ; point to the command tail
+L1:                 ; loop here to fetch every hex byte
+  CALL GET_HEX      ; fetch the next value
+  JC >L2            ; jump if there were no more values
+  CALL OUT_VALUE    ; output the resulting byte
+  JMP L1            ; loop for another byte
+
+L2:                 ; scanning is complete
+  MOV AX,04C00      ; MS-DOS function-number for successful exit
+  INT 021           ; go back to the operating system
+
+
+; GET_HEX advances SI to the next hex number, and reads that number.  If we
+;   reach the terminating carriage-return before the next hex digit, we
+;   return Carry.  Otherwise, we return NoCarry, with AL set to the value
+;   of the hex number, and SI advanced beyond the number.
+
+GET_HEX:
+  LODSB             ; fetch the next byte
+  CMP AL,0D         ; is it the terminator?
+  STC               ; set Carry in case it is
+  JE RET            ; return Carry if it is
+  CALL HEX_DIGIT?   ; is the byte a hex digit?
+  JC GET_HEX        ; loop if not, to find the first hex digit
+  MOV AH,AL         ; it is a digit: save the value in AH
+  LODSB             ; fetch the next byte
+  CALL HEX_DIGIT?   ; is it also a hex digit?
+  JC >L1            ; jump if not: 1-digit value
+  AAD 16            ; two hex digits: pack the values into AL
+  CLC               ; NoCarry signals success
+  RET
+
+L1:                 ; the number has a single digit
+  DEC SI            ; retreat input pointer back to the following non-digit
+  MOV AL,AH         ; fetch the single digit's value
+  CLC               ; NoCarry signals success
+  RET
+
+
+; HEX_DIGIT? returns NoCarry if AL is an ASCII hex digit; it also transforms
+;   AL into the associated binary value.  Return Carry if AL was not a hex
+;   digit.
+
+HEX_DIGIT?:
+  SUB AL,'0'        ; reduce decimal digits to their binary values
+  JC RET            ; return Carry if AL was below decimal-digit range
+  CMP AL,10         ; was the value a decimal digit?
+  JB >L1            ; return NoCarry if it was
+  ADD AL,'0'        ; restore input AL
+  AND AL,0DF        ; coerce letters to upper case
+  SUB AL,'A'-10     ; reduce A--F range to 10--15
+  CMP AL,10         ; was input below the A--F range?
+  JB RET            ; return Carry if it was
+  CMP AL,16         ; was input above the A--F range?  NoCarry now set if yes
+L1:                 ; Carry flag is now the opposite of its return value
+  CMC               ; flip it to the correct value
+  RET
+
+
+; OUT_VALUE outputs AL to standard output.
+
+OUT_VALUE:
+  PUSH AX           ; push AL value onto the stack
+  MOV DX,SP         ; MS-DOS memory-pointer now points to the AL-value
+  MOV CX,1          ; we will output 1 byte
+  MOV BX,1          ; open-file handle for standard output is 1
+  MOV AH,040        ; function number for MS-DOS write is 040
+  INT 021           ; write the AL-value to standard output
+  POP AX            ; pop AL back off the stack
+  RET
+

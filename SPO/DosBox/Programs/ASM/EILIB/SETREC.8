@@ -1,0 +1,114 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    SETREC                                      See EILIB.TXT for terms
+;---------------
+
+; SET_RECORD_P is called with DS:SI pointing somewhere within a data record,
+;   sitting within a buffer starting at PFILE_IBUFF and ending at DX.
+;   We scan back to the beginning of the record, and point SI there.  Then
+;   we scan forward to the end of the record, and calculate CX = the length
+;   of the record.
+
+; By default, a "record" is a single line; but this can be changed by the
+; switches defined at the end of this module.
+
+SET_RECORD_P:
+  MOV AL,0A             ; we will search for linefeeds, so load one
+  LEA CX,[SI+1]         ; load CX with our later backwards-scanning pointer
+L1:                     ; loop here to scan forward
+  INC SI                ; advance the input pointer
+  CMP AL,B[SI-1]        ; have we passed a linefeed yet?
+  JNE L1                ; loop if not, to continue scanning
+        #if ref SETREC_SWITCHES
+  CMP SI,DX             ; new line: is it the end of the buffer?
+  JAE >L2               ; exit the loop if it is
+  CALL SETREC_CONT?     ; is it a continuation line?
+SETREC_J1 DB            ; sense of loop reverses if it's a non-continuation
+  JE L1                 ; loop if it is, to scan another line
+L2:
+        #endif
+  XCHG CX,SI            ; end of record: swap ptr to CX, backwards ptr into SI
+L3:                     ; loop here to scan backwards
+  DEC SI                ; retreat the input pointer
+  CMP AL,B[SI-1]        ; have we come back to the beginning of a line?
+  JNE L3                ; loop if not, to continue scanning back
+        #if ref SETREC_SWITCHES
+  CMP SI,PFILE_IBUFF    ; start of line: is it the start of the buffer?
+  JBE >L4               ; exit the loop if it is
+  CALL SETREC_CONT?     ; is this a continuation line?
+SETREC_J2 DB            ; sense of loop reverses if it's a non-continuation
+  JE L3                 ; loop if it's a continuation, to scan back more
+L4:
+        #endif
+  SUB CX,SI             ; start of record: calculate the length of the record
+  RET
+
+
+; The following routines allow for command tail switches, that will alter
+; the behavior of SET_RECORD_P and thus modify the definition of a "record".
+; By default, a "record" is a single line of text, terminated by a linefeed.
+; If the calling program begins with the sequence:
+;
+;  MOV SI,081              ; point to our invocation command tail
+;  MOV BX,SETREC_SWITCHES  ; point to switch table
+;  CALL BX_SWITCHES        ; scan any record-definition switches
+;
+; ...then there will be three switches implemented:
+;
+;    !   will suppress the OUT_FNAME_REC routine (if it has been declared)
+;
+;    -c  will redefine a record as beginning with a nonblank character,
+;        followed by any number of indented lines
+;
+;    +cX will redefine a record as beginning with character X, followed
+;        by any number of lines not beginning with X
+
+        #if ref SETREC_SWITCHES
+SETREC_CONT?:           ; set E if B[SI] is a continuation-line character
+  MOV AH,B[SI]          ; fetch the character
+  CMP AH,' '            ; is the character below a blank?
+  IF BE MOV AH,' '      ; everything below a blank is considered a blank
+  CMP AH,0              ; compare the character to our continuation char
+SETREC_CONT EQU B[$-1]  ; first character of any output continuation lines
+  RET
+
+SETREC_NOCONT:            ; action routine for + switch
+        #if def PLUSNUM_VAR
+  MOV AL,[SI]             ; fetch the character following the plus
+  CMP AL,'0'              ; is it too low to be a digit?
+  JB >L1                  ; jump if it is too low
+  CMP AL,'9'              ; is it too high to be a digit?
+  JA >L1                  ; jump if it is too high
+  CALL SCAN_DECIMAL       ; +n is seen: scan the number n
+  MOV PLUSNUM_VAR,AX      ; store the number n
+  RET
+        #endif
+L1:
+  XOR SETREC_J1,1         ; continuation lines do *not* start with CONTINUE
+  XOR SETREC_J2,1         ;   ... the jump-sense reverses in two places
+SETREC_SETCONT:           ; action routine for - switch
+  LODSB                   ; fetch the following letter
+  AND AL,0DF              ; coerce the letter to upper case
+  CMP AL,'C'              ; is the letter a C?
+L2:
+  MOV AL,0                ; load zero, in case it isn't
+  IF E LODSB              ; if it is, then load the continue character
+  MOV SETREC_CONT,AL      ; store the character defining continuation lines
+  RET
+
+        #if ref OUT_FNAME_REC
+SETREC_NONAME:              ; action routine for ! switch
+  MOV OUT_FNAME_REC B,0C3   ; disable the OUT_FNAME_REC routine
+  RET
+        #endif
+
+SETREC_SWITCHES:              ; action table for CALL SCAN_SWITCHES
+        #if ref OUT_FNAME_REC
+  DB '!'
+  DW SETREC_NONAME            ; ! disables file name output
+        #endif
+  DB '-'
+  DW SETREC_SETCONT           ; -c redfine record as beginning with nonblank 
+  DB '+'
+  DW SETREC_NOCONT            ; +cX redefine record as beginning with X
+  DB 0                        ; action table temrniator byte
+        #endif

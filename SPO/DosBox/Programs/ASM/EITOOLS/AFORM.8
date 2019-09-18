@@ -1,0 +1,145 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  AFORM                             ; See EILIB.TXT for terms
+        ;---------------
+
+; AFORM is a filter that formats all lines according to my assembly-language
+;   formatting conventions.  Everything except comments and strings is
+;   converted to upper case.  Labels appear on their own lines.  Underscores
+;   are inserted at all lower-to-upper case transitions.  Non-label statements
+;   are indented by two spaces.  Tabs and multiple blanks within statements
+;   are reduced to single blanks.
+
+; PROCESS_LINE processes the line of CX bytes pointed to by SI (and beyond by
+;   DI), and copies the line to the output buffer.
+
+L2:                 ; label seen at the start of a line
+  POP SI            ; restore the pointer to the start of the label
+L3:                 ; loop here to output each character of the label
+  CALL COERCE_OUT   ; output a character
+  CMP AL,':'        ; was it the colon?
+  JNE L3            ; loop if not
+  CALL TAIL_BLANKS  ; see what follows the colon
+  CMP AL,0D         ; is there nothing more?
+  JE >L8            ; exit if so
+  CMP AL,';'        ; is there only a comment?
+  JE >L5            ; jump if there is
+  MOV AX,0A0D       ; there is contents: load CRLF
+  STOSW             ; put the label on its own line
+  MOV BP,DI         ; reset BP to new line start
+  MOV TAB_COL W,24  ; initial "tab stop" for comments is column 24
+PROCESS_LINE:
+  MOV CX,TAB_COL    ; fetch the tab-stop column number for comments
+  MOV TAB_COL W,24  ; reset it to default, in case a blank line is seen
+  MOV DI,BP         ; point DI to the output buffer
+  MOV DH,0          ; there is no previous coerced line
+  CALL TAIL_BLANKS  ; skip any leading blanks
+  CMP AL,0D         ; was it a blank line?
+  JE >L8            ; jump if yes, to output CRLF only
+  CMP AL,';'        ; was it a comment line?
+  JE >L9            ; jump if yes, to copy comment to the first column
+  MOV TAB_COL W,CX  ; we will retain the existing tab-stop after all
+  PUSH SI           ; content line: save starting pointer
+L1:                 ; loop here to look for a colon
+  LODSB             ; fetch a character
+  CMP AL,':'        ; is it a colon?
+  JE L2             ; jump if yes, we have a label
+  CMP AL,' '        ; is it a blank?
+  JA L1             ; loop if not
+  POP SI            ; no colon seen: restore starting pointer
+  MOV AX,'  '       ; load two spaces
+  STOSW             ; indent the statement by two spaces
+L4:                 ; loop here for each byte of statement contents
+  MOV DH,0          ; there is no previous lower-case letter
+L1:                 ; loop here after coercion output
+  MOV AL,[SI]       ; fetch the letter
+  CMP AL,0D         ; is it the end of the line?
+  JE >L8            ; jump if yes
+  CMP AL,''''       ; is it a string?
+  JE >L6            ; jump if yes
+  CMP AL,'"'        ; is it a string?
+  JE >L6            ; jump if yes
+  CMP AL,';'        ; is it a comment?
+  JE >L5            ; jump if yes
+  CMP AL,' '        ; is it a blank?
+  JBE >L3           ; jump if yes
+  CALL COERCE_OUT   ; nothing special: coerce and output the byte
+  JMP L1            ; loop for another byte
+
+L8:                     ; end of line was seen
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output CRLF
+  JMP PROCESS_LINE_EXIT ; jump to check buffered output bytes and return
+
+L3:                 ; blank was seen
+  MOV AL,' '        ; load a true blank
+  STOSB             ; output the blank
+  CALL TAIL_BLANKS  ; skip any firther blanks
+  JMP L4            ; loop for more scanning
+
+L6:                 ; string was seen, delimiter AL
+  MOV AH,AL         ; save delimiter in AH
+  MOVSB             ; output the opening delimiter
+L1:                 ; loop here to find closing delimiter
+  LODSB             ; fetch string character
+  STOSB             ; output the character unchanged
+  CMP AL,AH         ; is it the delimiter?
+  JNE L1            ; loop if not
+  JMP L4            ; jump back to the main loop
+
+L5:                 ; comment seen
+  MOV AX,DI         ; fetch current output pointer
+  SUB AX,BP         ; calculate number of bytes output
+  MOV CX,24         ; load comment indentation
+TAB_COL EQU W[$-2]  ; indentation count for comments
+  CMP AX,CX         ; have we reached that indentation already?
+  JB >L2            ; jump if not
+  AND AL,3          ; line is too long: coerce to next multiple of 4
+  MOV CL,4          ; we subtract from 4 to get the number of blanks needed
+L2:
+  SUB CX,AX         ; calculate the blanks needed for comment alignment
+  MOV AL,' '        ; load blank
+  REP STOSB         ; output the blanks needed
+  MOV AX,DI         ; fetch current output pointer
+  SUB AX,BP         ; calculate number of bytes output
+  MOV TAB_COL W,AX  ; store the revised tab-stop column number for comments
+L9:                 ; loop here to output a comment
+  LODSB             ; fetch a character
+  STOSB             ; output the character
+  CMP AL,0A         ; is it the terminating linefeed?
+  JNE L9            ; loop if not
+  JMP PROCESS_LINE_EXIT  ; jump to exit
+
+
+; COERCE_OUT copies a byte from SI to DI, coercing to upper case, and
+;   inserting an undersocre of there is a lower-to-upper transition.
+;   Input DH is nonzero if the previous character was lower case.
+;   DH is updated for the next call to us.
+
+COERCE_OUT:
+  LODSB             ; fetch character
+  CMP AL,'A'        ; too low for letter?
+  JB >L2            ; jump if yes, to non-coercion exit
+  CMP AL,'Z'        ; upper case letter?
+  JBE >L3           ; jump if yes
+  CMP AL,'a'        ; too low for lower case?
+  JB >L2            ; jump if yes, to non-coercion exit
+  CMP AL,'z'        ; lower case letter?
+  JA >L2            ; jump if not, to non-coercion exit
+  MOV DH,1          ; mark coercion flag
+  AND AL,0DF        ; coerce to upper case
+  STOSB             ; output the coerced letter
+  RET
+
+L3:                 ; upper case letter seen
+  TEST DH           ; is it a lower-to-upper transition?
+  JZ >L4            ; jump if not
+  MOV AL,'_'        ; load underscore
+  STOSB             ; output underscore
+  DEC SI            ; retreat input pointer
+  LODSB             ; re-load the letter
+L2:                 ; non-coercion case
+  MOV DH,0          ; set flag accordingly
+L4:
+  STOSB             ; output the unchanged byte
+  RET
+

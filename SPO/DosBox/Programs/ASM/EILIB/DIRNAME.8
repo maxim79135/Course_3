@@ -1,0 +1,76 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DIRNAME                                      See EILIB.TXT for terms
+;---------------
+
+; GET_DIRNAME processes the SI-pointed directory name.  We place the name
+;   into our DIRNAME_PATH buffer, and point DIR_NAME_ROOT beyond the name,
+;   so that individual file paths can be created and used.
+
+        #if ref GET_DIRNAME
+        DATA SEGMENT
+DIRNAME_PATH:           ; buffer in which we store the directory name
+   DB 256 DUP ?
+DIRNAME_ROOT DW ?       ; pointer to slot where file roots can be output
+        DATA ENDS
+
+GET_DIRNAME:
+  CALL TAIL_BLANKS      ; skip over leading blanks
+  CMP AL,0D             ; are there no arguments
+  JE >E1                ; error exit if no arguments
+  MOV DI,DIRNAME_PATH   ; initialize the output pointer
+  LODSB                 ; fetch the first character of the directory name
+L1:                     ; loop here to process each character of the dir name
+  STOSB                 ; output the previous character
+  LODSB                 ; fetch the next character
+  CMP AL,' '            ; is it a terminating blank-or-less?
+  JA L1                 ; loop if not, to continue processing
+  MOV AL,'\'            ; load subdir character
+  CMP AL,[DI-1]         ; did the given spec end with a subdir character?
+  IF E DEC DI           ; if yes then retract it
+  CALL MAKE_DIRNAME     ; create the directory if it doesn't already exist
+  STOSB                 ; output the subdir character
+  MOV DIRNAME_ROOT,DI   ; mark the place where a file-name root can be output
+  RET
+
+
+E2:
+  MOV AX,>L5            ; point to "failed to create directory"
+  CALL O_SORRY_MSG      ; output "Sorry, failed to create directory"
+  MOV AX,DX             ; point to the directory name
+  CALL EMESSAGE         ; output the the directory name
+  MOV AX,>L6            ; point to two CRLFs
+  CALL EMESSAGE         ; output the CRLFs
+E1:
+  JMP USAGE_EXIT        ; output usage message and exit the program
+
+
+; MAKE_DIRNAME creates the directory pointed to by DIRNAME_PATH, that needs
+;   to be terminated at DI.  We preserve all registers, so that the caller
+;   can output a \ instead of the null.
+
+MAKE_DIRNAME:           ; create the directory named by DIRNAME_PATH
+  PUSHA                 ; save registers across call
+  MOV AL,0              ; load null terminator
+  STOSB                 ; output null terminator
+  MOV DX,DIRNAME_PATH   ; point to the directory name
+  DB 03C                ; skip over following PUSHA instruction
+        #endif
+CREATE_DIR:
+  PUSHA
+        #if LONG_FNAMES
+  MOV AX,07139          ; DOS function codes for LONG_CREATE_DIR
+        #else
+  MOV AH,039            ; DOS function code for CREATE_DIR
+        #endif
+  INT 021               ; create the directory
+  JNC >L2               ; return if the create was successful
+  CMP AX,5              ; create failed: did the directory already exist?
+  JNE E2                ; error if some other reason for failure
+L2:
+  POPA                  ; restore clobbered registers
+  RET  
+
+L5:
+  DB 'failed to create directory ',0
+L6:
+  DB 0D,0A,0D,0A,0

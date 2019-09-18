@@ -1,0 +1,74 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  F_ANYSTR                                      See EILIB.TXT for terms
+;---------------
+
+; FIND_ANY_STR searches for any of the BX strings at DS:SI within the array
+;   CX--ES:DI.  The target-string buffer at SI has the following format: the
+;   strings come in sucession, each string consisting of a word giving the
+;   location of the first instance found for the string (points to residual
+;   bytes if there are no instances, 0FFFF if we haven't looked yet), followed
+;   by a word L giving the length of the string, followed by the L bytes of the
+;   string itself.
+;
+;   Return Z if found, with ES:DI pointing to the found string, and DX pointing
+;   to the winning string.  Return NZ if not found; with ES:DI pointing to CX
+;   residual bytes at the end of the buffer, which should be carried over if
+;   there is another buffer.  Return CX = 0 (there are no residual bytes) if
+;   the first character of any target string does not occur in the last L-1
+;   bytes of the array.
+
+; EOF_FIND_ANY is an alternate entry point in which the search buffer
+;   represents the end of the file, and so no residual bytes will be returned.
+;   This is needed because FIND_ANY_STR will return failure if the residual
+;   bytes of one failed string start before a complete instance of another
+;   found string.
+
+EOF_FIND_ANY:
+  MOV AL,074          ; load JZ opcode, to eliminate residual bytes
+  DB 03D              ; skip over the following MOV AL,0EB instruction
+FIND_ANY_STR:
+  MOV AL,0EB          ; load short JMP opcode, to preserve residual bytes
+  CS MOV >L2,AL       ; store JZ or JMP, to control residual byte return
+  PUSH BX,SI,BP       ; preserve registers across call
+  MOV BP,DI           ; copy search buffer pointer to BP
+  ADD BP,CX           ; initial BP points beyond search buffer
+  INC BX              ; pre-increment strings count, to cancel first DEC
+  JMP >L5             ; jump into loop
+
+L1:                   ; loop here to search for every string
+  PUSH BX             ; preserve the strings count
+  LODSW               ; fetch the already-found pointer
+  XCHG BX,AX          ; save the pointer in BX
+  LODSW               ; fetch the string length
+  XCHG BX,AX          ; swap length to BX, already-found pointer to AX
+  CMP AX,0FFFF        ; have we looked for this string yet?
+  JNE >L3             ; skip if we have
+  PUSH CX,DI          ; save search buffer count and pointer
+  CALL FIND_ANY_PROC  ; find the next instance of this string
+L2:
+  IF NZ ADD DI,CX     ; if not found and EOF then advance DI to EOF
+  XCHG AX,DI          ; swap the result DI into AX
+  POP DI,CX           ; restore starting search pointer and count
+  MOV [SI-4],AX       ; plug the found pointer into the string's buffer
+L3:
+  CMP AX,BP           ; is this the earliest pointer so far?
+  JAE >L4             ; skip if not
+  XCHG BP,AX          ; it is the earliest: swap pointer into BP
+  MOV DX,SI           ; store the string pointer in DX
+L4:
+  ADD SI,BX           ; advance SI to the next string
+  POP BX              ; restore strings count
+L5:
+  DEC BX              ; count down strings
+  JNZ L1              ; loop if there are more strings, to scan them
+  ADD CX,DI           ; no more strings: advance CX beyond the search buffer
+  SUB CX,BP           ; calculate the number of bytes left from winning point
+  MOV DI,BP           ; reset DI to the winning point
+  MOV BX,DX           ; fetch the winning string's pointer
+  CMP CX,[BX-2]       ; are there too few bytes left for a successful match?
+  JB >L6              ; skip if there are too few-- NZ for no match
+  MOV W[BX-4],0FFFF   ; successful match-- reset string to "no search done yet"
+  CMP AL,AL           ; set the Z flag to signal success
+L6:
+  POP BP,SI,BX        ; restore clobbered registers
+  RET

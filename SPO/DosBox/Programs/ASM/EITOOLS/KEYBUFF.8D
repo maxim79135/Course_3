@@ -1,0 +1,109 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   KEYBUFF                                      See EILIB.TXT for terms
+;---------------
+
+; KEYBUFF is a device driver that expands the BIOS key buffer to a
+;   number of bytes indicated in the CONFIG.SYS command tail.
+
+; The code in this module is executed only during the boot-up
+; initialization of the computer; so we do not need to do function-
+; number parsing.  After we exit the initialization routine, the
+; program space will be overwritten by the key buffer itself.
+
+ORG 0                ; program is a .BIN file starting at offset zero
+
+      DD -1          ; slot for pointer to the next driver in the chain
+      DW 08000       ; character device with no special attributes
+      DW STRATEGY    ; pointer to the parm block pointer store routine
+      DW INTERRUPT   ; pointer to the service routine
+      DB 'KBUFF+++'  ; garbage name: we are not really a device
+
+KEYBUFF:                ; after we're installed the keystrokes can start here
+  DB 0D,0A,0D,0A
+  DB 'KEYBUFF.BIN key buffer extender V1.1  Copyright 2000 Eric Isaacson',0D,0A
+  DB '  All rights reserved.',0D,0A,0D,0A
+  DB 'Put the line',0D,0A,0D,0A
+  DB 'device=keybuff.bin 64',0D,0A,0D,0A
+  DB 'into your CONFIG.SYS file, put this file KEYBUFF.BIN into your',0D,0A
+  DB 'root directory, and you will have 64-character typeahead.',0D,0A,01A
+
+  RH_OFFSET  DW ?       ; parameter block offset is stored here
+  RH_SEG     DW ?       ; parameter block segment is stored here
+
+STRATEGY:               ; parameter-passing procedure
+  CS MOV RH_SEG,ES      ; store the parameter block's segment
+  CS MOV RH_OFFSET,BX   ; store the parameter block's offset
+  RETF
+
+INTERRUPT:              ; initialization procedure
+  PUSH AX,BX,DX,SI,DS   ; preserve registers across call
+  CS LDS SI,RH_OFFSET   ; fetch the caller's parameter block pointer
+  PUSH DS,SI            ; save the pointer
+  LDS SI,[SI+18]        ; fetch the pointer to the CONFIG.SYS command tail
+L0:                     ; loop here to skip over our own path name
+  LODSB                 ; fetch a byte
+  CMP AL,020            ; is it blank?
+  JA L0                 ; loop if not
+L1:                     ; loop here to skip over intervening blanks
+  LODSB                 ; fetch a byte
+  CMP AL,020            ; is it blank?
+  JBE L1                ; loop if yes
+  MOV BX,64             ; load the default key buffer count
+  CMP AL,'0'            ; is the tail character too low to be a digit?
+  JB >L3                ; skip if yes, to use the default
+  CMP AL,'9'            ; is the tail character too high to be a digit?
+  JA >L3                ; skip if yes, to use the default
+  SUB BX,BX             ; digit is seen: init BX, to accumulate value there
+L2:                     ; loop here for each digit of the number
+  SUB AL,'0'            ; reduce the digit to a binary value
+  MOV DX,10             ; load multiplicand, it is also the digit-limit value
+  CMP AL,DL             ; is it in fact another decimal digit?
+  JAE >L3               ; jump if not to exit this procedure
+  CBW                   ; extend value AL to AX
+  XCHG AX,BX            ; swap previous accumulation into AX, new digit into BX
+  MUL DX                ; multiply the previous accumulation by 10
+  ADD BX,AX             ; add into the new digit value
+  LODSB                 ; load the next digit
+  JMP L2                ; loop to accumulate another digit
+
+L3:                     ; decimal scanning is complete
+  INC BX                ; add one word for the key-queueing logic
+  MOV DX,CS             ; fetch our own code segment
+  MOV AX,0103E          ; load the highest value our segment can be
+  SUB AX,DX             ; calculate the number of available buffer paragraphs
+  JBE >L4               ; skip if there are no paragraphs available
+  MOV SI,8              ; load multiplier
+  MUL SI                ; convert the paragraph count to a word count
+  CMP AX,BX             ; are there the requested number of words?
+  IF B XCHG BX,AX       ; if not then supply what we can
+  ADD SI,SI             ; double SI=8 to SI=16
+  CMP BX,SI             ; are there at least 16 keystrokes in the buffer?
+  JB >L4                ; skip if not: no point in special-buffering
+  MOV AX,CS             ; fetch our code segment
+  SUB AX,040            ; calculate the paragraph offset from the BIOS segment
+  MUL SI                ; convert it to the byte offset
+  ADD AX,KEYBUFF        ; we now have KEYBUFF's offset from the BIOS segment
+  MOV DS,SI             ; DS=16 will allow us to address the BIOS variables
+  CMP W[0380],01E       ; is the start-of-buffer pointer being maintained?
+  JNE >L4               ; skip if not
+  CLI                   ; we cannot tolerate interrupts while resetting BIOS
+  MOV [031A],AX         ; reset the key-output pointer to KEYBUFF
+  MOV [031C],AX         ; reset the key-input pointer to KEYBUFF
+  MOV [0380],AX         ; set the buffer start to KEYBUFF
+  ADD BX,BX             ; convert the buffer's word count into a byte count
+  ADD AX,BX             ; advance AX beyond the buffer
+  MOV [0382],AX         ; set the buffer limit beyond our buffer
+  STI                   ; we can tolerate interrupts again
+  XCHG AX,BX            ; swap the buffer byte count into AX
+  ADD AX,KEYBUFF        ; advance AX beyond our buffer
+  DB 03D                ; skip over the following SUB AX,AX
+L4:                     ; jump here if we aborted the installation
+  SUB AX,AX             ; resident count is zero if we abort
+  POP SI,DS             ; restore the caller's parameter block pointer
+  MOV [SI+14],AX        ; store the allocation offset
+  MOV [SI+16],CS        ; store the allocation segment
+  MOV W[SI+3],0100      ; return code for DONE
+  POP DS,SI,DX,BX,AX    ; restore clobbered registers
+  RETF
+
+

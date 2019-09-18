@@ -1,0 +1,142 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;      P                                         See EILIB.TXT for terms
+;---------------
+
+; P sends the input file named in the command tail to the printer.  We
+;   prepend a naked CR, expand any tabs we find, suppress trailing blanks
+;   at the end of lines, and append a formfeed to the end of the file if
+;   there is not one already there.  If there is a second name in the
+;   command tail, we use that as the output file (device).
+
+        DATA SEGMENT
+IBUFF:                ; input buffer
+    DB 09000 DUP ?
+I1_LIM EQU $-0400
+IBUFF_END:            ; end of input buffer
+              DW ?    ; room for possible IBUFF terminator
+              DW ?    ; backwards terminator for OBUFF scanning
+OBUFF:                ; output buffer
+    DB 02000 DUP ?
+OBUFF_LIM:            ; flush limit for buffered output
+    DB 0400 DUP ?
+IBUFF_LIMIT   DW ?    ; refill limit for input
+IBUFF_ENDREAD DW ?    ; end of actual input
+        DATA ENDS
+
+P_:
+  MOV IBUFF_LIMIT,I1_LIM  ; set the refill input limit
+  MOV DI,OBUFF-2          ; point to the pre-OBUFF terminator slot
+  MOV AX,0D0A             ; load LFCR
+  STOSB                   ; output LF
+  STOSW                   ; LFLF is terminator; CR is a prepended byte
+  MOV SI,081              ; point to our invocation command tail
+  CALL OPEN_I_ARG         ; open the input file
+  MOV OWRITE_H B,4        ; set the output handle for the printer
+  CALL TAIL_BLANKS        ; scan over intervening blanks
+  CMP AL,0D               ; is there another argument?
+  JE >L1                  ; skip if not
+  SUB AL,'0'              ; another argument: reduce decimal base to zero
+  CMP AL,9                ; is it a decimal number?
+  JA >L2                  ; jump if not: it is the output file name
+  CALL SCAN_DECIMAL       ; it is a copy-count: scan the count
+  CALL O_COPIES           ; output codes for that many copies
+  JMP >L1                 ; join common code
+
+L2:
+  CALL OPEN_O_ARG         ; if so then open the output file
+  CALL NO_MORE_ARGS       ; verify no more command-tail arguments
+L1:
+  MOV SI,IBUFF_ENDREAD    ; we start out with an empty input buffer
+  CALL PROCESS_IOBUFF     ; process the entire input
+  CALL MAYBE_FF           ; append a formfeed if there is not already one
+  MOV AX,1                ; we will return the printer to "one copy"
+  CALL O_COPIES           ; output the codes for "one copy"
+  CALL FLUSH_OBUFF        ; output the last bufferfull
+  JMP GOOD_EXIT           ; exit back to the operating system
+
+
+; PROCESS_SI filters the SI-pointed line, outputting it to DI.  We expand
+;   tabs and suppress trailing blanks.  We also scan over blank lines, to
+;   suppress trailing blank lines prior to a formfeed.
+
+L0:                   ; loop here is a tab was seen
+  MOV AL,' '          ; load blank
+  REP STOSB           ; output blanks to fill out the tab
+PROCESS_SI:
+  MOV CX,9            ; blanks count for tab will decrement to 8
+  DB 03C              ; skip over the following STOSB
+L1:                   ; jump here for a normal printing character
+  STOSB               ; output the character
+  DEC CX              ; count down the tab blanks count
+  JZ PROCESS_SI       ; jump if exhausted, to reset it
+  CMP W[SI],0A0D      ; are we at the end of the line?
+  JE >L7              ; jump if we are at the end of the lime
+  LODSB               ; load the next character of the line
+  CMP AL,9            ; is it a tab?
+  JE L0               ; jump if it is, to fill with blanks
+  CMP AL,0C           ; is it a formfeed?
+  JNE L1              ; jump if not, simply to output the character
+  CALL APPEND_FF      ; formfeed seen: append it to the output buffer
+L9:                   ; common code for special line-ending
+  CMP SI,IBUFF_ENDREAD; is there more buffered input?
+  JB PROCESS_SI       ; loop if there is, to process the next line
+  RET
+
+L7:                   ; jump here if a CRLF is about to be scanned
+  DEC DI              ; retreat to the last byte output
+  MOV AL,' '          ; load blank
+  MOV CH,0FF          ; load huge count
+  STD                 ; scanning is backwards
+  REPE SCASB          ; scan back over trailing blanks
+  CLD                 ; restore forward scanning
+  INC DI,2            ; advance DI beyond the last non-blank
+  CMP SI,IBUFF_ENDREAD; is there more buffered input?
+  JAE RET             ; return if there is not
+  MOVSW               ; output the CRLF
+  CMP B[DI-3],0A      ; was this line blank?
+  JE L9               ; jump if it was, to keep blank lines buffered
+  RET
+
+L0:                   ; loop here if a trailing EOF was seen
+  DEC DI              ; retract the output of the EOF
+MAYBE_FF:
+  CMP B[DI-1],01A     ; does the buffer end with an EOF?
+  JE L0               ; loop if it does, to retract it
+  CMP B[DI-1],0C      ; is there already a trailing formfeed?
+  JE RET              ; return if there is
+APPEND_FF:
+  MOV AX,0A0D         ; load CRLF
+  MOV W[DI],AX        ; make sure at least one CRLF is in the scanning stream
+  MOV CH,0FF          ; load huge count
+  STD                 ; scanning is backwards
+  REPE SCASW          ; scan back across trailing CRLFs
+  CLD                 ; restore forward scanning
+  MOV AL,0C           ; load formfeed
+  ADD DI,3            ; advance to the character before the last CRLF
+  CMP B[DI],AL        ; is that character a formfeed?
+  JE APPEND_FF        ; loop if it is, to continue scanning
+  INC DI,2            ; not a formfeed: advance to the last linefeed
+  STOSB               ; replace the linefeed with a formfeed
+  RET
+
+
+; O_COPIES outputs to DI the HPLJ codes for "make AX copies of each output".
+
+O_COPIES:
+  PUSH AX             ; preserve the copies count
+  MOV AX,0451B
+  STOSW
+  MOV AL,01B          ; load Escape character
+  STOSB               ; output Escape character
+  MOV AX,'l&'         ; load codes for "copies"
+  STOSW               ; output the codes for "copies"
+  POP AX              ; restore the count
+  CALL OUT_DEC_AX     ; output the count
+  MOV AL,'X'          ; load the terminator
+  STOSB               ; output the terminator
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: P in_file [out_file]',0D,0A
+  DB '     prints a file plus a formfeed if needed',0D,0A,0

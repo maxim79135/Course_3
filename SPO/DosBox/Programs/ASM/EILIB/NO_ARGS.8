@@ -1,0 +1,24 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   NO_ARGS                                      See EILIB.TXT for terms
+;---------------
+
+; VERIFY_NO_ARGS ensures that there are no command-tail arguments at the
+;   PSP buffer DS:081.  If there are, we abort with USAGE_MSG.
+
+; NO_MORE_ARGS ensures that there are no more command-tail arguments pointed
+;   to by SI.  If there are, we abort with USAGE_MSG.
+
+        #if ref VERIFY_NO_ARGS
+VERIFY_NO_ARGS:
+  MOV SI,081          ; point to the PSP command-tail
+        #endif
+NO_MORE_ARGS:
+L1:                   ; loop here for each byte of the command tail
+  LODSB               ; fetch a command-tail byte
+  CMP AL,0D           ; it had better be a blank or a control character
+  JE RET              ; return OK if the terminating CR is seen
+  CMP AL,' '          ; not a CR: is it a blank
+  JBE L1              ; loop if it is a blank or control character
+  JMP USAGE_EXIT      ; illegal nonblank is seen: output usage and exit
+
+  RET

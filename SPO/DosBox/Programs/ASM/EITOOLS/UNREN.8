@@ -1,0 +1,90 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   UNREN                                        See EILIB.TXT for terms
+;---------------
+
+; UNREN converts a batch file, consisting of a sequence of REN commands,
+;   into another batch file the reverses the RENs: each REN line has its
+;   two file-name parameters switched.
+
+UNREN:
+  MOV SI,081            ; point to our invocation command tail
+  JMP PFILE_IOARG       ; scan the input file name and process the file
+
+  DB 0D,0A,0D,0A    ; so that TYPE UNREN.COM will be readable
+USAGE_MSG:
+  DB 'usage: UNREN infile.BAT outfile.BAT',0D,0A
+  DB '   switches the two parameters in each REN line',0D,0A
+  DB 0,01A
+
+
+PFILE_REC:              ; process the entire file, at SI up to DX
+  CALL CHECK_FOR_REN    ; does the line begin with "REN "?
+  JNE COPYLINE          ; simply copy the line if it does not
+  SUB CX,SI             ; it does: calculate the number of bytes in the REN
+  REP MOVSB             ; copy the REN
+  MOV BP,SI             ; save the pointer to the first operand
+  PUSH DI               ; save the output pointer
+  CALL COPY_FNAME       ; scan over the first operand
+  POP DI                ; retract the output of the first operand
+  CALL COPY_FNAME       ; output the second operand
+  MOV AL,' '            ; load blank
+  STOSB                 ; output intervening blank
+  XCHG BP,SI            ; swap in the pointer to the first operand
+  CALL COPY_FNAME       ; output the first operand
+  MOV SI,BP             ; restore the input pointer
+COPYLINE:               ; copy the SI-pointer line to DI
+  LODSB                 ; load a byte
+  STOSB                 ; output the byte
+  CMP AL,0A             ; is it the terminating linefeed?
+  JNE COPYLINE          ; loop if not, to continue copying
+  RET
+
+
+CHECK_FOR_REN:          ; set Z if the SI-pointed line is a REN line
+  PUSH SI               ; save the input register
+  CALL TAIL_BLANKS      ; scan over leading blanks
+  CMP AL,0D             ; is the entire line blank?
+  JE >L2                ; return NZ if it is
+  LODSW                 ; load the first two nonblank bytes
+  AND AX,0DFDF          ; coerce the bytes to upper case
+  CMP AX,'ER'           ; were the bytes R and E?
+  JNE >L1               ; return NZ if not
+  LODSW                 ; load the next two bytes
+  AND AL,0DF            ; coerce the bytes to upper case
+L2:                     ; if we jump here we will always return NZ
+  CMP AX,' N'           ; set Z if the next two bytes are N and blank
+L1:                     ; common exit
+  MOV CX,SI             ; return the beyond-scan pointer in CX
+  POP SI                ; restore the starting input pointer
+  RET
+
+
+L0:                     ; loop here to copy leading blanks
+  STOSB                 ; output the blank
+COPY_FNAME:
+  MOV AL,[SI]           ; fetch a byte
+  CMP AL,0D             ; is it a terminating carriage return?
+  JE RET                ; return if it is: nothing to copy
+  INC SI                ; scan past the byte
+  CMP AL,' '            ; is the byte a blank?
+  JBE L0                ; loop if it is, not output it
+  CMP AL,'"'            ; nonblank found: is this a quoted string?
+  JE >L2                ; jump if it is, to copy the string
+L1:                     ; loop here to copy until another blank is seen
+  STOSB                 ; output the previous byte
+  LODSB                 ; fetch the new byte
+  CMP AL,' '            ; is it a blank?
+  JA L1                 ; loop if not, to continue copying
+  RET
+
+L2:                     ; loop here to copy until the closing quotes are seen
+  STOSB                 ; output the previous byte
+  LODSB                 ; fetch the new byte
+  CMP AL,0D             ; is it a premature carriage return?
+  JE RET                ; return if it is
+  CMP AL,'"'            ; is it the terminating quotes-mark?
+  JNE L2                ; loop if not, to continue copying
+  STOSB                 ; output the terminating quotes-mark
+  RET
+
+

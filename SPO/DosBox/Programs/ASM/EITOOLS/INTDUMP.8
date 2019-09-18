@@ -1,0 +1,78 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  INTDUMP                                       See EILIB.TXT for terms
+;---------------
+
+; INTDUMP outputs a dump of 8086 interrupt settings to standard output.  We
+;   make a hex dump of memory pointed to by each interrupt vector, unless
+;   the pointer is zero.
+
+INTDUMP:
+  MOV DI,0800       ; initialize the output buffer
+  PUSH DI           ; save the output pointer
+  MOV SI,080        ; point to our command-tail buffer
+  LODSB             ; load the command tail count
+  CBW               ; extend the count AL to AX
+  XCHG CX,AX        ; swap the count into CX
+  REP MOVSB         ; copy the command tail to the output buffer
+  MOV AX,0A0D       ; load CRLF
+  STOSW             ; output CRLF
+  STOSW             ; output a second CRLF
+  SUB SI,SI         ; point to offset zero
+  SUB CX,CX         ; initialize the interrupt number
+L1:                 ; loop here to display each interrupt vector
+  SUB AX,AX         ; load zero
+  MOV DS,AX         ; pointer to zero segment, at the interrupt vector
+  CALL INT_NUM      ; display the interrupt number itself
+  LODSW             ; fetch the interrupt offset
+  XCHG BX,AX        ; swap the offset into BX
+  LODSW             ; fetch the interrupt segment
+  MOV BP,AX         ; copy the segment to BP
+  MOV DS,AX         ; point DS to the interrupt handler
+  CALL OHEX_16      ; output the hex segment value
+  MOV AL,':'        ; load colon
+  STOSB             ; output the intervening colon
+  MOV AX,BX         ; fetch the handler's offset
+  CALL OHEX_16      ; output the offset
+  OR BP,BX          ; is the pointer 0000:0000?
+  JZ >L3            ; skip if it is -- no further display needed
+  MOV CH,10         ; we will display 10 hex bytes
+  CMP B[BX],0CF     ; is the handler just an IRET?
+  IF E MOV CH,1     ; if so then display only the IRET
+L2:                 ; loop here to display each hex byte of the handler
+  MOV AL,' '        ; load blank
+  STOSB             ; output an intervening blank
+  MOV AL,[BX]       ; fetch a byte
+  INC BX            ; advance the handler pointer
+  CALL OUT_HEX_AL   ; output the byte
+  DEC CH            ; count down bytes
+  JNZ L2            ; loop to display the next byte
+L3:
+  MOV AX,0A0D       ; display line complete: load CRLF
+  STOSW             ; output the CRLF
+  INC CL            ; increment the interrupt number
+  JNZ L1            ; loop to display the next interrupt
+  STOSW             ; display complete: output a blank line
+  STOSW             ; output a second blank line
+  MOV CX,DI         ; point CX beyond the buffered output
+  POP DX            ; restore the pointer to the buffer
+  SUB CX,DX         ; calculate the number of bytes buffered
+  MOV DS,CS         ; restore DS to our buffer
+  CALL OWRITE       ; output the buffered bytes
+  JMP GOOD_EXIT     ; exit the program
+
+
+; INT_NUM outputs the interrupt number CL.
+
+INT_NUM:
+  PUSH BX,CX,DX     ; preserve register across call
+  MOV DX,' ' BY 0   ; blank pad, high byte zero
+  MOV BX,3 BY 10    ; field width 3, decimal base is 10
+  MOV AL,CL         ; fetch the interrupt number
+  MOV AH,0          ; middle byte is zero
+  CALL NUMOUT       ; output the interrupt number
+  MOV AL,' '        ; load blank
+  STOSB             ; output a trailing blank
+  POP DX,CX,BX      ; restore clobbered registers
+  RET
+
+NO_DOSCHECK EQU 1   ; our MS_DOS library routines will not trap errors

@@ -1,0 +1,244 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   CLUSTERS                                     See EILIB.TXT for terms
+;---------------
+
+; CLUS_BIOS reads AL sectors at track CH, sector CL, head DH, of the drive
+;   we are dealing with, to the ES:BX buffer.  This BIOS call requires that
+;   the sectors all be on the same track.
+
+; This routine was written many years ago, and probably needs to be revised
+; for today's multi-gigabyte hard drives.  I am including it because it
+; appeared in an earlier version of EILIB.
+
+        DATA SEGMENT
+L5:                 ; this is not used and can probably be eliminated
+  DB 11 DUP ?
+L2:                 ; buffer into which an aligned CLUSBUFF will point
+  DB 16K+4K DUP ?
+        DATA ENDS
+
+CLUS_BIOS1:
+  MOV AL,1              ; read one sector
+CLUS_BIOS:
+  MOV AH,2              ; load BIOS function number for READ_SECTORS
+CLUS_BIOS_FN EQU B[$-1]
+  MOV DL,080            ; load the drive number
+L9 EQU B[$-1]           ; drive number is plugged into the above imm value
+  INT 013               ; read the sector(s)
+  RET
+
+
+; INIT_CLUS initializes variables for cluster reading on BIOS drive AL 
+;   (floppy drives start from 0, hard drvies from 080).  We are called before
+;   any of the other routines in this module.  We obtain the drive parameters
+;   necessary to compute cluster locations for the drive.  We also compute
+;   the buffer pointer CLUSBUFF, which is aligned to an even multiple of
+;   4K within absolute memory -- this is necessary due to anomalies with the
+;   DMA controller handling disk transfers on some machines.  We return AX
+;   set to the number of clusters on the drive.
+
+        #if ref INIT_CLUS_X
+INIT_CLUS_X:
+  MOV SI,081            ; point to our invocation command tail
+  CALL TAIL_BLANKS      ; skip over any leading blanks
+  AND AL,0DF            ; coerce the next character to upper-case
+  SUB AL,'C'            ; reduce the drive letter to its drive C base
+  CMP AL,24             ; is it indeed a hard drive letter?
+  IF AE JMP USAGE_EXIT  ; error if it is not
+  INC SI                ; it is a letter: advance source pointer beyond it
+  ADD AL,080            ; calculate the BIOS index number for the hard drive
+        #endif
+INIT_CLUS:
+  MOV L9 B,AL           ; store the drive number
+  MOV AX,CS             ; fetch our program segment location
+  SHL AX,CL,4           ; convert it to an absolute memory offset, modulo 64K
+  MOV BX,L2+0FFF        ; point to the last eligible alignment byte
+  ADD AX,BX             ; compute the absolute offset of the last byte
+  AND AX,0FFF           ; compute the offset modulo 4K
+  SUB BX,AX             ; get a buffer address that is aligned modulo 4K
+  MOV CLUSBUFF,BX       ; store the aligned cluster buffer pointer
+  MOV CX,1              ; track 0, sector 1
+  MOV DH,0              ; head 0
+  CALL CLUS_BIOS1       ; read the master boot record from the drive
+  JC RET                ; return Carry if the read failed
+  PUSH SI               ; preserve register across call
+  TEST DL               ; is it a hard or floppy drive?
+  JNS >L1               ; skip if it is a floppy drive
+  LEA SI,[BX+01BF]      ; hard drive: point to partition record
+  LODSB                 ; fetch the head number
+  MOV DH,AL             ; set DH to the head number
+  LODSW                 ; fetch the sector and track
+  XCHG CX,AX            ; swap the sector and track into CX
+  MOV DI,[SI+4]         ; set DI to the low word of this partition's sector
+  MOV SI,[SI+6]         ; SIDI is the sector number for this partition
+  CALL CLUS_BIOS1       ; read the boot record for the partition
+L1:
+  ADD DI,[BX+14]        ; add in the number of reserved sectors
+  ADC SI,0              ; carry the addition to the high word
+        #if ref CLUS_FAT
+  MOV FAT_LOW,DI        ; store the low word of the FAT sector offset
+  MOV FAT_HIGH,SI       ; store the high word of the FAT sector offset
+        #endif
+  MOV AX,[BX+11]        ; fetch the number of bytes per sector
+  MOV BYTES_PER_SEC,AX  ; store the number of bytes per sector
+  PUSH AX               ; save the bytes per sector, for return
+  XCHG BP,AX            ; swap bytes-per-sector into BP
+  MOV AX,[BX+17]        ; fetch the number of root-directory slots
+  MOV DX,32             ; there are 32 bytes in each slot
+  MUL DX                ; calculate the size, in bytes, of the root dir
+  DIV BP                ; convert the root directory size into sectors
+  MOV ROOT_SECS,AX      ; store the number of sectors in the root directory
+  XCHG BP,AX            ; swap the root sector count into BP
+  MOV AX,[BX+22]        ; fetch the number of sectors per FAT
+        #if ref CLUS_FAT
+  MOV FAT_SECS,AX       ; store the FAT sector count
+        #endif
+  MOV CL,[BX+16]        ; fetch the number of FATs
+  MOV CH,0              ; extend the FAT count to CX
+  MUL CX                ; compute the total number of FAT sectors
+  ADD DI,AX             ; add the FAT sector count into the running offset
+  ADC SI,0              ; carry the addition to the high word
+  MOV ROOT_LOW,DI       ; store the low word of the root-directory offset
+  MOV ROOT_HIGH,SI      ; store the high word of the root-directory offset
+  MOV CL,[BX+13]        ; load the number of sectors per cluster
+  MOV SEC_PER_CLUS B,CL ; store the number of sectors per cluster
+  ADD CX,CX             ; temprarily double it, for two cluster's worth
+  XCHG AX,BP            ; swap the root-cluster count into AX
+  SUB AX,CX             ; reduce the count by the implicit 2-cluster offset
+  CWD                   ; extend the difference value to DXAX
+  ADD AX,DI             ; add the low word of the difference
+  MOV CLUS_LOW,AX       ; store the low word of the basic cluster-offset
+  ADC DX,SI             ; carry the addition to the high word
+  MOV CLUS_HIGH,DX      ; store the high word of the basic cluster offset
+  SHR CX,1              ; restore CX to a single-cluster sector count
+  MOV AX,[BX+24]        ; fetch the number of sectors on a single track
+  MOV SEC_PER_HEAD,AL   ; store the number of sectors on a single track/head
+  MUL W[BX+26]          ; calculate the total sectors, all heads, one track
+  MOV SECH_PER_CYL,AX   ; store the sectors on all heads for one track
+  MOV AX,[BX+19]        ; load the total number of sectors
+  TEST AX               ; is the count zero?
+  JNZ >L1               ; skip if not
+  MOV AX,[BX+32]        ; count was zero: fetch the doubleword count
+  MOV DX,[BX+34]        ; fetch the high word of the count
+L1:
+  DIV CX                ; set AX to the number of clusters
+  MOV BP,AX             ; return the count in both BP and AX
+  POP AX                ; restore the number of bytes per sector
+  MUL CX                ; calculate the number of bytes per cluster
+  CLC                   ; NoCarry signals success
+  POP SI                ; restore clobbered register
+  RET
+
+
+; CLUS_AX reads cluster number AX to CLUSBUFF, from the drive previously
+;   specified by INIT_CLUS.  We return with DX pointing to the buffer read.
+
+CLUS_AX:
+  PUSH CX                 ; preserve register across call
+  MOV CX,0                ; load the number of sectors in a cluster
+SEC_PER_CLUS EQU B[$-2]   ; sector count is plugged into the above imm value
+  MUL CX                  ; calculate the sector index for this cluster
+  ADD AX,01234            ; add in the basic offset for cluster reading
+CLUS_LOW EQU W[$-2]       ; basic offset is plugged into the above imm value
+  ADC DX,01234            ; carry the addition into the high word
+CLUS_HIGH EQU W[$-2]      ; high word of basic offset plugged into above imm
+  CALL SEC_DXAX           ; read the sectors
+  POP CX                  ; restore clobbered register
+  RET
+
+
+; SEC_DXAX reads CL consecutive sectors, numbered from DXAX, to CLUSBUFF.
+
+SEC_DXAX:
+  PUSH BX,BP              ; preserve registers across call
+  MOV BX,0                ; point BX to our cluster buffer
+CLUSBUFF EQU W[$-2]       ; buffer pointer is plugged into the above imm value
+  PUSH BX                 ; save the buffer pointer
+L1:                       ; loop here to continue from a break in sectors
+  PUSH AX,DX              ; preserve registers
+  MOV BP,0                ; load sectors-per-track multiplied by heads
+SECH_PER_CYL EQU W[$-2]   ; the divisor is plugged into the above imm value
+  DIV BP                  ; set AX to the track number, DX to sec-within-track
+  XCHG DX,AX              ; swap sec-within-track into AX
+  MOV CH,0                ; load the number of sectors on a single head's track
+SEC_PER_HEAD EQU B[$-1]   ; sector count is loaded into the above imm value
+  DIV CH                  ; set AH to sector number, AL to head number
+  XCHG DL,DH              ; swap low and high bytes of the track number
+  ROR DL,1                ; rotate the high byte down
+  ROR DL,1                ; top 2 bits of track are positioned within DL
+  OR DL,AH                ; set DL to the sector number (with track bits)
+  SUB CH,AH               ; calcuate the number of sectors we can read
+  CMP CH,CL               ; are there more than we need?
+  IF A MOV CH,CL          ; reduce the count if there are
+  SUB CL,CH               ; decrement the remaining-sectors count
+  PUSH CX                 ; save the remaining-sectors count
+  XCHG CX,DX              ; load CX with the track-and-sector, DH to read count
+  INC CX                  ; increment so the first sector is numbered 1
+  XCHG DH,AL              ; set DH to the head number, AL to sector count
+  CBW                     ; extend the count AL to AX
+  MOV BP,AX               ; copy the count to BP
+  CALL CLUS_BIOS          ; read the sectors into the buffer
+  MOV AX,0                ; load the bytes-per-sector count
+BYTES_PER_SEC EQU W[$-2]  ; count is plugged into the above imm value
+  MUL BP                  ; calculate the number of bytes read
+  ADD BX,AX               ; advance BX beyond the bytes read
+  POP CX,DX,AX            ; restore clobbered registers
+  ADD AX,BP               ; advance the sector number by the sectors read
+  ADC DX,0                ; carry the addition into the high word
+  TEST CL                 ; any more sectors to read?
+  JNZ L1                  ; loop if there are, to read them
+  POP DX,BP,BX            ; point DX to the buffer, and restore caller's regs
+  RET
+
+
+CLUS_ROOT:              ; read the root directory to CLUSBUFF
+  MOV AX,0              ; load the low word of the root sector offset
+ROOT_LOW EQU W[$-2]     ; offset is plugged into the above imm value
+  MOV DX,0              ; load the high word of the root sector offset
+ROOT_HIGH DW 0          ; offset is plugged into the above imm value
+  MOV CX,0              ; load the number of sectors in a cluster
+ROOT_SECS EQU W[$-2]    ; sector count is plugged into the above imm value
+  JMP SEC_DXAX          ; jump to read the sectors
+
+
+; CLUS_FAT reads the FAT of the INIT_CLUS drive to DS:CLUSBUFF.  Since the
+;   FAT will probably exceed the size of CLUSBUFF, the caller should reset
+;   the CLUSBUFF pointer to zero, and reset DS to a free 64K segment.
+
+        #if ref CLUS_FAT
+CLUS_FAT:
+  MOV CX,0              ; load the number of sectors in a cluster
+FAT_SECS EQU W[$-2]     ; sector count is plugged into the above imm value
+  MOV AX,BYTES_PER_SEC
+  MUL CX
+  MOV AX,0              ; load the low word of the FAT sector offset
+FAT_LOW EQU W[$-2]      ; offset is plugged into the above imm value
+  MOV DX,0              ; load the high word of the FAT sector offset
+FAT_HIGH DW 0           ; offset is plugged into the above imm value
+  JMP SEC_DXAX          ; jump to read the sectors
+        #endif
+
+
+; CLUS_REPORT is called by the LOSTNAMS and LOSTSTR programs, to generate
+;   a report based on all the clusters of the INIT_CLUS drive, from cluster
+;   number 2 up to BP.  Each line of the report is output by CHECK_CLUS,
+;   supplied by the caller, which must look at the contents of CLUSBUFF and
+;   output to DI whatever report line(s) it deems necessary.
+
+        #if def CHECK_CLUS
+CLUS_REPORT:
+  MOV AX,2              ; the first cluster scanned is number 2
+  MOV DI,OBUFF          ; initialize the output buffer pointer
+L1:                     ; loop here to scan each cluster on the disk
+  PUSH AX,BP            ; save the counter registers
+  MOV THIS_CLUS,AX      ; store this cluster's index
+  CALL CLUS_AX          ; read this cluster
+  CALL CHECK_CLUS       ; if the cluster is a directory then scan it
+  POP BP,AX             ; restore the counter registers
+  INC AX                ; increment the cluster number
+  CMP AX,BP             ; have we reached the end of the disk?
+  JB L1                 ; loop if not, to scan the next cluster
+  CALL FLUSH_OBUFF      ; scanning complete: flush the output buffer
+  JMP GOOD_EXIT         ; return to the operating system
+        #endif
+

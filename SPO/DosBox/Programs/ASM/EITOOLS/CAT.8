@@ -1,0 +1,55 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  CAT                                           See EILIB.TXT for terms
+;---------------
+
+; CAT concatenates the files named in the command tail, and outputs the
+;   results to standard output.
+
+CAT:
+  MOV SI,081          ; point SI to our invocation command tail
+  CALL WILD_ARGS      ; expand the command-tail list into file-name pointers
+  JZ >L3              ; jump if there were no command-tail arguments
+L1:                   ; loop here to open and output each file in the list
+  LODSW               ; fetch the pointer to the file name
+  XCHG DX,AX          ; swap the pointer into DX, for opening
+  CALL MOPEN_READ     ; open the file
+        #if NO_DOSCHECK
+  JC >L4
+        #endif
+L2:
+  CALL OUT_FILE       ; read and output the file
+L4:
+  LOOP L1             ; loop to read and output another file
+  JMP GOOD_EXIT       ; files complete: exit the program
+
+L3:                   ; there were no file names in the command tail
+  SUB BX,BX           ; load the open-file handle for standard input
+  INC CX              ; set CX to 1, so we won't loop for any more files
+  JMP L2              ; jump into loop, to copy standard input
+
+
+
+; OUT_FILE reads, outputs to console, and closes the open file whose handle
+;     is BX.
+
+OUT_FILE:
+  PUSH CX,SI          ; preserve registers across call
+L1:                   ; loop here to read each bufferful of data
+  MOV DX,01000        ; point DX to a free area
+  MOV CX,SP           ; point CX beyond free memory, to our stack pointer
+  SUB CH,4            ; leave plenty of room for our stack
+  SUB CX,DX           ; calculate the number of free memory bytes available
+  CALL MREAD          ; read a bufferful of data from the file
+  XCHG CX,AX          ; swap the actual bytes count into CX, for output
+  CMP CX,AX           ; was the entire buffer filled?
+  PUSHF               ; save the flags setting with the answer
+  CALL OWRITE         ; write the buffer to standard output
+  POPF                ; restore falgs, telling if the buffer was full
+  JE L1               ; loop if the buffer was full, to output another buffer
+  CALL MCLOSE         ; close the file
+  POP SI,CX           ; restore clobbered registers
+  RET
+  
+
+USAGE_MSG:
+  DB 'usage: CAT [infiles] [>out]',0D,0A,0

@@ -1,0 +1,56 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OUT_DATE                                     See EILIB.TXT for terms
+;---------------
+
+; OUT_DATE_CXDX outputs date CXDX, in English, to DI-pointed memory.  CX is
+;   the year, DH the month number, and DL is the day number.
+
+; OUT_TODAY outputs today's date, in English, to DI-pointed memory.
+
+L0:                   ; table of names of the months
+  DB 'January',0
+  DB 'February',0
+  DB 'March',0
+  DB 'April',0
+  DB 'May',0
+  DB 'June',0
+  DB 'July',0
+  DB 'August',0
+  DB 'September',0
+  DB 'October',0
+  DB 'November',0
+  DB 'December',0
+
+        #if ref OUT_TODAY
+OUT_TODAY:          ; alternate entry point for today's date
+  MOV AH,02A        ; DOS function number for GET_DATE
+  INT 021           ; set CXDX to today's date
+        #endif
+OUT_DATE_CXDX:
+  PUSH SI           ; save caller's SI register
+  MOV SI,L0         ; point to our months table
+L1:                 ; loop here for each month skipped over
+  DEC DH            ; count down months
+  JZ >L4            ; jump to output this month, if the count is exhausted
+L2:                 ; loop here for each character in the months table
+  CS LODSB          ; fetch a character
+  TEST AL           ; is it a month-terminating null?
+  JNZ L2            ; loop if not, to keep scanning
+  JMP L1            ; jump to count down the month
+
+L3:                 ; loop here to output each character of the month name
+  STOSB             ; output the character
+L4:
+  CS LODSB          ; load this character
+  TEST AL           ; is it the terminating null?
+  JNZ L3            ; loop if not, to output it
+  POP SI            ; restore clobbered register
+  MOV AL,' '        ; load blank
+  STOSB             ; output a blank
+  XCHG AX,DX        ; swap in the day
+  CBW               ; zero-extend the day from AL to AH
+  CALL OUT_DEC_AX   ; output the day
+  MOV AX,' ,'       ; load comma and space (86 reverses the bytes)
+  STOSW             ; output comma and space
+  XCHG AX,CX        ; swap the year number into AX
+  JMP OUT_DEC_AX    ; output the year

@@ -1,0 +1,44 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  INTCHAIN                                      See EILIB.TXT for terms
+;---------------
+
+; INTCHAIN chains the COM file named by the first argument to the interrupt
+;   whose decimal number is given by the second argument.  We set up a FAR
+;   jump of the old interrupt to location 0FB of our code segment, read
+;   the COM file to location 0100, reset the interrupt to location 0100,
+;   and terminate and stay resident with the COM file staying resident.
+
+INTCHAIN:
+  MOV SI,081          ; point to our invocation command tail
+  CALL OPEN_I_ARG     ; open the COM file named as the first command argument
+  CALL VERIFY_DEC     ; fetch the interrupt number
+  PUSH AX             ; save the interrupt number
+  CALL NO_MORE_ARGS   ; verify no more command-tail arguments
+  MOV SI,0100         ; we will copy from the start of our program
+  MOV DI,0E100        ; we will copy our program up a distance of 0E000
+  MOV CX,0100         ; there are no more than 0100 words in this program
+  REP MOVSW           ; copy ourselves to high memory
+  JMP $+0E003         ; jump to the following instruction within our copy
+  MOV DX,0100         ; we will read the COM file to the 0100 location
+  MOV CX,0E000        ; there is room for 0E000 bytes
+  CALL MREAD          ; read the COM file
+  POP BP              ; restore the interrupt number
+  PUSH AX             ; save the COM file size
+  MOV AX,BP           ; set AL to the interrupt number
+  MOV AH,035          ; DOS function number for GET_INTERRUPT
+  INT 021             ; set ES:BX to the old interrupt handler pointer
+  MOV B[0FB],0EA      ; plug a far JMP opcode into 0FB
+  MOV W[0FC],BX       ; plug the old offset into the far JMP
+  MOV W[0FE],ES       ; plug the old segment into the far JMP
+  MOV AX,BP           ; refetch the interrupt number
+  MOV AH,025          ; DOS function number for SET_INTERRUPT
+  MOV DX,0100         ; the new handler starts at 0100
+  INT 021             ; point the interrupt to the new handler
+  POP DX              ; restore the size of the COM file
+  INC DH              ; add 0100 to calculate the ending offset of the file
+  INT 027             ; terminate and stay resident with the COM file
+ 
+USAGE_MSG:
+  DB 'usage: INTCHAIN progname decimal-interrupt-number',0D,0A
+  DB '   installs a program file as a TSR handler for an interrupt',0D,0A
+  DB 0

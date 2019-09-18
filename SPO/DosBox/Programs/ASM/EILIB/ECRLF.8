@@ -1,0 +1,10 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ECRLF                                        See EILIB.TXT for terms
+;---------------
+
+; ECRLF outputs a carriage-return-linefeed to the error console.
+
+ECRLF:
+  MOV AX,CRLFZ      ; point to carriage-return string (in MSDOS.8)
+  JMP EMESSAGE      ; output the CRLF
+

@@ -1,0 +1,20 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SORRY                                        See EILIB.TXT for terms
+;---------------
+
+; O_SORRY_MSG outputs the string "Sorry, ", followed by the CS:AX-pointed,
+;   null-terminated string, to the error console.
+
+O_SORRY_MSG:
+        #if def EWH
+  CS MOV EWRITE_HANDLE B,2  ; reset the error-output handle to 2
+        #endif
+  PUSH AX                   ; save the caller's message
+  MOV AX,>L1                ; point to "Sorry, "
+  CALL EMESSAGE             ; output "Sorry, "
+  POP AX                    ; restore caller's message
+  JMP EMESSAGE              ; output caller's message
+
+L1:
+  DB 'Sorry, ',0
+

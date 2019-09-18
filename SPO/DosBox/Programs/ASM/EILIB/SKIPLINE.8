@@ -1,0 +1,12 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SKIPLINE                                     See EILIB.TXT for terms
+;---------------
+
+; SKIP_LINE advances SI beyond the next linefeed.
+
+SKIP_LINE:
+  LODSB             ; fetch a byte from the line
+  CMP AL,0A         ; was it the terminating linefeed?
+  JNE SKIP_LINE     ; loop if not, to scan over another byte
+  RET
+

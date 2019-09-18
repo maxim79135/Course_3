@@ -1,0 +1,67 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   NUMOUT32                                     See EILIB.TXT for terms
+;--------------- requires A386
+
+; NUMOUT_EAX outputs a string of ASCII digits to DI-pointed memory, displaying
+;    the value of EAX in base BL.  The output will be at least BH bytes; if
+;    there are fewer than BH digits, the output will be left-padded with
+;    character DH.
+
+; OUT_DEC_EAX outputs decimal EAX to ES:DI, advancing DI.
+
+BINHEX_AL  MACRO
+  ADD AL,090H       ; these 4 lines convert AL into an ASCII hex digit,
+  DAA               ;    in an outrageously clever and incomprehensible
+  ADC AL,040H       ;    fashion!!!
+  DAA               ;
+#EM
+
+; As with all output routines of this nature, we must face the problem that
+; the digits are produced backwards in the calculation.  We handle this
+; problem by outputting the backwards-digits to the final destination string,
+; then reversing the string after we are done.
+
+NUMOUT_EAX:
+  PUSH DS,EAX,ECX,SI  ; preserve registers across call
+  PUSH EBX,EDX,DI     ; preserve these registers during calculation phase
+  MOV DS,ES           ; point both DS and ES to the output segment
+  AND EBX,0FF         ; extend the numeric base BL into EBX
+  MOV BH,0            ; upper byte of the numeric base is zero
+  TEST EAX            ; is our number negative?
+  JNS >L0             ; skip if not (with No Carry set by the above TEST)
+  NEG EAX             ; number is negative: negate to positive
+  STC                 ; Carry flag signals that we were negative
+L0:
+  PUSHF               ; push Carry if negative, NoCarry if positive
+L1:                   ; loop here for each digit
+  SUB EDX,EDX         ; the high doubleword is always zero
+  DIV EBX             ; divide remaining quotient AX by the base BL
+  XCHG AX,DX          ; swap the remainder into AL
+  BINHEX_AL           ; convert to hex digit
+  STOSB               ; store the mysteriously-obtained digit
+  XCHG DX,AX          ; restore to AX the low word of the remaining quotient
+  TEST EAX            ; is our number exhausted?
+  JNZ L1              ; loop if not to get another digit
+  POPF                ; restore Carry is number was negative
+  MOV AL,'-'          ; load minus sign in case it was negative
+  IF C STOSB          ; output the minus sign if number was negative
+  POP SI,EDX,EBX      ; restore registers-- original DI goes to SI
+  MOV CL,BH           ; fetch the minimum output length
+  MOV CH,0            ; high byte of minimum length is zero
+  ADD CX,SI           ; add to string start to obtain minimum beyond-pointer
+  SUB CX,DI           ; calculate number of left-fill bytes needed
+  MOV AL,DH           ; fetch the fill-byte
+  IF A REP STOSB      ; if fill-byte-count was positive then make the fill
+  CALL REV_STRING     ; reverse the output string
+  POP SI,ECX,EAX,DS   ; restore all the other clobbered registers
+  RET                 ; NoCarry set for disassembler MEMDIS_n's benefit
+
+
+OUT_DEC_EAX:
+  PUSH BX          ; preserve register across call
+  MOV BX,010A      ; BH=1 at least 1 digit, BL=10 decimal base
+  CALL NUMOUT_EAX  ; output the number
+  POP BX           ; restore clobbered register
+  RET
+
+

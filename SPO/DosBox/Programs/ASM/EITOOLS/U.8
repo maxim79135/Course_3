@@ -1,0 +1,91 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;      U                                         See EILIB.TXT for terms
+;---------------
+
+; U with no operands changes the current directory to \U\TOOLS; otherwise,
+;   to \U\operand (or to an alternative directory as listed in a table).
+
+GD:
+  MOV DL,2          ; load number for C drive
+  MOV AH,0E         ; MS-DOS function code for SET_DRIVE
+  INT 021           ; change the current drive to drive C
+  MOV SI,081        ; point to our command tail
+  CALL TAIL_BLANKS  ; advance to the operand
+  CMP AL,0D         ; are there no operands?
+  MOV DX,PATH       ; point to the new current directory
+  JE >L1            ; skip if there are
+  MOV DI,NEWDIR     ; operand seen: point to surdirectory slot
+L2:                 ; loop here to copy the operand
+  LODSB             ; fetch byte
+  CMP AL,'a'        ; is the byte too low to be a lower-case letter?
+  JB >L3            ; skip if it is
+  CMP AL,'z'        ; is the byte a lower-case letter?
+  IF B SUB AL,020   ; coerce to upper-case if it is
+L3:
+  STOSB             ; output byte
+  CMP AL,' '        ; terminating blank seen?
+  JA L2             ; loop if not, to copy another byte
+  DEC DI            ; retreat to terminator
+  MOV AL,0          ; load null
+  STOSB             ; null-terminate the path
+  CALL CHECK_LIST
+L1:
+  MOV AH,03B        ; MS-DOS function code for CHANGE_DIR
+  INT 021           ; change the current directory
+  MOV AX,04C00      ; MS-DOS function codes for GOOD_EXIT
+  INT 021           ; exit the program
+
+L0:
+  DB 'BRIEF',0,         '\P\BRIEF',0
+  DB 'CLERICAL',0,      '\D\CLERICAL',0
+  DB 'CARMEN',0,        '\P\CARMEN',0
+  DB 'LL',0,            '\P\REF\LL',0
+  DB 'GREENDOT',0,      '\P\GREENDOT',0
+  DB 'LIB\EILIB',0,     '\T\C\EILIB',0
+  DB 'TOOLS\EITOOLS',0, '\T\C\EITOOLS',0
+  DB 'THIS',0,          '\T\T',0
+  DB 'GAMES',0,         '\P\GAMES',0
+  DB 'PD',0,            '\P\PD',0
+  DB 'PROCOMM',0,       '\P\PROCOMM',0
+  DB 'STNG',0,          '\P\REF\STNG',0
+  DB 'SFP',0,           '\P\SFP',0
+  DB 'ERICCD',0,        '\P\ERICCD',0
+  DB 'MC\T',0,          '\R\MC\T',0
+  DB 'DISCPASS',0,      '\P\DISCPASS',0
+  DB 'BBAK',0,          '\J\BBAK',0
+  DB 0
+
+CHECK_LIST:
+xxx:
+  MOV CX,-NEWDIR
+  ADD CX,DI
+  MOV SI,L0
+L1:
+  PUSH SI,CX
+  MOV DI,NEWDIR
+  REPE CMPSB
+  JE >L3
+  POP CX,SI
+  CALL SCANZ
+  CALL SCANZ
+  TEST B[SI]
+  JNZ L1
+  RET
+
+L3:
+  MOV DX,SI
+  POP CX,SI
+  RET
+
+
+SCANZ:
+  LODSB
+  TEST AL
+  JNZ SCANZ
+  RET
+
+
+PATH:
+  DB '\U\'
+NEWDIR:
+  DB 'TOOLS',0

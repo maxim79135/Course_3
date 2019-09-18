@@ -1,0 +1,46 @@
+MAPD86 tool for D86 debugger, V1.00            July 21, 1988
+Copyright 1988 Eric Isaacson.
+
+This tool is for the use of registered D86 users only.  You may 
+not distribute this tool. 
+
+MAPD86.COM is a tool that creates a SYM file readable by D86 
+from a MAP listing produced by the linker or your high-level 
+language compiler.  This allows you to debug programs created
+by sources other than A86. 
+
+You invoke MAPD86 by typing MAPD86 followed by the name of your 
+MAP file.  You do not need to type the extension .MAP.  MAPD86 
+will output a file with the same name, but with a .SYM 
+extension.  Or, you may explicitly provide the name of the 
+output file. Examples: 
+
+  MAPD86 myprog         transforms myprog.MAP into myprog.SYM
+  MAPD86 myprog out     transforms myprog.MAP into out.SYM
+
+Obviously, in order to use MAPD86, you need to instruct your 
+linker or compiler to produce a .MAP file.  Here are the 
+command sequences for various common environments: 
+
+Microsoft LINK:  LINK /MAP myprog;
+                 MAPD86 myprog
+
+Turbo C: TCC -M myprog
+         MAPD86 myprog
+
+Turbo Pascal: TPC /$T+ myprog
+              TPMAP myprog
+              MAPD86 myprog
+
+Note that the symbols passed to D86 are offsets only.  Thus, to 
+maximize D86'a effectiveness and minimize confusion, your 
+program should have as few different segments as possible.  In 
+most languages (e.g. Turbo C) you can declare a SMALL model of 
+computation, that fits the entire program into a single 
+segment.  Unfortunately, Turbo Pascal compiles its "units" into 
+separate segments.  You'll have to locate and jump to the 
+segment containing the symbols you're interested in, in order 
+to set breakpoints at those locations. 
+
+
+

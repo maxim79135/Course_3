@@ -1,0 +1,52 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   TOUCH                                        See EILIB.TXT for terms
+;---------------
+
+; TOUCH updates the date-time stamp for the named file(s) in the command
+;   tail.  Wildcard specifications are accepted.
+
+NO_DOSCHECK EQU 1   ; our MSDOS.8 library routines will not trap errors
+
+TOUCH:
+  MOV SI,081        ; point to our invocation command tail
+  MOV CX,SP         ; our stack is empty
+  CALL WILD_ARGS    ; expand the remaining arguments into name strings
+  MOV AH,02A        ; MS-DOS function code for GET_DATE
+  INT 021           ; set CX=year  DH=month  DL=day
+  SUB CX,1980       ; CX=Y-1980
+  ADD CL,CL         ; top 7 bits of CL = Y-1980
+  MOV AH,CL         ; top 7 bits of AX = Y-1980
+  MOV AL,DL         ; bottom 5 bits of AX = day
+  MOV DL,0          ; clear DL for masking
+  SHR DX,CL,3       ; shift month into middle 4 bits
+  OR AX,DX          ; AX:Y-1980,M,D=7,4,5 bits  AX is the file-date format
+  XCHG BP,AX        ; swap the file-date to BP
+  MOV AH,02C        ; MS-DOS function code for GET_TIME
+  INT 021           ; get time: CH=hours  CL=minutes  DH=seconds
+  SHR DH,1          ; DH=2S
+  MOV AL,DH         ; AL=2S
+  MOV DH,CL         ; DH=minutes
+  MOV DL,0          ; clear DL for masking
+  SHL CH,CL,3       ; shift the hours to the top 5 bits of CH
+  MOV AH,CH         ; hours are the top 5 bits of AX
+  SHR DX,CL         ; minutes are the middle 6 bits of DX
+  OR AX,DX          ; AX:H,M,2S=5,6,5 bits  AX is the file-time format
+  XCHG DI,AX        ; swap the file-time into DI
+  JMP >L2           ; jump into loop
+
+L1:
+  MOV AX,03D02      ; MS-DOS function codes for OPEN_UPDATE
+  INT 021           ; open the file for updating
+  JC >L2            ; skip if the file could not be opened
+  XCHG BX,AX        ; swap the open-file handle into BX
+  MOV CX,DI         ; set CX to the file-time
+  MOV DX,BP         ; set BP to the file-date
+  MOV AX,05701      ; MS-DOS function codes for SET_DATE_TIME
+  INT 021           ; reset the date and time for the file
+  CALL MCLOSE       ; close the file
+L2:                 ; loop here for each file in the list
+  POP DX            ; pop the pointer to the file name
+  TEST DX           ; have we reached the null terminator?
+  JNZ L1            ; loop if not, to process the file
+  JMP GOOD_EXIT     ; all done: return to the operating system
+

@@ -1,0 +1,40 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  LINEFILT                                      See EILIB.TXT for terms
+;---------------
+
+; LINE_FILTER is a macro that can be included at the beginning of a program,
+;   to make that program into a line filter.  The first operand to LINEFILT
+;   is the name of the program; the optional second operand is the name
+;   of the procedure to be called to scan the invocation command tail, and
+;   to make any initializations necessary prior to processing.
+
+; The second operand can also be the single character "-", in which case
+; there is no initialization procedure, but the LINE_FILTER call should
+; immediately be followed by DB directives with the null-terminated
+; trailing part of USAGE_MSG.
+
+LINE_FILTER MACRO
+        DATA SEGMENT
+OBUFF:                  ; output buffer
+  DB 16K DUP ?
+OBUFF_LIMIT:            ; if output goes beyond here we flush
+  DB 1K DUP ?
+        DATA ENDS
+
+#1:
+        ##if #s2 GT 1
+  MOV SI,081            ; point to the command tail
+  CALL #2
+        ##else
+  CALL VERIFY_NO_ARGS   ; if no second parm then verify no arguments
+        ##endif
+  JMP PROCESS_OBUFF_BP  ; process the input file
+
+        ##if #s2 LE 1 
+USAGE_MSG:
+  DB 'usage: #1 <in >out',0D,0A
+        ##if '#2' ne '-'
+  DB 0
+        ##endif
+        ##endif
+#em

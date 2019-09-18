@@ -1,0 +1,59 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    C2E                                         See EILIB.TXT for terms
+;---------------
+
+; OUT_COM2EXE transforms the COM file consisting of BP bytes at DX, into
+;   an equivalent EXE file output to DI.
+
+  SIZE_MOD_512 EQU W[BX+2]     ; EXE file size mod 512 bytes
+  SIZE_DIV_512 EQU B[BX+4]     ; number of 512-byte blocks in EXE
+  EXE_CHECKSUM EQU W[BX+18]    ; 32-bit checksum for EXE
+
+OUT_COM2EXE:
+  MOV BX,DI               ; save the start of the EXE file
+  MOV SI,FH_TEMPLATE      ; point to our templete
+  MOV CX,FH_TEMPLATE_SIZE ; load the size of our template
+  REP MOVSW               ; copy our template to the header buffer
+  MOV CX,FH_FILL_SIZE     ; load the number of remaining words to zero out
+  SUB AX,AX               ; load a zero value
+  REP STOSW               ; zero out the remaining words of the EXE header
+  MOV AX,BP               ; fetch the file size
+  ADD AX,1023             ; add in 2 blocks for header
+  SHR AH,1                ; set AH to the number of 512-byte blocks
+  MOV SIZE_DIV_512,AH     ; store the number of 512-byte blocks
+  MOV AX,BP               ; fetch the file size again
+  AND AX,511              ; calculate the size mod 512
+  MOV SIZE_MOD_512,AX     ; store the size mod 512
+  MOV SI,DX               ; point SI to the source buffer
+  MOV CX,BP               ; set CX to the buffer count
+  REP MOVSB               ; copy the buffer to the destination
+  MOV B[DI],0             ; zero the beyond-byte, for the word checksum
+  MOV BP,DI               ; point BP beyond the output program contents
+  MOV SI,BX               ; point SI to the start of the EXE file
+  MOV CX,-1               ; load the initial checksum value
+L1:                       ; loop here to calculate the 32-bit EXE checksum
+  LODSW                   ; load a word from the EXE file
+  SUB CX,AX               ; decrement the checksum by that value
+  CMP SI,BP               ; have we reached the end of the EXE file?
+  JB L1                   ; loop if not, to continue the calculation
+  MOV EXE_CHECKSUM,CX     ; checksum is calculated: store it
+  RET
+
+
+
+FH_TEMPLATE:                ; template of initial values for EXE header
+  DB 04D,05A                ; EXE signature bytes
+  DW ?,?                    ; file size is filled in later
+  DW 0                      ; there are no relocation entries
+  DW 0020                   ; the header is 020 16-byte paragraphs long
+  DW 0100                   ; minimum memory requirement is 4K bytes of stack
+  DW 0FFFF                  ; maximum memory is unlimited
+  DW 0FFF0,-2               ; SS offset is -010 from PSP; initial SP is 0
+  DW ?                      ; checksum is filled in later
+  DW 0100,0FFF0             ; CS offset is -010 from PSP, initial IP is 0100
+  DW 0040                   ; offset of the (empty) relocation buffer
+  DW 0,1,0,1                ; overlay number zero, undocumented values 1 0 1
+FH_TEMPLATE_SIZE EQU ($-FH_TEMPLATE)/2   ; number of words declared above
+FH_FILL_SIZE EQU 256-FH_TEMPLATE_SIZE    ; number of remaining zero words
+
+

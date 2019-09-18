@@ -1,0 +1,3 @@
+%; HTML header template used by THUMBS.BAT to create a THUMBS.HTM file
+<TITLE>%1</TITLE>
+<H3>%1</H3>

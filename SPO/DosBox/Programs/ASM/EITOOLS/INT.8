@@ -1,0 +1,59 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   INT                                          See EILIB.TXT for terms
+;---------------
+
+; INT is a program that displays the interrupt vector-value, and the first
+;   eight bytes at the vector location, for the interrupt whose number is given
+;   as an argument.
+
+        DATA SEGMENT
+OBUFF:                ; our output display line will be buffered here
+  DB 128 DUP (?)
+        DATA ENDS
+
+INT_:
+  MOV SI,081          ; point to our invocation command tail
+  CALL VERIFY_1_DEC   ; verify a single decimal command argument
+  MOV DI,OBUFF        ; point to our output buffer
+  MOV DX,DI           ; also point DX there, for later console output
+  MOV AH,0            ; high byte of an interrupt number is always zero
+  ADD AX,AX           ; n * 2
+  ADD AX,AX           ; n * 4 now points to the vector location
+  XCHG SI,AX          ; swap vector pointer into SI for addressing
+  SUB AX,AX           ; load zero
+  MOV DS,AX           ; the interrupt vector is in the zero-segment
+  LODSW               ; fetch the low (offset) word of the vector entry
+  XCHG CX,AX          ; swap the low byte into CX, to save it
+  LODSW               ; fetch the high (segment) word of the vector entry
+  MOV DS,AX           ; point DS to the handler
+  CALL OHEX_16        ; display the segment value
+  MOV AL,':'          ; load intervening colon
+  STOSB               ; output the colon
+  XCHG AX,CX          ; swap the offset into AX for output
+  MOV SI,AX           ; also load SI with the offset, for addressing
+  CALL OHEX_16        ; display the offset
+  CALL DUMP8          ; display the first 8 bytes of the handler
+  MOV AX,0A0D         ; load line-terminating CRLF
+  STOSW               ; terminate the output line
+  MOV CX,DI           ; copy the beyond-output pointer to CX
+  SUB CX,DX           ; calculate the length of the output line
+  MOV DS,ES           ; restore DS to our program's segment, for output
+  CALL OWRITE         ; output the display line to standard output
+  JMP GOOD_EXIT       ; exit the program
+
+USAGE_MSG:
+  DB  'usage: INT n',0D,0A,0
+
+
+; DUMP8 outputs a hex display of the 8 bytes at DS:SI, to memory at ES:DI.
+
+DUMP8:
+  MOV CX,8            ; load our byte counter
+L1:                   ; loop here for each byte output
+  MOV AL,' '          ; load a blank
+  STOSB               ; output a leading blank
+  LODSB               ; load the data byte
+  CALL HEX_AL         ; output the byte as a 2-digit hex display
+  LOOP L1             ; loop for the next byte
+  RET
+

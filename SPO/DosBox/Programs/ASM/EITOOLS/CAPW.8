@@ -1,0 +1,122 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  CAPW                              ; See EILIB.TXT for terms
+        ;---------------
+
+; CAPW capitalizes all words of standard input, and sends the result
+;   to standard output.  All words at the start of a line are capitalized;
+;   other words are capitalized if they do not appear in our list of
+;   prepositions.
+
+PROCESS_LINE:           ; process CX bytes at SI--DI
+  PUSH CX,SI            ; save the line count and line pointer
+  CALL MAKE_CAPS        ; convert the line to caps
+  POP SI,CX             ; restore the line pointer and count
+  JMP OUT_PROCESS_LINE  ; output the converted line
+
+
+; Following are the tables of non-capitalized prepositions.  There is
+; one table for each possible first letter of a preposition.  Each entry
+; in a table is a length byte, followed by the word.  Each table is
+; terminated when an entry has a length byte of zero.
+
+AWORDS:
+  DB 1,'a'
+  DB 3,'and'
+  DB 2,'at'
+NONE EQU $-AWORDS     ; table containing no words
+  DB 0
+DWORDS:
+  DB 2,'de'
+  DB 2,'del'
+  DB 2,'du'
+  DB 0
+EWORDS:
+  DB 2,'el'
+  DB 0
+FWORDS:
+  DB 3,'for'
+  DB 0
+IWORDS:
+  DB 2,'in'
+  DB 0
+LWORDS:
+  DB 2,'la'
+  DB 2,'le'
+  DB 3,'los'
+  DB 0
+OWORDS:
+  DB 2,'of'
+  DB 2,'on'
+  DB 0
+TWORDS:
+  DB 3,'the'
+  DB 0
+
+; INDEXES is an array of pointers to the table for each possible
+;   beginning letter of a preposition.  The pointers are byte-sized
+;   offsets from the start AWORDS of all the tables.
+
+INDEXES:
+  DB AWORDS-AWORDS
+  DB NONE,NONE         ; b c
+  DB DWORDS-AWORDS
+  DB EWORDS-AWORDS
+  DB FWORDS-AWORDS
+  DB NONE,NONE         ; g h
+  DB IWORDS-AWORDS
+  DB NONE,NONE         ; j k
+  DB LWORDS-AWORDS
+  DB NONE,NONE         ; m n
+  DB OWORDS-AWORDS
+  DB NONE,NONE         ; p q
+  DB NONE,NONE         ; r s
+  DB TWORDS-AWORDS
+  DB NONE,NONE         ; u v
+  DB NONE,NONE         ; w x
+  DB NONE,NONE         ; y z
+
+
+LCHECK MACRO            ; set Carry if the SI-pointed character is a letter
+  LODSB                 ; fetch the character
+  CMP AL,0D             ; is it a carriage return?
+  JE RET                ; return from our procedure if it is
+  OR AL,020             ; coerce the character to lower case
+  SUB AL,'a'            ; reduce the letters-range to zero
+  CMP AL,26             ; set Carry if the character was a letter
+#EM
+
+
+MAKE_CAPS:              ; capitalize the SI-pointed line
+  LCHECK                ; is the first character a letter?
+  JNC >L2               ; jump if not, into the nonletter-scanning loop
+  DEC SI                ; retreat back to the first letter
+L0:                     ; loop here to capitalize a word
+  AND B[SI],0DF         ; capitalize the letter
+L1:                     ; loop here to skip over a word
+  LCHECK                ; is the next character a letter?
+  JC L1                 ; loop if yes, to continue scanning the word
+L2:                     ; loop here to skip over nonletters between words
+  LCHECK                ; is the next character a letter?
+  JNC L2                ; loop if not, to continue scanning
+  DEC SI                ; retreat to the start of the next word
+  CBW                   ; extend the letter-index from AL to AH
+  XCHG BX,AX            ; swap the index into BX, for addressing
+  MOV BL,INDEXES[BX]    ; fetch the offset to that letter's table
+  ADD BX,AWORDS         ; convert the offset to a full pointer
+L3:                     ; loop here to scan each entry of the preposition table
+  MOV CL,[BX]           ; fetch the length byte
+  INC BX                ; advance the pointer past the length byte
+  MOV CH,0              ; extend the length from CL to CX
+  JCXZ L0               ; jump if table exhausted, to capitalize the word
+  MOV DI,BX             ; point DI to the table entry
+  ADD BX,CX             ; advance BX beyond this preposition
+  PUSH SI               ; save the word pointer
+  REPE CMPSB            ; does this word match the table entry?
+  MOV AL,[SI]           ; fetch the next character from our line
+  POP SI                ; restore the word pointer
+  JNE L3                ; loop if mismatch, to try another table entry
+  OR AL,020             ; coerce the following letter to lower case
+  SUB AL,'a'            ; reduce letters-range to zero
+  CMP AL,26             ; does our line's word continue beyond the preposition?
+  JC L3                 ; loop if it does, to try another table entry
+  JMP L1                ; prepostion match: refrain from capitalizing it

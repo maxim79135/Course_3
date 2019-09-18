@@ -1,0 +1,196 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   EDNEXT                                       See EILIB.TXT for terms
+;---------------
+
+; EDNEXT accepts in its command tail the root part of a sequence of
+;   numbered files.  We determine the last number in the sequence,
+;   increment the number, and copy the associated file to the
+;   incremented name.  Then we invoke the text editor for the new
+;   file.  For example the command EDNEXT ED FOO.M causes a search
+;   for files FOO*.M in the current directory, where * consists of
+;   decimal digits.  If the highest number found for * is 13 (FOO13.M),
+;   we copy FOO13.M to FOO14.M, and place the key sequence ED FOO14.M
+;   into the BIOS key queue.
+
+NO_DOSCHECK EQU 1     ; our MS_DOS library routines will not trap errors
+
+        DATA SEGMENT
+EDNAME:               ; the name of the text editor
+  DB 16 DUP (?)
+ROOT:                 ; our constructed wildcard file name
+  DB 128 DUP (?)
+SOURCE:               ; the last numbered file (or the default file)
+  DB 128 DUP (?)
+DEST:                 ; the new file name
+  DB 128 DUP (?)
+
+OBUFF:                ; output buffer
+              DB 1024 DUP ?
+
+IBUFF_END EQU 0F000
+
+IBUFF EQU $+128
+BACK_LF EQU B[IBUFF-1]
+  ICOUNT EQU IBUFF_END-IBUFF
+        DATA ENDS
+
+EDNEXT:
+  CALL INIT_PUT_KEY   ; adjust for a possible moved key buffer
+  MOV SI,081          ; point to command tail
+  CALL COPY_EDNAME    ; scan and copy the editor's name
+  CALL MAKE_WILD      ; scan the file root and make a wildcard name
+  MOV SI,ROOT         ; point to the created wildcard
+  MOV CX,SP           ; our stack is empty
+  CALL WILD_ARGS      ; expand the remaining arguments into name strings
+  CALL MAX_NUMNAME    ; scan the name strings to make the source and dest names
+  MOV DX,SOURCE       ; point to the source name
+  MOV DI,DEST         ; point to the destination name
+  CALL COPY_FILE48    ; copy the file
+  MOV SI,EDNAME       ; point to the editor name
+  CALL PUT_KEYZ       ; place the editor name into the key queue
+  MOV SI,DEST         ; point to the newly-created file name
+  CALL PUT_KEYZ       ; place the new name into the key queue
+  MOV AL,0D           ; load CR
+  CALL PUT_KEY        ; terminate the inserted line
+  JMP GOOD_EXIT       ; all done: return to the operating system
+
+COPY_EDNAME:
+  MOV DI,EDNAME       ; point to the buffer to contain the editor name
+  CALL TAIL_BLANKS    ; skip over intervening command-tail blanks
+  CMP AL,0D           ; is there no command tail?
+  JE >E1              ; error exit if so
+L6:                   ; loop here to copy each character of the editor name
+  MOVSB               ; copy  the character
+  CMP B[SI],' '       ; have we reached the terminating blank?
+  JA L6               ; loop if not, to copy another character
+  MOV AX,0 BY ' '     ; load blank and terminating null
+  STOSW               ; output the blank and null
+  RET
+
+E1:                   ; command tail was not formatted correctly
+  JMP USAGE_EXIT      ; put out the usage message
+
+MAKE_WILD:
+  MOV DI,ROOT         ; point to the holding buffer for the file root
+  CALL TAIL_BLANKS    ; skip over intervening blanks
+  CMP AL,0D           ; is the file root missing?
+  JE E1               ; error exit if so
+  CMP AL,'A'          ; does the root begin with a letter?
+  JB E1               ; error exit if not
+  SUB CX,CX           ; initialize count of root bytes
+  LODSB               ; scan past the first byte
+L1:                   ; loop here to scan each char in the root name
+  INC CX              ; increment the count of bytes
+  STOSB               ; output the previous character
+  CMP AL,':'          ; is the character a drive specifier?
+  JE >L5              ; zero the root count if it is
+  CMP AL,'\'          ; is the character a subdirectory specifier?
+  JNE >L7             ; skip if not
+L5:                   ; we are switching directories in the path name
+  SUB CX,CX           ; clear the root count
+L7:
+  LODSB               ; load the next character
+  CMP AL,'*'          ; did the user explicitly provide the wildcard char?
+  JE >L3              ; skip if so
+  CMP AL,'.'          ; have we reached the extension?
+  JE >L2              ; skip if we did
+  CMP AL,' '          ; is the entire file name terminated?
+  JA L1               ; loop if not
+L2:                   ; the root is scanned
+  DEC SI              ; retreat back to the terminating char
+L3:
+  MOV AX,CX           ; fetch the root count
+  SUB AX,6            ; does the count exceed the maximum allowable count?
+  IF A SUB DI,AX      ; if it does then truncate the root to 6 bytes
+  MOV AX,DI           ; fetch the pointer beyond the root name
+  SUB AX,ROOT         ; calculate the number of bytes in the root name
+  MOV ROOT_CT,AX      ; store the size of the root name
+  LEA CX,[DI+1]       ; point beyond our wildcard *
+  MOV EXT,CX          ; store the extension pointer
+  MOV AL,'*'          ; load our *
+L4:                   ; loop here to output the extension
+  STOSB               ; output the previous byte
+  LODSB               ; load the next byte
+  CMP AL,' '          ; is it the terminator?
+  JA L4               ; loop if not, to output another byte
+  DEC SI              ; terminator seen: retreat SI back to it
+  MOV AX,0D BY 0      ; load null and CR terminators
+  STOSW               ; terminate the output
+  SUB DI,CX           ; calculate the length of the extension
+  MOV EXT_CT,DI       ; store the length of the extension
+  JMP NO_MORE_ARGS    ; verify that the command tail is complete
+
+
+; MAX_NUMNAME finds the maximum number in the SI-pointed list of wild-
+;   argument file names.
+  
+MAX_NUMNAME:
+  SUB DX,DX           ; starting maximum is zero
+  MOV BX,SI           ; BX will point to the pointers
+L1:                   ; loop here to scan each file name
+  MOV SI,[BX]         ; point SI to the name
+  INC BX,2            ; advance the pointers-pointer
+  ADD SI,01234        ; advance beyond the commot root
+ROOT_CT EQU W[$-2]    ; root count is stored in the above imm value
+  MOV AL,[SI]         ; fetch the following character
+  SUB AL,'0'          ; reduce decimal-digits range to zero
+  CMP AL,10           ; was it a decimal digit?
+  JAE >L2             ; skip if not -- it's not a qualifying name
+  CALL SCAN_DECIMAL   ; scan the decimal value
+  CMP B[SI],'.'       ; have we reached the extension?
+  JE >L4              ; jump if we have
+  CMP B[SI],0         ; not reached: is there more to the root name?
+  JNE >L2             ; skip if there is more
+L4:
+  CMP AX,DX           ; is it a new maximum?
+  IF A XCHG DX,AX     ; if yes then swap the new maximum into DX
+L2:
+  LOOP L1             ; loop to examine another file name
+  MOV DI,SOURCE       ; we will create the read-file name
+  TEST DX             ; were any numbered files scanned?
+  JNZ >L3             ; jump if there were
+  MOV SI,DEFAULT      ; no numbered files: point to the default name
+  MOV CX,DEFAULT_CT   ; load the default name's count
+  REP MOVSB           ; copy the default name
+  CALL OUT_EXT        ; copy the user extension
+  JMP >L5             ; jump to common code
+
+L3:                   ; the highest file number is DX
+  MOV AX,DX           ; fetch the file number
+  CALL MAKE_NUMNAME   ; make the source file name
+L5:
+  MOV AX,DX           ; fetch the last file number
+  INC AX              ; increment to the new number
+  MOV DI,DEST         ; new name is output to the DEST name buffer
+MAKE_NUMNAME:         ; output to DI the filename numbered AX
+  MOV SI,ROOT         ; point to root name
+  MOV CX,ROOT_CT      ; load the root count
+  REP MOVSB           ; output the root name
+  CALL OUT_DEC_AX     ; output the number
+OUT_EXT:
+  MOV SI,0            ; point to extension
+EXT EQU W[$-2]        ; pointer is plugged into the above imm value
+  MOV CX,0            ; load the extension count
+EXT_CT EQU W[$-2]     ; count is loaded into the above imm value
+  REP MOVSB           ; output the extension
+  RET
+
+
+L1:                   ; loop here to place each key in the queue
+  CALL PUT_KEY        ; put the key into the queue
+PUT_KEYZ:             ; put the null-terminated SI string into BIOS key queue
+  LODSB               ; fetch a byte from the string
+  TEST AL             ; is it the terminating null?
+  JNZ L1              ; loop if not, to place the byte
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: '
+DEFAULT:
+  DB 'EDNEXT'
+DEFAULT_CT EQU $-DEFAULT
+  DB ' editor_name fname.ext',0D,0A
+  DB '  finds the last numbered fname*.ext, increments',0D,0A
+  DB '  the number, copies the last file to it',0D,0A
+  DB '  and invokes the editor for the new file',0D,0A,0

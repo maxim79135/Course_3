@@ -1,0 +1,52 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    ECH                                         See EILIB.TXT for terms
+;---------------
+
+; ECH echoes the command tail to the console "in place": the command tail
+;   replaces the DOS prompt line for this program's invocation, and
+;   the next DOS prompt will be on the immediate following line.
+;   Leading periods in the command tail stand for three spaces each of
+;   indentation.
+
+ECH:
+  CALL UP_CURSOR    ; move the screen cursor to the start of the previous line
+  MOV SI,081        ; point SI to the command-tail
+  CALL TAIL_BLANKS  ; skip over leading blanks
+  MOV BP,79         ; initialize the remaining-pad count
+L0:                 ; loop here to scan initial periods
+  CMP AL,0D         ; have we reached the end of the command tail?
+  JE >L2            ; jump if we have
+  CMP AL,'.'        ; is there a leading period?
+  JNE >L1           ; jump if not
+  MOV CX,3          ; there is a leading period: load indent-count
+  CALL CX_BLANKS    ; output indentation blanks
+  SUB BP,3          ; reduce the pad count
+  INC SI            ; advance past the leading period
+  MOV AL,[SI]       ; fetch the next character
+  JMP L0            ; loop to check for another leading period
+    
+L1:                 ; loop here to output each character in the command tail
+  LODSB             ; fetch the character
+  MOV AH,0E         ; BIOS function code for TTY_OUTPUT
+  INT 010           ; output the character
+  DEC BP            ; reduce the pad count
+  CMP B[SI],0D      ; are there more bytes in the command tail?
+  JNE L1            ; loop if so, to output the next character
+L2:                 ; command tail complete
+  MOV CX,BP         ; fetch the pad count
+  CALL CX_BLANKS    ; output the padding balnks
+  MOV AX,04C00      ; MS-DOS function codes for GOOD_EXIT
+  INT 021           ; exit the program
+
+
+CX_BLANKS:          ; output CX blanks to the console
+  TEST CX           ; is the count zero or negative?
+  JS RET            ; return if negative
+  JZ RET            ; return if zero
+L3:                 ; loop here to output each blank
+  MOV AX,0E BY ' '  ; load codes for TTY_OUTPUT of a blank
+  INT 010           ; output the blank
+  LOOP L3           ; loop to output the next blank
+  RET
+
+

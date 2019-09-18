@@ -1,0 +1,18 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   NETOPEN                                      See EILIB.TXT for terms
+;---------------
+
+; NETWORK_OPEN sets the access byte for MOPEN_READ to a network-compatible
+;   access.
+
+NETWORK_OPEN:
+  MOV AH,030                    ; function code for MSDOS_VERSION
+  INT 021                       ; fetch the DOS version number
+  CMP AL,2                      ; is it version 1, 2, or greater?
+  JB >L8                        ; jump if 1
+  IF A MOV MOPEN_ACCESS B,040   ; reset access if version 3 or more
+  RET
+
+L8:                             ; DOS version 1
+  JMP DOS_TOO_OLD               ; jump to report and exit
+

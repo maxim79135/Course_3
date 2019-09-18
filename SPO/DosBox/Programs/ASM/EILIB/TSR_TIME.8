@@ -1,0 +1,23 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   TSR_TIME                                     See EILIB.TXT for terms
+;---------------
+
+; TSR_TIMER substitutes an interrupt-8 timer handler from the caller,
+;   and terminates-and-stays-resident.  The caller must supply the
+;   handler OUR_TIMER, which must, after doing its thing, do a far
+;   jump to OLD_TIMER, whose doubleword value we store.  The caller
+;   must also supply the count TSR_SIZE of paragraphs to save when
+;   going resident.
+
+TSR_TIMER:
+  MOV AX,0351C          ; MS-DOS function codes for GET_TIMER_INT
+  INT 021               ; point ES:BX to the timer interrupt
+  MOV OLD_TIMER W,BX    ; store the old timer offset
+  MOV OLD_TIMER[2] W,ES ; store the old timer segment
+  MOV DX,OUR_TIMER      ; point to our handler
+  MOV AX,0251C          ; MS-DOS function codes for SET_TIMER_INT
+  INT 021               ; substitute our timer handler
+  MOV DX,TSR_SIZE       ; load the number of paragraphs we are preserving
+  MOV AH,031            ; MS-DOS function number for terminate-stay-resident
+  INT 021               ; terminate and stay resident
+

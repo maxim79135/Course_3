@@ -1,0 +1,21 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   G123                                         See EILIB.TXT for terms
+;---------------
+
+; G123 inserts a string into the BIOS keyboard input queue, that invokes Lotus
+;   123 and reads the first WK1 file into the buffer.
+
+INVOKE_123:
+  MOV SI,KSTRING      ; point to playback string
+  MOV CX,KCOUNT       ; load the count of bytes in the string
+  MOV AH,0            ; high byte of 16-bit code will always be zero
+L1:                   ; loop here to place each byte in the keystroke buffer
+  LODSB               ; fetch the byte
+  CALL PUT_KEY        ; place it into the keystroke buffer
+  LOOP L1             ; loop to place the next byte
+  MOV AX,04C00        ; DOS function codes for GOOD_EXIT
+  INT 021             ; exit the program
+
+KSTRING:
+  DB '123',0D,'/fr',0D
+KCOUNT EQU $-KSTRING

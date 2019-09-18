@@ -1,0 +1,19 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;     UP                                         See EILIB.TXT for terms
+;---------------
+
+; UP changes the current directory to its parent.
+
+; This program is functionally identical to the batch file containing the
+; line "CD ..", except that it runs with a cleaner console display.
+
+UP:
+  MOV DX,>L1        ; point DX to the string denoting the parent directory
+  MOV AH,03B        ; function number for "change current directory"
+  INT 021           ; directory is now changed
+  SBB AL,AL         ; set zero if no error, -1 if error
+  MOV AH,04C        ; function code for EXIT
+  INT 021           ; exit back to system
+
+L1:                 ; string denoting the parent directory
+  DB '..',0

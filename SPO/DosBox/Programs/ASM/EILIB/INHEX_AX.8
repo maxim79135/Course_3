@@ -1,0 +1,34 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  INHEX_AX                                      See EILIB.TXT for terms
+;---------------
+
+; VERIFY_HEX verifies that the next non-blank field pointed to by SI is
+;   a hexadecimal number, sets AX to the number, and advances SI beyond the
+;   number.  If there was no number we jump to USAGE_EXIT.
+
+; INHEX_AX sets AX to the value of the next hex number in the SI-pointed
+;   memory stream.
+
+VERIFY_HEX:
+  CALL TAIL_BLANKS  ; advance SI to the next non-blank
+  CALL SI_HEX_DIGIT ; are are pointing to a hex digit?
+  JNC >L1           ; jump if we are
+  JMP USAGE_EXIT    ; no hex digit: advise the user and exit the program
+
+INHEX_AX:
+  CALL SI_HEX_DIGIT ; are are pointing to a hex digit?
+  JC INHEX_AX       ; loop if not, to find the first hex digit
+L1:
+  PUSH BX,CX        ; preserve registers across call
+  SUB BX,BX         ; initial collected value is zero
+  MOV CL,4          ; shift factor for hexadecimal is 4
+L2:                 ; loop here to collect each hex digit
+  SHL BX,CL         ; shift the previous digits up one position
+  ADD BL,AL         ; add the latest digit value into the total
+  CALL SI_HEX_DIGIT ; scan the next character
+  JNC L2            ; loop if the character was a hex digit
+  DEC SI            ; retreat back to the terminating non-hex byte
+  XCHG AX,BX        ; scanning complete: swap the answer into AX
+  POP CX,BX         ; restore clobbered registers
+  RET
+

@@ -1,0 +1,46 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MEMSORT                                      See EILIB.TXT for terms
+;---------------
+
+; MEMSORT sorts a block of memory at DS:SI up to BX, and outputs the results
+;   to ES:DI.  The calling program must supply routines COMPARE, GEN_SORTP,
+;   and COPY_SORTREC, as described in the LSORT.8 module.  There must be enough
+;   free memory beyond the sort contents to hold a 16-bit key for each sort
+;   record within the block (plus an extra 2 bytes for possible word-alignment
+;   coercion).  Also, COPY_SORTREC must preserve BX and BP, and GEN_SORTP must
+;   preserve DI.
+
+MEMSORT:
+  PUSH ES,DI          ; save the ouput pointer during the sort process
+  MOV ES,DS           ; point ES to the memory being sorted
+  MOV DI,1            ; load coercion value
+  OR DI,BX            ; copy limit ptr to DI, coercing it to an odd value
+  INC DI              ; advance the limit pointer to the next even value
+  PUSH DI             ; DI is now the key-table pointer: save it
+  SKIP1               ; skip over STOSW into the record-scanning loop
+L1:                   ; loop here to output each record key
+  STOSW               ; output the record key to the key table
+L2:
+  CMP SI,BX           ; have we reached the end of the memory contents?
+  JAE >L3             ; jump if we have
+  CALL GEN_SORTP      ; set AX to the key for the SI-pointed record
+  JZ L1               ; loop if we did get a normal key
+  JNC L2              ; loop without output if we have contents to skip
+L3:                   ; we are finished generating keys
+  POP SI              ; point SI to the start of the keys table
+  PUSH SI,DI          ; save the pointers to and beyond the keys table
+  DEC DI,2            ; retreat DI to the last key in the table
+  CALL SIDI_SORT      ; sort the keys
+  POP BP,BX,DI,ES     ; restore keys-limit, keys, and output pointers
+  JMP >L5             ; jump into the output loop
+
+L4:                   ; loop here to output each sorted record
+  MOV SI,[BX]         ; fetch the key to the next output record
+  INC BX,2            ; advance the keys pointer
+  CALL COPY_SORTREC   ; output the record
+L5:
+  CMP BX,BP           ; are there more keys in the table?
+  JB L4               ; loop if there are, to output another record
+  RET
+
+

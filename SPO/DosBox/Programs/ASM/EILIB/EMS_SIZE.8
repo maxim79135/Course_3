@@ -1,0 +1,49 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   EMS_SIZE                                     See EILIB.TXT for terms
+;---------------
+
+; EMS_SIZE sets CX to the number of available EMS pages, and AX to the
+;   segment register value of the EMS page frame.  We return CX=0 if EMS
+;   is for any reason not available at all.  We assume DS=CS upon entry.
+
+; EMS is a DOS-based memory-expansion technique that is no longer commonly
+;   used.  I am including these library routines because they had appeared
+;   in an earlier version of EILIB.
+
+L0:
+  DB 'EMMXXXX0'     ; string that always exists at offset 10 of EMS driver seg
+
+EMS_SIZE:
+  PUSH BX,SI,DI,ES    ; preserve registers across call
+  PUSH BX             ; preserve paragraph count for later call
+  SUB AX,AX           ; load 0, pointing to 86 interrupt vector
+  MOV ES,AX           ; point ES to the 86 interrupt vector
+  ES MOV ES,W[414]    ; fetch the segment for the EMS driver
+  MOV DI,10           ; point DI to the signature string
+  MOV SI,L0           ; point SI to our copy of the signature string
+  MOV CX,4            ; load the size (in words) of the signature string
+  REPE CMPSW          ; is the signature string in the EMS segment?
+  JNE >L8             ; return 0 if not
+  MOV AH,040          ; load the EMS function number for EMS_GOOD
+  INT 067             ; ask the driver if the EMS memory is any good
+  TEST AH             ; is the EMS good?
+  JNZ >L8             ; return 0 if not
+  MOV AH,041          ; EMS function number for GET_EMS_FRAME
+  INT 067             ; set BX to the segment register value of the EMS frame
+  TEST AH             ; was there an error?
+  JNZ >L8             ; return 0 if there was an error
+  XCHG AX,BX          ; swap the segment value into AX
+  POP BX              ; restore the requested paragraph count
+  PUSH AX             ; save the segment value
+  MOV AH,042          ; EMS function number for GET_EMS_SIZE
+  INT 067             ; set BX to the number of available pages
+  TEST AH             ; was there an error?
+  POP AX              ; restore to AX the segment value
+  MOV CX,BX           ; copy the size to CX
+  JZ >L9              ; return if there was no error
+L8:                   ; EMS not there or error was seen
+  POP BX              ; discard the second copy of the size
+  SUB CX,CX           ; return 0 available pages
+L9:
+  POP ES,DI,SI,BX     ; restore clobbered registers
+  RET

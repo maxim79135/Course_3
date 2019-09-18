@@ -1,0 +1,65 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SHOWPORT                                     See EILIB.TXT for terms
+;---------------
+
+; SHOWPORT generates a display of hex byte values coming into the port
+;   whose hex value is given in the command tail.  The program generates
+;   a value in video memory every time it changes.  We exit the program
+;   when the Escape key is pressed.
+
+  JMP SHOWPORT      ; skip over the following usage message
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 'usage: SHOWPORT hex_port',0D,0A
+  DB '   displays values coming into an input port',0D,0A
+  DB 'or:    SHOWPORT M hex_seg hex_offset',0D,0A
+  DB '   displays changing value of a memory byte',0D,0A
+  DB 0D,0A,0,01A
+
+SHOWPORT:
+  CALL NONBLANK_TAIL      ; set AL to the first nonblank in the command tail
+  AND AL,0DF              ; coerce the nonblank to upper case
+  CMP AL,'M'              ; is it the M memory-specifier flag?
+  JNE >L1                 ; jump if not, to scan a single port number
+  MOV GET_PORT_BYTE B,03C ; M is seen: enable the memory-fetching code
+  CALL INHEX_AX           ; fetch the segment value for the memory byte
+  XCHG BP,AX              ; swap the segment value into BP
+L1:
+  CALL INHEX_AX           ; fetch the port-or-offset to be monitored
+L2:
+  XCHG DX,AX              ; swap the port number (or offset) into DX
+  CALL NO_MORE_ARGS       ; ensure there are no more command-tail arguments
+  MOV ES,AX,0B800         ; point ES to the video screen
+  SUB DI,DI               ; point DI to the start of video memory
+L1:                       ; loop here to continuously monitor the port
+  IN AL,060               ; glance at the keybaord port
+  CMP AL,1                ; is there an Escape key there?
+  JE >L9                  ; jump if there is, to eat the key and exit
+  CALL GET_PORT_BYTE      ; fetch our monitor-port value
+  CMP AL,BL               ; has the value changed?
+  JE L1                   ; loop if not, to continue monitoring
+  MOV BL,AL               ; value has changed: store the new value
+  CALL VIDEO_HEXOUT       ; output the value to the video screen
+  CMP DI,4000             ; have we reached the end of the screen display?
+  IF AE SUB DI,DI         ; if yes then reset the output to the screen start
+  JMP L1                  ; loop to continue monitoring the port
+
+L9:                       ; an Escape key was seen
+  CALL BIOS_KEY_AX        ; consume the key
+  JMP GOOD_EXIT           ; exit the program
+
+
+GET_PORT_BYTE:
+  IN AL,DX                ; fetch the port value
+  RET
+;
+; memory-fetch option drops into the following code
+;
+  PUSH DS,SI              ; save registers during the operation
+  MOV DS,BP               ; point DS to the specified segment
+  MOV SI,DX               ; point SI to the specified offset
+  LODSB                   ; fetch the memory byte
+  POP SI,DS               ; restore clobbered registers
+  RET
+

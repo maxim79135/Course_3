@@ -1,0 +1,44 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  BACKTO      ,KEY_CHAR             ; See EILIB.TXT for terms
+        ;---------------
+
+; BACKTO is a filter that truncates all lines of standard input, back to the
+;   first non-blank preceding the character provided in the command tail. If
+;   the character is not found on a line, that line is not truncated.
+
+USAGE_MSG:
+  DB 'usage: BACKTO char <in >out',0D,0A,0
+
+
+KEY_CHAR:
+  CALL NONBLANK_TAIL    ; verify nonblank in command tail, and set AL to it
+  XCHG DX,AX            ; swap the key character into DL
+  INC SI                ; advance SI beyond the key character
+  JMP NO_MORE_ARGS      ; verify there was only the one character
+
+
+
+; PROCESS_LINE performs the truncation for a single line.
+
+PROCESS_LINE:
+  PUSH CX               ; save the line count
+  DEC DI                ; retreat DI to the last character of the line
+  STD                   ; scanning is backwards
+  MOV AL,DL             ; fetch the character we are looking for
+  REPNE SCASB           ; scan backwards to find the character
+  JNE >L1               ; skip if it wasn't found, to output the whole line
+  POP AX                ; character found: discard the full-line count
+  MOV AL,' '            ; load blank
+  REPE SCASB            ; scan back over trailing blanks
+  CLD                   ; restore forward scanning
+  IF NE INC DI          ; advance up to the nonblank that was found
+  INC DI                ; advance beyond the nonblank
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output the new terminating CRLF
+  MOV CX,DI             ; point CX beyond the truncated line
+  SUB CX,SI             ; calculate the size of the truncated line
+  PUSH CX               ; repush the new line count
+L1:
+  POP CX                ; pop the line count
+  CLD                   ; restore forward scanning
+  JMP OUT_PROCESS_LINE  ; output the resulting line

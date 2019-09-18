@@ -1,0 +1,20 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COPYZ_AX                                     See EILIB.TXT for terms
+;---------------
+
+; COPYZ_AX copies the CS:AX-pointed, null-terminated string to DI.  The
+;   terminating null is not output, but it is returned in AL so the caller
+;   could STOSB it.
+
+COPYZ_AX:
+  PUSH SI             ; preserve register across call
+  XCHG SI,AX          ; swap the AX pointer into SI
+  DB 03C              ; skip over the STOSB and jump to CS LODSB below
+L2:                   ; loop here to output each byte
+  STOSB               ; output the byte
+  CS LODSB            ; fetch the next byte
+  TEST AL             ; is it the null terminator?
+  JNZ L2              ; loop if not, to output the byte
+  POP SI              ; restore clobbered register
+  RET
+

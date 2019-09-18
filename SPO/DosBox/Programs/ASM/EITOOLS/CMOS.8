@@ -1,0 +1,33 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;     CMOS                                       See EILIB.TXT for terms
+;---------------
+
+; CMOS writes the contents of the computer's CMOS memory to the named
+;   file in the invocation command tail.
+
+  JMP CMOS            ; skip around the following message
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 'usage: CMOS outfile',0D,0A
+  DB '   outputs the contents of CMOS memory to a file',0D,0A
+  DB 0,01A
+
+CMOS:
+  MOV SI,081          ; point to our invocation command tail
+  CALL OWRITE_ARG     ; open the output file
+  CALL NO_MORE_ARGS   ; ensure no more command-tail arguments
+  MOV DI,OBUFF        ; initialize the output pointer
+  MOV BL,0            ; initial CMOS byte number is zero
+  MOV CX,64           ; count of CMOS bytes is 64
+L1:                   ; loop here to read and buffer each CMOS byte
+  MOV AL,BL           ; fetch the CMOS byte number
+  OUT 070,AL          ; output the byte number to the CMOS port
+  DW 0E3,0E3          ; perform two time-wasting JMP instructions
+  IN AL,071           ; get the CMOS byte from the port
+  STOSB               ; output the byte to our buffer
+  INC BX              ; increment the CMOS byte number
+  LOOP L1             ; loop to fetch the next byte
+  JMP OWR_CLOSE_EXIT  ; flush the output buffer, close output file, and exit
+
+NO_DOSCHECK EQU 1     ; we will not trap DOS errors

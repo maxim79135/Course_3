@@ -1,0 +1,22 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COPYLINE                                     See EILIB.TXT for terms
+;---------------
+
+; COPY_LINE copies the SI-pointed line to DI.
+
+; OUT_FOUND_LINE outputs to DI the line containing the SI-pointed byte.
+
+        #if ref OUT_FOUND_LINE
+L0:                 ; loop here to retreat towards the line start
+  DEC SI            ; retreat the input pointer
+OUT_FOUND_LINE:
+  CMP B[SI-1],0A    ; are we at the start of the line?
+  JNE L0            ; loop if not, to retreat towards the start of the line
+        #endif
+COPY_LINE:
+  LODSB             ; fetch a byte from the line
+  STOSB             ; output the byte
+  CMP AL,0A         ; was it the terminating linefeed?
+  JNE COPY_LINE     ; loop if not, to copy another byte
+  RET
+

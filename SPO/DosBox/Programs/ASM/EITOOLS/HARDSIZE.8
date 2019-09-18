@@ -1,0 +1,136 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HARDSIZE                                     See EILIB.TXT for terms
+;---------------
+
+; HARDSIZE deduces the number of readable tracks, sectors, and heads of the
+;   first hard disk drive, and outputs a report with the information.
+
+; NOTE this program was written about ten years ago.  It almost certainly
+;   does not work with the latest, multi-gigabyte hard drives.
+
+HARDSIZE:
+  MOV AX,CS             ; point to our program segment
+  ADD AX,01000          ; advance to the next 64K segment
+  MOV ES,AX             ; point ES to the free 64K segment, for reading
+  SUB BX,BX             ; we will always read to location 0
+  MOV DX,1 BY 080       ; default head is 1, disk number is 080
+  SUB DI,DI             ; we will output a pattern to offset zero
+  MOV AX,05555          ; load pattern of all hex 55's
+  MOV CX,08000          ; we will fill all 32K words of the segment
+  REP STOSW             ; fill the segment with 55-hex bytes
+  MOV CX,0101           ; track 1, sector 1
+  CALL TRY_READ         ; read from the first track
+  STD                   ; scanning will be backwards
+  SCASW                 ; retreat DI to the last word of the segment
+  MOV CX,08000          ; scan count is the full 32K words
+  REPE SCASW            ; scan back to the last word actually read
+  CLD                   ; restore forward scanning
+  ADD DI,8              ; advance DI a little into the non-read area
+  AND DI,NOT 63         ; coerce the beyond-pointer to a multiple of 64
+  PUSH DI               ; we have a sector size: save it
+  MOV DI,1023           ; maximum possible track is 1023
+  MOV BP,TRY_TRACK      ; point to track-testing routine
+  CALL BINARY_TRY       ; find the high and low tracks
+  PUSH DI,AX            ; push the limiting track numbers onto the stach
+  MOV CX,0101           ; default track 1, sector 1
+  MOV DI,15             ; highest representable head number is 15
+  MOV BP,TRY_HEAD       ; point to head-testing routine
+  CALL BINARY_TRY       ; find the high and low heads
+  PUSH DI,AX            ; push the limiting head numbers onto the stack
+  MOV DH,1              ; default head number is 1
+  MOV DI,63             ; highest representable sector number is 63
+  MOV BP,TRY_SECTOR     ; point to sector-testing routine
+  CALL BINARY_TRY       ; find the high and low sectors
+  PUSH DI,AX            ; push the limiting sector numbers on the stack
+  MOV BP,7              ; there are 7 numbers to report
+  MOV SI,REPORT_MSGS    ; point to the report template
+  MOV ES,CS             ; restore ES to our program segment, for output
+  MOV DX,DI,02000       ; point DX and DI to a free memory area, for report
+L1:                     ; loop here to output each report line
+  LODSB                 ; fetch a byte from the caption template
+  STOSB                 ; output the byte
+  TEST AL               ; is it a null marker?
+  JNZ L1                ; loop if not, to continue output
+  DEC DI                ; null seen: retract its output
+  POP AX                ; pop the output value
+  CALL OUT_DEC_AX       ; output the value as a decimal number
+  DEC BP                ; count down values
+  JNZ L1                ; loop to output the next line
+  MOVSW                 ; output the following CRLF
+  CALL OWRITE_DI        ; flush the output to the console
+  JMP GOOD_EXIT         ; exit back to the operating system
+
+
+; BINARY_TRY is called with BP pointing to a procedure that will act upon
+;   a number AX (which can be a track, head, or sector number), and return
+;   NoCarry if a disk-read with that number is valid.  We are called with
+;   DI set to the highest representable value.  We perform a sequence of
+;   tries, in binary-search style, to determine the maximum permissible
+;   value for AX.  We also determine whether 0 or 1 is the minimum value.
+;   We return DI set to the maximum value, and AX to the minimum.
+
+BINARY_TRY:
+  MOV SI,1          ; the narrowing range will be held in SI--DI
+L1:                 ; loop here for each iteration of the binary search
+  MOV AX,DI         ; load the high delimiter
+  ADD AX,SI         ; add the low delimiter
+  SHR AX,1          ; divide by 2, to get the midpoint value
+  CMP AX,SI         ; has the range reduced to just one value?
+  JE >L2            ; exit the loop if it has
+  CALL BP           ; apply the procedure to the midpoint value
+  XCHG SI,AX        ; if success then AX will be the new low
+  JNC L1            ; loop if it was in fact a success
+  XCHG SI,AX        ; failure: low value remains the same
+  XCHG DI,AX        ; the midpoint becomes the high value
+  JMP L1            ; loop to narrow the range further
+
+L2:                 ; the range has narrowed to one value
+  CALL BP           ; test that one value
+  IF C DEC AX       ; if we failed then the maximum is one less
+  XCHG DI,AX        ; swap the maximum into DI, for return
+  SUB AX,AX         ; load zero value, to see if it's the minimum
+  CALL BP           ; is zero the minimum?
+  IF C INC AX       ; if not then increment to 1
+  RET
+
+
+TRY_TRACK:          ; see if track AX is valid
+  MOV CL,AH         ; copy high two bits of track into CL
+  MOV CH,AL         ; copy low 8 bits into CH
+  ROR CL,1          ; rotate the high track bits downward
+  ROR CL,1          ; high 2 track bits are now the high bits of CL
+  INC CX            ; sector number is 1
+TRY_READ:           ; common disk-reading exit
+  PUSH AX           ; preserve the caller's AX
+  MOV AX,0A01       ; 0A=DISK_READ, number of sectors is 1
+  INT 013           ; read the hard disk
+  POP AX            ; restore caller's AX
+  RET
+
+
+TRY_SECTOR:         ; see if sector AX is valid
+  MOV CH,1          ; track number is 1
+  MOV CL,AL         ; sector number is AL
+  JMP TRY_READ      ; try to read it
+
+
+TRY_HEAD:           ; see if head AX is valid
+  MOV DH,AL         ; head number is AL
+  JMP TRY_READ      ; try to read it
+
+
+REPORT_MSGS:
+  DB 0D,0A,'Lowest sector is ',0
+  DB 0D,0A,'Highest sector is ',0
+  DB 0D,0A,'Lowest head is ',0
+  DB 0D,0A,'Highest head is ',0
+  DB 0D,0A,'Lowest track is ',0
+  DB 0D,0A,'Highest track is ',0
+  DB 0D,0A,'Sector size is ',0
+  DB 0D,0A,0
+
+
+USAGE_MSG:
+  DB 'usage: HARDSIZE',0D,0A
+  DB '    reports valid track, head sector range of hard disk',0D,0A
+  DB 0

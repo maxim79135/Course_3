@@ -1,0 +1,49 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DT_STAMP                                     See EILIB.TXT for terms
+;---------------
+
+; DT_STAMP fetches the date-time stamp from a given file, and stores it
+;   at a fixed offset within that file.  The file name and hex offset are
+;   provided in the invocation command tail.
+
+; This was written as a tool for creating an INSTALL.COM file.  It enables
+;   INSTALL to copy itself to the user's destination directory by simply
+;   writing its own memory image, and then applying the correct date-time
+;   stamp to that written image.
+
+DT_STAMP:
+  MOV SI,081        ; point to our invocation command tail
+  CALL FILE_ARG     ; fetch the file name
+  CALL MOPEN_READ   ; open the file for reading
+  MOV BP,DX         ; save the file name
+  MOV AX,05700      ; MS-DOS function codes for GET_DATE_TIME
+  INT 021           ; set CXDX to the date-time stamp
+  PUSH DX,CX        ; save the date-time stamp, but also place it in memory
+  CALL MCLOSE       ; close the file
+  MOV DX,BP         ; restore the pointer to the file name
+  MOV AL,2          ; MS-DOS open code for READ_WRITE
+  CALL MOPEN        ; open the file
+  CALL VERIFY_HEX   ; fetch the offset
+  XCHG DX,AX        ; swap the offset into DX
+  SUB CX,CX         ; high word of the file location is always zero
+  MOV AX,04200      ; MS-DOS function codes for SEEK_FROM_START
+  INT 021           ; seek to the indicated location within the file
+  MOV DX,SP         ; point to the date-time stamp
+  MOV CX,4          ; the date-time stamp consists of 4 bytes
+  CALL MWRITE       ; place the date-time stamp into the file
+  SUB CX,CX         ; load zero
+  SUB DX,DX         ; doubleword zero is loaded into the seek offset
+  MOV AX,04202      ; MS-DOS function codes for SEEK_FROM_END
+  INT 021           ; seek to the end of the file
+  POP CX,DX         ; restore the date-time stamp
+  MOV AX,05701      ; MS-DOS function codes for SET_DATE_TIME
+  INT 021           ; reset the date-time to its original value
+  CALL MCLOSE       ; close the file
+  JMP GOOD_EXIT     ; exit back to the operating system
+
+
+USAGE_MSG:
+  DB 'usage: DT_STAMP file_name hex_offset',0D,0A
+  DB '   stores a file''s own date-time stamp at the indicated offset',0D,0A
+  DB '   within itself',0D,0A,0
+

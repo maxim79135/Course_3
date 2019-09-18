@@ -1,0 +1,46 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   VMODE                                        See EILIB.TXT for terms
+;---------------
+
+; VMODE sets the video mode to the decimal value in the command tail.  If
+;   there is no value given, we simply display the current mode to the
+;   console.
+
+VMODE:
+  MOV SI,081          ; point to our invocation command tail
+  CALL TAIL_BLANKS    ; skip over leading blanks in the command tail
+  CMP AL,0D           ; is there any content in the command tail?
+  JE >L1              ; jump if not, to display the mode
+  CALL VERIFY_DEC     ; each the mode number we are setting
+  TEST AH             ; is the number too high?
+  JNE >L1             ; jump if yes, to display the current mode
+  INT 010             ; execute BIOS function AH=0, to set the video mode
+  JMP GOOD_EXIT       ; exit the program
+
+L1:                   ; no command-tail argument
+  SUB AX,AX           ; load zero
+  MOV DS,AX           ; set DS to zero, to point to the BIOS memory area
+  MOV AL,B[0449]      ; fetch the video mode
+  MOV DS,CS           ; restore DS to our program segment
+  MOV DI,VMODE_SLOT   ; point DI to the slot within our message
+  AAM                 ; unpack the digits to AH and AL
+  ADD AX,'00'         ; convert the digits to ASCII
+  XCHG AH,AL          ; swap so the most significant digit is output first
+  CMP AL,'0'          ; is the tens digit zero?
+  IF E MOV AL,' '     ; if yes then comvert it to blank
+  STOSW               ; output the digits
+  MOV AX,VMODE_IS     ; point to our message
+  CALL EMESSAGE       ; output the message, displaying the mode
+  JMP GOOD_EXIT       ; exit the program
+
+VMODE_IS:
+  DB 'The current video mode is '
+VMODE_SLOT:
+  DB '00.',0D,0A
+  DB 'You can reset the video mode',0D,0A
+  DB 'with the command VMODE n, where',0D,0A
+  DB 'n is a decimal number.',0D,0A,0
+
+USAGE_MSG:
+  DB 'usage: VMODE n',0D,0A
+  DB '   sets the video mode to decimal value n',0D,0A,0

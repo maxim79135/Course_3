@@ -1,0 +1,13 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    DEC2                                        See EILIB.TXT for terms
+;---------------
+
+; OUT_DECIMAL2 outputs AL as a string of 2 decimal digits, right-justified and
+;   zero-filled, to DI-pointed memory.  DI advances beyond the output.
+
+OUT_DECIMAL2:
+  AAM               ; unpack the digits to AH and AL
+  ADD AX,'00'       ; convert the digits to ASCII
+  XCHG AH,AL        ; swap so the most significant digit is output first
+  STOSW             ; output the digits
+  RET

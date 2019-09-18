@@ -1,0 +1,33 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  LOAD_I                                        See EILIB.TXT for terms
+;---------------
+
+; LOAD_IBUFF moves the bytes from SI up to IBUFF_ENDREAD down to the start
+;   of IBUFF, then reads from file IHANDLE up to IBUFF_END.  We reset SI
+;   to the start of the buffer, and IBUFF_ENDREAD to the byte beyond the
+;   bytes read.
+
+LOAD_IBUFF:
+  PUSH AX,BX,CX,DX,DI   ; preserve registers across call
+  MOV DI,IBUFF          ; point DI to the start of IBUFF
+  PUSH DI               ; save the IBUFF pointer for return SI
+  MOV CX,IBUFF_ENDREAD  ; point CX beyond the bytes actually read
+  SUB CX,SI             ; calculate the number of bytes not yet scanned
+  REP MOVSB             ; copy the bytes down to the start of IBUFF
+  MOV DX,DI             ; point DX beyond the bytes copied
+  MOV CX,IBUFF_END      ; point CX beyond the buffer
+  SUB CX,DX             ; calculate the number of remaining bytes in the buffer
+  MOV BX,IHANDLE        ; set BX to the input open-file handle
+  CALL MREAD            ; read the bytes into the buffer
+  ADD DX,AX             ; advance DX beyond the bytes actually read
+  MOV IBUFF_ENDREAD,DX  ; reset the pointer beyond the bytes read
+  CMP AX,CX             ; set NZ if we did not fill the buffer -- EOF
+  JE >L9                ; skip if EOF was not seen
+  MOV IBUFF_LIMIT,DX    ; EOF was seen: advance limit to the end of the file
+  MOV BX,DX             ; copy beyond-buffer pointer to BX, for indexing
+  MOV W[BX],0A0D        ; terminate the buffer, for scanning convenience
+L9:
+  POP SI                ; point SI to the start of IBUFF
+  POP DI,DX,CX,BX,AX    ; restore clobbered registers
+  RET
+

@@ -1,0 +1,240 @@
+;--------------                                  Copr.2000 Eric Isaacson
+;   ED_LWIN                                      See EILIB.TXT for terms
+;--------------
+
+; EDIT_LWINDOW allows the user to screen-edit a single-line window.  Input
+;   BX points to an LWIN_PARMS structure, giving the characteristics of
+;   the window.  We act upon any in-line editing keys, and return when
+;   we get a line-leaving key, whose code is returned in AX.
+
+LWIN_PARMS STRUC
+  LWIN_OFFSET  DW ?     ; offset within DS of the edited string
+  LWIN_CURPOS  DW ?     ; offset of the current edited byte within the line
+  LWIN_COL     DB ?     ; video column for this line
+  LWIN_ROW     DB ?     ; video row for this line
+  LWIN_SIZE    DB ?     ; number of characters in the line-window
+  LWIN_ATTR    DB ?     ; video attribute for this line
+  LWIN_EXCHECK DW ?     ; format checking routine to be called on exit
+LWIN_PARMS ENDS
+
+EDIT_LWINDOW:
+  PUSH CX,DX,SI,DI        ; preserve registers across call
+  MOV DI,LWIN_CURPOS[BX]  ; fetch the current cursor position in this window
+L2:                       ; loop here for each keystroke while editing window
+  CALL LWIN_VIDEO         ; display the edited line
+  PUSH BX,CX,DX           ; preserve registers across cursor output
+  MOV AX,DI               ; fetch the cursor pointer
+  TEST AH                 ; is the cursor already an offset-within-window?
+  IF NZ SUB AX,DX         ; if not calculate the cursor offset within window
+  MOV DI,DX               ; point DI to the start of the window
+  ADD DI,AX               ; advance DI to the cursor position within window
+  ADD AX,LWIN_COL[BX] W   ; add in window col-and-row to get cursor col-and-row
+  XCHG DX,AX              ; swap the cursor coordinates into DX
+  MOV CL,7                ; last block raster number is 7
+  MOV AL,LWIN_INSERT B    ; fetch the Insert/Overstrike opcode byte
+  AND AL,6                ; mask the byte down to 6 vs. 0 bits
+  XOR AL,4                ; set 6 if Insert, 0 if Overstrike
+  MOV CH,AL               ; store the first block raster number
+  CALL POINT_CURSOR       ; point the cursor: block CX, position DX
+  CALL KEYTIME_AX         ; get the keystroke code
+  POP DX,CX,BX            ; restore clobbered registers
+  PUSHF                   ; save Zero flag, indicating a function key
+  MOV SI,LWIN_TABLE       ; point to our table of action routines
+L4:                       ; loop here to search each entry in action table
+  CMP AX,[SI]             ; have we reached our keycode in the action table?
+  LEA SI,[SI+4]           ; advance to the next table entry
+  JA L4                   ; loop if we have not reached our keycode
+  IF B MOV SI,BEYOND_LWIN ; point to last entry if we passed our keycode
+  POPF                    ; restore Zero flag, indicating a function key
+  CALL W[SI-2]            ; call the action routine for this keycode
+  JMP L2                  ; loop to update display and process another key
+
+
+LWIN_TABLE:               ; table of actions for EDIT_LWINDOW keys
+  DW 0011B,LWIN_RET       ; escape
+  DW 00E08,LWIN_BKSP      ; backspace
+  DW 04700,LWIN_HOME      ; home
+  DW 04A2D,LWIN_GRAYMIN   ; gray minus: delete trailing or whole line
+  DW 04B00,LWIN_LEFT      ; left-arrow
+  DW 04D00,LWIN_RIGHT     ; right-arrow
+  DW 04E2B,LWIN_RET       ; gray-plus
+  DW 04F00,LWIN_END       ; End key
+  DW 05200,LWIN_INS       ; Ins key: toggle insert/overstrike modes
+  DW 05300,LWIN_DEL       ; Del key: delete char pointed to
+  DW 0FFFF,LWIN_OTHER     ; action routine for all other keys
+BEYOND_LWIN:              ; marker for setting non-matching key to LWIN_OTHER
+
+
+
+LWIN_HOME:                ; Home: move cursor to start of line-window
+  MOV DI,DX               ; reset the current pointer to the line start
+  RET
+
+
+L1:                       ; loop here to clear each character of the line
+  OR AH,[DI]              ; record any non-blanks
+  STOSB                   ; output a blank to this memory location
+L2:                       ; entry point for clear-line loop
+  CMP DI,CX               ; have we reached the end of the line?
+  JB L1                   ; loop if not, to clear another character
+  POP DI                  ; end reached: restore cursor
+  TEST AH,0DF             ; where there any non-blanks erased?
+  JNZ RET                 ; return if there were-- only the tail is deleted
+  CMP DI,DX               ; tail already blank: were we already at the start?
+  JE RET                  ; return if we were: whole line is erased
+  MOV DI,DX               ; not at the line start: go there to erase whole line
+LWIN_GRAYMIN:             ; Gray Minus: clear the tail, then the whole line
+  PUSH DI                 ; save cursor postion across the call
+  MOV AX,0 BY ' '         ; initialize non-blank flag AH, load blank into AL
+  JMP L2                  ; jump to entry point
+
+
+LWIN_END:                 ; End: move cursor to trailing blanks
+  MOV DI,CX               ; start with the cursor beyond the window
+L1:                       ; loop here to scan back through trailing blanks
+  DEC DI                  ; retreat the cursor
+  CMP DI,DX               ; are we at the start of the line-window?
+  JBE RET                 ; return if we are
+  CMP B[DI-1],' '         ; is the previous byte still a blank?
+  JE L1                   ; loop if it is, to keep retreating
+  RET  
+
+
+LWIN_INS:                 ; Ins: toggle insert/overstrike modes
+  XOR LWIN_INSERT B,0D7   ; toggle INSERT action: CMP AL,ib / JMP cb opcodes
+  RET
+
+
+LWIN_BKSP:                ; Backspace: retract the previous byte
+  CMP DI,DX               ; are we at the start of the line?
+  JE RET                  ; do nothing if we are
+  DEC DI                  ; not at the line start: retreat the cursor
+  MOV B[DI],' '           ; blank out the byte we have retreated to
+  CMP LWIN_INSERT B,03C   ; are we in Insert or Overstrike mode?
+  JE RET                  ; return if Overstrike; delete if Insert
+LWIN_DEL:                 ; Del: delete the character at the cursor position
+  PUSH DI                 ; preserve the cursor pointer
+  LEA SI,[DI+1]           ; load source for copying down by one byte
+  DB 03C                  ; skip over the following MOVSB instruction
+L0:                       ; loop here to move down each trailing byte
+  MOVSB                   ; copy the byte down one position
+  CMP SI,CX               ; have we reached the end of the line?
+  JB L0                   ; loop if not, to copy another byte
+  MOV AL,' '              ; end of the line: load a blank
+  STOSB                   ; output the blank to the end of the line
+  POP DI                  ; restore the cursor position
+  RET
+
+
+LWIN_LEFT:                ; Left arrow: move cursor to the left
+  CMP DI,DX               ; are we already at the left edge?
+  MOV AX,04800            ; load Up-arrow, in case we are
+  JBE LWIN_RET            ; jump if we are, to simulate Up-arrow
+  DEC DI                  ; not at left edge: move the cursor left
+  RET
+
+
+LWIN_RIGHT:               ; Right-arrow: move the cursor to the right
+  INC DI                  ; move the cursor to the right
+L9:                       ; common exit code for an advancing cursor
+  CMP DI,CX               ; are we off the end of the window?
+  JB RET                  ; return if we are not
+  DEC DI                  ; we are off the end: retreat back to the end
+  CALL LWIN_VIDEO         ; refresh the display to reflect the last character
+  MOV AX,01C0D            ; load a simulated Enter key
+LWIN_RET:                 ; jump here if we are returning from EDIT_LWINDOW
+  SUB DI,LWIN_OFFSET[BX]  ; calculate the offset within the editing window
+  MOV LWIN_CURPOS[BX],DI  ; store the cursor position in our window-buffer
+  POP DI                  ; pop away the action-return
+  POP DI,SI,DX,CX         ; restore clobbered registers
+  RET                     ; return to EDIT_LWINDOW's caller
+
+
+LWIN_OTHER:               ; keystroke not in the action table
+  JZ LWIN_RET             ; return from EDIT_LWINDOW if it was a function key
+  CMP AL,' '              ; is it a control key or a displaying key?
+  JB LWIN_RET             ; return from EDIT_LWINDOW if it was a control key
+LWIN_INSERT:              ; insert key AX into the buffer
+  CMP AL,3                ; this is JMP >L1 when in Insert mode
+;
+; overwrite code drops through to the following:
+;
+L0:
+  STOSB                   ; write code AL to the buffer
+  JMP L9                  ; jump to check the cursor advance
+;
+THREE EQU 3               ; assertion check
+THREE EQU $-L0            ; the overwrite code should occupy 3 bytes
+;
+L1:                       ; we are in Insert mode
+  PUSH CX,DI              ; preserve registers across the insert
+  XCHG CX,DI              ; swap DI beyond the window, CX to current cursor
+  SUB CX,DI               ; subtract the end-pointer from the cursor
+  NOT CX                  ; negate to get the trailing bytes count
+  DEC DI                  ; retreat DI to the last window byte
+  JCXZ >L3                ; overwrite if we are at the last window byte
+  CMP B[DI],' '           ; is there a space at the end of the window?
+  JNE >L2                 ; skip if not, to avoid the insert
+  LEA SI,[DI-1]           ; there is a blank: point SI to the previous byte
+  STD                     ; scanning is backwards for an upward-move
+  REP MOVSB               ; move the trailing bytes up one character
+  CLD                     ; restore forward scanning
+L3:
+  POP DI                  ; restore the cursor pointer
+  STOSB                   ; output the byte being inserted
+  DB 03C                  ; skip over the following POP DI instruction
+L2:
+  POP DI,CX               ; restore clobbered registers
+  JMP L9                  ; jump to check the cursor advance
+
+
+LWIN_ZVIDEO:
+  MOV LWIN_CURPOS[BX],0   ; reset the cursor to the beginning of the field
+LWIN_VIDEO:               ; refresh the video display of this window-line
+  MOV DX,LWIN_COL W[BX]   ; fetch the column and row for this window
+  CALL VIDEO_DX           ; convert the row and column to video offset DI
+  MOV DX,LWIN_OFFSET[BX]  ; fetch the memory offset of the edited string
+  MOV CL,LWIN_SIZE[BX]    ; fetch the size of the string
+  ADD CX,DX               ; advance CX beyond the memory string
+  PUSH ES,SI,AX           ; preserve registers during display (AX=caller's DI)
+  MOV ES,VIDEO_SEG W      ; point ES to video memory
+  MOV SI,DX               ; point SI to the start of the window
+  MOV AH,LWIN_ATTR[BX]    ; load the attribute byte for the window
+L3:                       ; loop here to output each byte of the window
+  LODSB                   ; fetch the byte from our memory buffer
+  STOSW                   ; output byte-and-attribute to video memory
+  CMP SI,CX               ; have we reached the end of the buffer?
+  JB L3                   ; loop if not, to output another byte
+  POP DI,SI,ES            ; output complete: restore clobbered registers
+  RET
+
+
+LWIN_REFRESH:             ; refresh the video display of this window
+  PUSH CX,DX              ; preserve registers across call
+  CALL LWIN_VIDEO         ; refresh the display
+  POP DX,CX               ; restore clobbered registers
+  RET
+
+
+VIDEO_DX:                 ; point DI to video offset for row DH, column DL
+  SUB AX,AX               ; load zero
+  XCHG AL,DH              ; set AX to the row number, DX to the column number
+  XCHG CX,DX              ; swap the column number into CX
+  MUL VLINE_SIZE W        ; calculate the offset of this row
+  ADD AX,CX               ; add the column to the row's offset
+  ADD AX,CX               ; add twice-- two bytes for every column position
+  XCHG DI,AX              ; swap the window's video offset into DI
+  RET                     ; caller's DI is returned in the AX register
+
+
+
+NEXT_LWIN_OUTP:
+  ADD BX,SSIZE            ; advance BX to the next field's structure
+GET_LWIN_OUTP:
+  MOV DI,LWIN_OFFSET[BX]  ; point DI to the window's contents
+GET_LWIN_SIZE:
+  MOV CL,LWIN_SIZE[BX]    ; fetch the size of the window
+  MOV CH,0                ; high byte of size is always zero
+  RET
+
+

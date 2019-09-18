@@ -1,0 +1,33 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COPYFAT                                      See EILIB.TXT for terms
+;---------------
+
+; COPYFAT copies the contents of the FAT of the hard disk drive
+;   to a named disk file.
+
+; This program was written ten years ago.  It will need to be reworked,
+; in order to function with today's multi-gigabyte hard drives.
+
+COPYFAT:
+  mov al,080            ; load BIOS index number for the first hard drive
+  CALL INIT_CLUS        ; initialize cluster scanning
+  MOV AX,FAT_SECS W     ; load the number of sectors per FAT
+  MUL BYTES_PER_SEC W   ; calculate the number of bytes per sector
+  PUSH AX               ; save the byte count
+  MOV SI,081            ; point to our invocation command tail
+  CALL OPEN_O_ARG       ; open the output file
+  MOV CLUSBUFF W,0      ; reset CLUSBUFF to the start of the next segment
+  MOV AX,CS             ; fetch our program segment
+  ADD AX,01000          ; advance to the next 64K
+  MOV DS,AX             ; point DS to the next segment
+  CALL CLUS_FAT         ; read the FAT
+  POP CX                ; restore the FAT size
+  SUB DX,DX             ; write the FAT
+  CALL MWRITE           ; output the cluster contents to the file
+  CALL MCLOSE           ; close the output file
+  JMP GOOD_EXIT         ; return to the operating system
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: COPYFAT fname',0D,0A
+  DB '    outputs the FAT to a file',0D,0A,0,01A

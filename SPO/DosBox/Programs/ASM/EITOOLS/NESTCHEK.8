@@ -1,0 +1,117 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   NESTCHEK                                     See EILIB.TXT for terms
+;---------------
+
+; NESTCHEK is used by THUMBS.BAT to check for the need for a THUMBS.HTM
+;   file within this directory.  We accept three command-tail arguments:
+;   first, the name THUMBS.HTM, that we will look for in the subdirectroies,
+;   and that we will delete from this directory if it has no content.
+;   Second: the list of subdirectories under this directory.  Third, the
+;   list of content files (JPG and GIF files, in the case of THUMBS) within
+;   this directory.  If that last file is empty it is deleted, and if the
+;   THUMBS.HTM file does not exist within any of the subdirectories, we delete
+;   THUMBS.HTM from this directory.
+
+; The THUMBS.BAT file is provided as a part of EITOOLS.  This system makes it
+; easy for you to browse through the JPG and GIF picture files within any
+; directory of your hard drive, or within your entire hard drive.  You should
+; place THUMBS.BAT and the programs NESTCHEK.COM, LINEPLAT.COM, and CAT.COM
+; into a directory named by your PATH command in AUTOEXEC.BAT.  You can leave
+; the template files *.LPT in the C:\A86\EITOOLS directory -- if you move
+; those, you will need to change their references within THUMBS.BAT to their
+; new full path location.
+
+; To use THUMBS.BAT, you go to any directory containing GIFs and JPGs, and type
+; THUMBS to the DOS prompt.  If there are any GIFs or JPGs in the directory
+; or in any subdirectories, a file THUMBS.HTM will be created, letting you
+; browse thumbnails of your your files with your Web browser (you can double-
+; clock on any "Thumbs" file you see in My Computer or in Windows Explorer).
+; Each THUMBS.HTM will have small displays of all JPGs and GIFs in its
+; same directory, plus a link to any subdirectory's THUMBS.HTM file.
+; You can prepare your entire hard drive this way, by running THUMBS from
+; the root directory.
+
+; THUMBS also creates files called _slides_.sls, listing the JPG and GIF files,
+; in a format that can be used by the IrfanView freeware viewer 
+; (http://www.irfanview.com), for slide shows.
+
+  JMP NESTCHEK      ; jump around the following message, to the program code
+
+DB 0D,0A,0D,0A
+USAGE_MSG:
+  DB 'NESTCHEK file-pruning tool, V1.0, Copyright 2000 Eric Isaacson.',0D,0A
+  DB '   http://eji.com',0D,0A
+  DB 0D,0A
+  DB 'usage: NESTCHEK THUMBS.HTM subdirlist contentlist',0D,0A
+  DB '   deletes THUMBS.HTM if contentlist is empty and if THUMBS.HTM',0D,0A
+  DB '   does not exist in any subdirs in subdirlist',0D,0A
+  DB 0D,0A,0,01A
+
+NO_DOSCHECK EQU 1       ; our MS_DOS library routines will not trap errors
+LONG_FNAMES EQU 1       ; we will recognize long file names
+
+        DATA SEGMENT
+SUBFILE_NAME:
+  DB 1K DUP ?           ; buffer for constructing subdir THUMBS.HTM name
+SCRATCH:
+  DB ?                  ; scratch area for trying to read from a file
+        DATA ENDS
+
+NESTCHEK:
+  MOV SI,081              ; point to our invocation command tail
+  CALL FILE_ARG           ; zero-delimit the THUMBS.HTM name
+  MOV BP,DX               ; copy the THUMBS.HTM pointer to DX
+  CALL FILE_ARG           ; zero-delimit the subdirlist file name
+  SUB BX,BX               ; initialize the content flag
+  CALL CHECK_NONZERO      ; does the subdirlist file have content?
+  IF NZ CALL PROCESS_FILE ; if yes process it to check for THUMBS.HTM there
+  CALL FILE_ARG           ; zero-delimit this directory's content list
+  CALL CHECK_NONZERO      ; does this content list have anything in it?
+  JNZ >L2                 ; skip if it does, to exit the program
+  MOV AH,041              ; MS-DOS function code for DELETE_FILE
+  INT 021                 ; delete this THUMBS.HTM file
+  TEST BX                 ; has a nonempty THUMBS.HTM been detected?
+  JNZ >L2                 ; skip if it has, to exit the program
+  MOV DX,BP               ; no content found: point DX to THUMBS.HTM
+  MOV AH,041              ; MS-DOS function code for DELETE_FILE
+  INT 021                 ; delete this THUMBS.HTM file
+L2:
+  JMP GOOD_EXIT           ; exit the program
+
+
+PFILE_REC:                ; process this subdir name
+  PUSH DX                 ; preserve register across call
+  MOV DX,DI,SUBFILE_NAME  ; point DX and DI to our subdir file buffer
+  CALL COPY_LINE          ; copy the subdirectory name to the buffer
+  DEC DI,2                ; retract the terminating CRLF
+  MOV AL,'\'              ; load backslash
+  STOSB                   ; output a subdir backslash instead
+  MOV AX,BP               ; fetch the THUMBS.HTM pointer
+  CALL COPYZ_AX           ; append the THUMBS.HTM file to the subdir name
+  STOSB                   ; zero-terminate the full THUMBS.HTM path name
+  PUSH DS,SI              ; save the process-file's input pointer
+  MOV DS,SS               ; point DS to the buffer's segment
+  CALL CHECK_NONZERO      ; does THUMBS.HTM exist within this subdir?
+  POP SI,DS,DX            ; restore clobbered registers
+  JZ RET                  ; return if THUMBS.HTM did not exist
+  INC BX                  ; THUMBS.HTM was found: set our flag indicating so
+  MOV DX,SI               ; we can halt PFILE processing at this point
+  RET
+
+
+CHECK_NONZERO:            ; set NZ is DX file exists and has content
+  PUSHA                   ; save all register across call
+  CALL MOPEN_READ         ; try to open the DX file
+  MOV AX,0                ; load zero, in case we failed
+  JC >L1                  ; return Z if we failed to open the file
+  MOV CX,1                ; we need only read one byte
+  MOV DX,SCRATCH          ; point to scratchpad buffer
+  CALL MREAD              ; try to read one byte from the file
+  PUSH AX                 ; save the actual byte count
+  CALL MCLOSE             ; close the file
+  POP AX                  ; restore the actual byte count
+L1:                       ; common exit
+  TEST AX                 ; set NZ if the file exists and has content
+  POPA                    ; restore clobbered registers
+  RET
+

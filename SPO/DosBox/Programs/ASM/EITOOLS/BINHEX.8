@@ -1,0 +1,83 @@
+;---------------                               Copr.2000 Eric Isaacson
+;   BINHEX                                     See EILIB.TXT for terms
+;---------------
+
+; BINHEX converts a file into a hex dump, with ASCII values presented
+;   as a comment at the end of the line.
+
+  JMP BINHEX
+
+  DB 0D,0A
+USAGE_MSG:
+  DB '  usage, e.g.: BINHEX in >out',0D,0A
+  DB '      converts a binary file into a hex dump, with ASCII',0D,0A
+  DB '      values presented as a comment at the end of the line',0D,0A
+  DB 0D,0A,0,01A
+
+
+E1:                      ; command tail did not have a single file name
+  JMP USAGE_EXIT         ; output usage message and exit the program
+
+BINHEX:
+  CALL NONBLANK_TAIL     ; set AL to the first nonblank in the command tail
+  CMP AL,'/'             ; are there switches in the command tail?
+  JE E1                  ; exit if yes, to conform to /? convention
+  CALL FILE_ARG          ; scan over the input file name
+  CALL NO_MORE_ARGS      ; ensure no more command-tail arguments
+  MOV DI,OBUFF           ; initialize the output pointer
+  CALL PROCESS_FILE      ; process the input file
+  CALL FLUSH_OBUFF       ; flush any buffered output
+  JMP GOOD_EXIT          ; exit the program
+
+
+
+; PFILE_REC is called repeatedly by PROCESS_FILE, with SI pointing to, and
+;   DX beyond, the buffered bytes.  We output the hex and ASCII content
+;   for the 16 bytes pointed to by SI.
+
+PFILE_REC:
+  CALL OUT_HEX_BYTES     ; output the hex bytes
+  CALL OUT_ASCII_BYTES   ; output the associated ASCII bytes
+  MOV AX,0A0D            ; load CRLF
+  STOSW                  ; output CRLF
+  RET
+
+
+OUT_HEX_BYTES:
+  PUSH SI                ; save SI for later ASCII output
+  MOV BX,DI              ; save the starting output pointer in BX
+  MOV CX,16              ; initialize our byte counter
+L1:                      ; loop here to output each byte
+  LODSB                  ; fetch the byte
+  CALL OUT_HEX_AL        ; output the hex codes for the byte
+  MOV AL,' '             ; load blank
+  STOSB                  ; output intervening blank
+  CMP SI,DX              ; have we reached the end of the file?
+  JAE >L2                ; skip if we have
+  LOOP L1                ; loop to output the next byte
+L2:                      ; output is complete
+  MOV CX,SI              ; copy the beyond-input pointer to SI
+  POP SI                 ; restore the input pointer to the line start
+  SUB CX,SI              ; calculate the number of input bytes we processed
+  RET
+
+
+OUT_ASCII_BYTES:         ; output CX ASCII bytes to BX+48
+  PUSH CX                ; save the byte count
+  LEA CX,[BX+48]         ; point CX to column 48 of the output line
+  SUB CX,DI              ; calculate the number of blank-fill bytes required
+  MOV AX,'; '            ; load blank and semicolon
+  REP STOSB              ; blank fill the output line to our ASCII column
+  POP CX                 ; restore the input byte count
+  STOSW                  ; output blank and semicolon
+  STOSB                  ; output trailing blank
+L3:                      ; loop here to process each input byte
+  LODSB                  ; fetch the byte
+  CMP AL,07E             ; is the byte in a high range?
+  IF AE MOV AL,'.'       ; if yes then make it a period
+  CMP AL,020             ; is the byte a control character?
+  IF B ADD AL,040        ; if yes then replace it with the corresponding letter
+  STOSB                  ; output the filtered ASCII byte
+  LOOP L3                ; loop to process the next byte
+  RET
+

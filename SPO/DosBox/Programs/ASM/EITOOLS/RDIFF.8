@@ -1,0 +1,91 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   RDIFF                                        See EILIB.TXT for terms
+;---------------
+
+; RDIFF compares the two files named in its invocation cammand tail.
+;   If the files are the same, no action is taken.  If they are different,
+;   that fact is reported in the standard and error consoles.
+
+  JMP RDIFF             ; jump around the following USAGE_MSG
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: RDIFF file1 file2',0D,0A,0
+  DB 01A
+
+RDIFF:
+  MOV SI,081          ; point to our invocation command tail
+  CALL OPEN_I_ARG     ; open the first file
+  XCHG BP,AX          ; swap the first file's handle into BP
+  CALL OPEN_I_ARG     ; open the second file
+  CALL NO_MORE_ARGS   ; verify no more command-tail arguments
+  MOV AX,CS           ; fetch our program segment
+  ADD AX,01000        ; advance to the next 64K segment
+  MOV DS,AX           ; point DS to the next segment
+  ADD AX,01000        ; advance to the next 64K segment
+  MOV ES,AX           ; point ES to that next segment 
+  ADD AX,01000        ; point beyond the second segment
+  CS CMP AX,W[2]      ; is the segment beyond available memory?
+  JA >E2              ; pause and exit if it is
+L1:                   ; loop here to compare segmentsful of memory
+  CALL SWAP_READ      ; swap handles to read from the second file
+  XCHG CX,AX          ; swap the second-file read count into CX
+  CALL SWAP_READ      ; swap handles to read from the first file
+  CMP CX,AX           ; do the read counts match?
+  JNE >L5             ; jump if they do not
+  SUB SI,SI           ; counts match: point SI to the segment start
+  SUB DI,DI           ; point DI to the other segment start
+  REPE CMPSB          ; compare the contents of the two reads
+  JNE >L5             ; jump if they miscompared
+  INC AX              ; contents matched: set Z if the full 0FFFF had been read
+  JZ L1               ; loop if the full 0FFFF bytes had been read
+  MOV AL,0            ; return error code is zero
+E8:                   ; common exit
+  PUSH AX             ; save the return error code
+  CALL MCLOSE         ; close one file
+  MOV BX,BP           ; fetch the other file handle
+  CALL MCLOSE         ; close the other file
+  POP AX              ; restore the return error code
+E9:
+  JMP EXIT            ; return to the operating system
+
+E2:                   ; not enough memory
+  CALL BIOS_KEY_AX    ; pause for a user keystroke
+  JMP BAD_EXIT        ; exit the program
+
+L5:                   ; the files did not match
+  MOV DS,ES,CS        ; point all segments to our main program segment
+  MOV DX,DI,02000     ; point DX and DI to a free memory area
+  MOV SI,081          ; point to our command tail once again
+  CALL TAIL_BLANKS    ; skip over leading blanks
+  MOV AX,>M1          ; point to "Miscompared "
+  CALL COPYZ_AX       ; output "Miscompared "
+  CALL COPYZ          ; output the first file name
+  MOV AX,>M2          ; point to " with "
+  CALL COPYZ_AX       ; output " with "
+  CALL COPYZ          ; output the second file name
+  MOV AX,>M3          ; point to CRLF
+  CALL COPYZ_AX       ; output CRLF
+  CALL OWRITE_DI      ; write to console the message we have just constructed
+  MOV AL,1            ; return error code is 1
+  JMP E8              ; close the files and exit the program
+
+
+SWAP_READ:            ; swap handles and segments, and read a segmentful
+  PUSH CX             ; save register across call
+  MOV CX,0FFFF        ; load the maximum read count
+  SUB DX,DX           ; we will read to offset zero
+  XCHG ES,DS          ; swap segments
+  XCHG BX,BP          ; swap handles
+  CALL MREAD          ; read from one of the files
+  POP CX              ; restore clobbered register
+  RET
+
+M1:                   ; strings used to construct the "Miscompared" output
+  DB 'Miscompared ',0
+M2:
+  DB ' with ',0
+M3:
+  DB 0D,0A,0
+
+

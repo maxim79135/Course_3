@@ -1,0 +1,83 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MONTHBAT                                     See EILIB.TXT for terms
+;---------------
+
+; MONTHBAT outputs to the console a sequence of SET lines, defining environment
+;   variables MM for the current month, YY for the current year, and MM1, MM2,
+;   MM6, and MM12 for the yymm of each indicated number of months in the past.
+;   This can be used in a batch file as follows:
+;
+;     monthbat >j1.bat
+;     call j1.bat
+;     del j1.bat
+;
+;   ... and then further lines in the batch file can use the variables %mm%,
+;   %yy%, %mm1%, %mm2%, %mm6% or %mm12% as needed.
+
+NO_DOSCHECK EQU 1       ; we do not need error trapping
+
+MONTHBAT:
+  MOV AH,02A            ; DOS function codes for GET_DATE
+  INT 021               ; set CX=year  DH=month
+  MOV DI,YY             ; point to SET YY value slot
+  CALL OUT_YY           ; output the current year
+  MOV DI,MM             ; point to SET MM value slot
+  CALL OUT_MM           ; output the current month
+  MOV DI,M_M1           ; point to the MM! value slot
+  MOV AL,1              ; we will subtract 1 month
+  CALL MINUS_OUT        ; output the previous month's yymm
+  MOV DI,M_M2           ; point to the MM! value slot
+  MOV AL,1              ; we will subtract 1 month
+  CALL MINUS_OUT        ; output the previous month's yymm
+  MOV DI,M_M6           ; point to M_M6 value slot
+  MOV AL,4              ; we will subtract 5 more months
+  CALL MINUS_OUT        ; output the yymm for 6 months ago
+  MOV DI,MM12           ; point to the MM! value slot
+  MOV AL,6              ; we will subtract 1 month
+  CALL MINUS_OUT        ; output the previous month's yymm
+  MOV DX,OUTPUT         ; point to the output string
+  MOV CX,OSIZE          ; load the string size
+  CALL OWRITE           ; output the string
+  JMP GOOD_EXIT         ; exit the program
+
+
+OUT_YY:
+  MOV AX,CX             ; copy the year into AX
+  SUB AX,1900           ; reduce the year to byte size
+  AAM 100               ; set AL to the year mod 100
+L9:
+  JMP OUT_DECIMAL2      ; output the two-digit year
+
+
+MINUS_OUT:              ; subtract AL months from DH, and output yymm
+  SUB DH,AL             ; subtract the months
+  JA >L1                ; skip if the answer did not underflow
+  ADD DH,12             ; underflow: add back 12 months
+  DEC CX                ; decrement to the previous year
+L1:
+  CALL OUT_YY           ; output the results year's yy value and drop for mm
+OUT_MM:                 ; output the month value of DH
+  MOV AL,DH             ; fetch the month
+  JMP L9                ; output the month
+
+
+OUTPUT:                 ; the output string
+  DB 'SET YY='
+YY:                     ; current year is plugged in here
+  DB 'yy',0D,0A
+  DB 'SET MM='
+MM:                     ; current month is plugged in here
+  DB 'mm',0D,0A
+  DB 'SET MM1='
+M_M1:                    ; current month minus 1 is plugged in here
+  DB 'yymm',0D,0A
+  DB 'SET MM2='
+M_M2:                    ; current month minus 1 is plugged in here
+  DB 'yymm',0D,0A
+  DB 'SET MM6='
+M_M6:                    ; current month minus 6 is plugged in here
+  DB 'yymm',0D,0A
+  DB 'SET MM12='
+MM12:                    ; current month minus 1 is plugged in here
+  DB 'yymm'
+OSIZE EQU $-OUTPUT

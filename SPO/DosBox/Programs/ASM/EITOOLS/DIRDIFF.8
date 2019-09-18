@@ -1,0 +1,122 @@
+;---------------                                 Copr.2000 Eric Isaacson
+LINE_FILTER  DIRDIFF   ,GET_LETTER             ; See EILIB.TXT for terms
+;---------------
+
+; DIRDIFF is called to verify that the contents of a CD-ROM are identical
+;   to the contents of the hard drive from which it was copied.  To use
+;   this program, you direct the outputs of DIR /S/B/A-D and DIR /S/B/AH
+;   for the CD-ROM drive to a file, then use the file as standard input
+;   for this program, with the hard drive's letter in the command tail.
+;   There will be no console output if everything matched; if there were
+;   and mismatches, the name of each mismatched file will be given.
+
+USAGE_MSG:
+  DB 'usage: DIRDIFF <dirlist D',0D,0A
+  DB '  compares each file in dirlist to the same file on drive D,',0D,0A
+  DB '  and outputs a list of non-matching files',0D,0A
+  DB 0,01A
+
+E0:                     ; drive letter not found
+  JMP USAGE_EXIT        ; output USAGE_MSG and exit
+
+GET_LETTER:             ; command-tail scanning routine for our filter
+  CALL TAIL_BLANKS      ; skip over leading blanks in the command tail
+  AND AL,0DF            ; coerce drive letter to upper case
+  MOV DRIVE_LET B,AL    ; store the drive letter
+  SUB AL,'A'            ; reduce the letters-range to zero
+  CMP AL,26             ; was it indeed a letter?
+  JA E0                 ; error if it was not
+  INC SI                ; advance beyond the letter
+  CMP B[SI],':'         ; is there a colon following the letter
+  IF E INC SI           ; skip the colon if there is
+  JMP NO_MORE_ARGS      ; no more characters are acceptable on the command tail
+
+
+PROCESS_LINE:               ; process line: CX bytes at SI, DI set to SI+CX
+  PUSH BP                   ; save the output pointer
+  MOV B[DI-2],0             ; null-terminate the file name
+  CALL OPEN_LONG            ; open the file as given in the line
+  MOV BP,BX                 ; save the first file handle in BP
+  MOV B[SI],0               ; substitute the alternate drive letter
+DRIVE_LET EQU B[$-1]        ; drive letter is plugged here from command tail
+  CALL OPEN_LONG            ; open the file from the new drive
+  CALL DIFF_FILES           ; compare the two files
+  POP BP                    ; restore the output pointer
+  JNC RET                   ; return if the files matched
+  MOV B[DI-2],0D            ; restore the line-terminating CR
+  MOV DI,BP                 ; mismatch found: load output pointer
+  REP MOVSB                 ; output the file name
+  JMP PROCESS_LINE_EXIT     ; check overflow and return
+
+
+
+OPEN_LONG:                  ; open SI-pointed long file name
+  PUSH CX,DX,DI,BP          ; save registers across call
+  MOV AX,0716C              ; WIN95 DOS function codes for OPEN_FILE
+  SUB BX,BX                 ; open for reading
+  MOV DX,1                  ; return error if file doesn't exist
+  INT 021                   ; open the file
+  IF C SUB AX,AX            ; return zero if the file doesn't exist
+  MOV BX,AX                 ; return the file handle in BX=AX
+  POP BP,DI,DX,CX           ; restore clobbered registers
+  RET
+
+
+L1:                         ; first file was not opened
+  TEST BP                   ; was the second file opened?
+  JZ RET                    ; return successful match if neither file opened
+  MOV BX,BP                 ; second open, first not: close the second file
+L2:                         ; one file is open and the other isn't
+  CALL MCLOSE               ; close the one open file, and return Carry failure
+L8:                         ; the files do not match
+  STC                       ; return Carry to signal no match
+  RET
+
+DIFF_FILES:                 ; compare open files BP and BX
+  TEST BX                   ; was the first file successfully opened?
+  JZ L1                     ; jump if it wasn't
+  TEST BP                   ; first file is open: was the second file opened?
+  JZ L2                     ; jump if it wasn't
+  PUSHA                     ; preserve all general registers across call
+  PUSH DS,ES                ; also preserve the segment registers
+  MOV AX,CS                 ; fetch our program segment
+  ADD AX,01000              ; advance to the next 64K
+  MOV DS,AX                 ; point DS to the following free space
+  ADD AX,0800               ; advance by 32K
+  MOV ES,AX                 ; point ES to the following free space
+L3:                         ; loop here to read and compare 32K chunks
+  CALL MREAD32              ; read from the first file; swap segs and handles
+  PUSH AX                   ; save the actual count from the first file
+  CALL MREAD32              ; read from the second file; restore segs, handles
+  POP CX                    ; restore the actual count from the first file
+  CMP AX,CX                 ; were the read counts the same?
+  JNE >L8                   ; return failure if the counts differed
+  SUB SI,SI                 ; counts match: point SI to zero offset
+  SUB DI,DI                 ; point DI to zero offset
+  REPE CMPSB                ; compare the buffers read
+  JNE >L8                   ; jump if a mismatch was found
+  TEST AX                   ; buffers matched: had the buffers been full?
+  JS L3                     ; loop if the buffers were full, to read more
+  JMP >L9                   ; files were complete: return NoCarry success
+  
+L8:                         ; a mismatch was found
+  STC                       ; NoCarry will signal failure
+L9:                         ; common exit
+  PUSHF                     ; save the return Carry flag setting
+  CALL MCLOSE               ; close the first file
+  MOV BX,BP                 ; fetch the handle for the second file
+  CALL MCLOSE               ; close the second file
+  POPF                      ; restore the return Carry flag setting
+  POP ES,DS                 ; restore segment registers
+  POPA                      ; restore general registers
+  RET
+
+
+MREAD32:                    ; read a 32K buffer, then swap segments and handles
+  PUSH DS,ES                ; push the initial segment registers
+  MOV CX,32K                ; load the 32K buffer size
+  SUB DX,DX                 ; point to the start of the buffer
+  CALL MREAD                ; read the 32K buffer
+  XCHG BX,BP                ; swap file handles
+  POP DS,ES                 ; restore swapped segment registers
+  RET

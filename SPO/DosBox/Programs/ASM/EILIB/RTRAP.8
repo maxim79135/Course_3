@@ -1,0 +1,38 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   RTRAP                                        See EILIB.TXT for terms
+;---------------
+
+; MOPEN_RTRAP opens the file whose path is pointed to by CS=DS:DX.  This
+;   call is identical to MOPEN_READ, except that we trap the critical
+;   error handler.  If that handler is invoked, we return "Ignore"
+;   to DOS, but when DOS returns to us, we have arranged to jump to
+;   the routine MOPEN_TRAPPED, which the caller suplies to us.
+;   That routine should record the fact that the read failed, and
+;   return Carry to our caller.
+
+MOPEN_RTRAP:
+  PUSH DX,DS,ES     ; preserve registers across call
+  MOV AX,03524      ; MS-DOS function codes for GET_CRITICAL_INT
+  INT 021           ; point ES;BX to the old ciritcal error handler
+  PUSH ES,BX,DX     ; preserve the old handler pointer and our path pointer
+  MOV DX,>L9        ; point DX to our new handler
+  MOV AX,02524      ; MS-DOS function codes for SET_CRITICAL_INT
+  INT 021           ; we will intercept any critical errors
+  POP DX            ; restore our path pointer
+  CALL MOPEN_READ   ; try opening the file
+  POP DX,DS         ; point DS:DX to the old critical handler
+  PUSH AX           ; save the returned MOPEN_READ register value
+  PUSHF             ; save the returned MOPEN_READ flags values
+  MOV AX,02524      ; MS-DOS function codes for SET_CRITICAL_INT
+  INT 021           ; restore the old critical handler
+  POPF              ; restore the MOPEN_READ flags values
+  POP AX,ES,DS,DX   ; restore clobbered registers
+L8 DB               ; this RET will be become NOP if there was a critical error
+  RET               ; return if there was no critical error
+  JMP MOPEN_TRAPPED ; there was a critical error: jump to the caller's code
+
+L9:                 ; our critical error handler
+  CS MOV L8,090     ; enable the above JMP to MOPEN_TRAPPED
+  MOV AL,0          ; tell DOS to ignore the error
+  IRET              ; return to the invoking DOS code
+

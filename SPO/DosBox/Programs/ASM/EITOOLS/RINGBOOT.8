@@ -1,0 +1,99 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   RINGBOOT                                     See EILIB.TXT for terms
+;---------------
+
+; RINGBOOT is a tiny memory-resident program designed to detect whether
+;   a BBS system is still running, and to reboot the machine if it isn't.
+;   We do so by monitoring the RING status of a COM-port line, and
+;   cold-booting the machine if there are enough consecutive rings so
+;   that it's clear that the BBS didn't answer the phone as it should have.
+
+; To minimize our own memory requirements, we copy ourselves down to location
+; 05E within our PSP.
+
+        STRUC 05E
+TSR_IMAGE:
+  STATUS        DB ?    ; all status bytes within 6 seconds are ORed here
+  SIX_SECOND_CT DB ?    ; number of timer ticks remaining in this 6 seconds
+  RING_CT       DB ?    ; number of rings remaining before we reboot
+OUR_TIMER:              ; timer handler will be copied here
+        ENDS
+
+  JMP RINGBOOT          ; jump around the following USAGE_MSG
+
+  DB 0D,0A
+  DB 0D,0A
+USAGE_MSG:
+  DB 'usage: RINGBOOT com_number ring_count',0D,0A
+  DB '    monitors the "ring" status on com-number port (1--4)',0D,0A
+  DB '    and cold-boots the system if ring_count consecutive rings occur'
+  DB 0D,0A
+  DB 'example: RINGBOOT 2 4',0D,0A
+  DB '    boots if 4 rings occur on COM2',0D,0A
+  DB 0D,0A
+
+PORTS:                  ; table of input-port values for the COM ports
+  DW 03FE,02FE,03EE,02EE
+
+E1:                     ; incorrect port number or ring count was seen
+  JMP USAGE_EXIT        ; output USAGE_MSG and exit the program
+
+RINGBOOT:
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_DEC       ; fetch the COM port number
+  DEC AX                ; reduce the range of legal values from 1--4 to 0--3
+  CMP AX,3              ; was it a legal COM port number?
+  JA E1                 ; jump if not, to exit the program
+  XCHG BX,AX            ; swap the port number into BX, for indexing
+  ADD BX,BX             ; convert the index from bytes to words
+  MOV AX,PORTS[BX]      ; fetch the input port number for this COM port
+  MOV STATUS_PORT,AX    ; store the port number so we can fetch the STATUS
+  CALL VERIFY_DEC       ; fetch the ring count
+  TEST AH               ; is the count more than byte-sized?
+  JNZ E1                ; exit the program if it is
+  TEST AL               ; is the count zero?
+  JZ E1                 ; exit the program if it is
+  MOV RING_LIMIT,AL     ; store the ring count
+  MOV SI,TSR_CONTENT    ; point to the start of our resident program content
+  MOV DI,TSR_IMAGE      ; point to the lower location we will copy it to
+  MOV CX,TSR_IMAGE_SIZE ; load the size of the content
+  REP MOVSB             ; copy the resident content to a lower location
+  JMP TSR_TIMER         ; jump to install the timer handler and to go resident
+
+TSR_CONTENT:            ; bytes copied to STATUS, SIX_SECOND_CT, RING_CT
+  DB 0                  ; initial STATUS is zero
+  DB 110                ; number of timer ticks in 6 seconds
+  DB 0                  ; RING_COUNT is initialized on the first not-ringing
+
+; the following code is copied to TIMER_HANDLER:
+  PUSH AX,DX                ; preserve registers during the interrupt handler
+  MOV DX,0                  ; load the COM file status port number
+STATUS_PORT EQU W[$-2]      ; port number is plugged into the above imm value
+  IN AL,DX                  ; fetch the status of the COM port
+  CS OR STATUS,AL           ; OR together all status values into our variable
+  CS DEC SIX_SECOND_CT      ; count down timer ticks within this six seconds
+  JZ >L1                    ; jump if the six seconds is complete
+L9:                         ; common exit
+  POP DX,AX                 ; restore clobbered registers
+  JMP 0:0                   ; jump to the previously-installed timer handler
+OLD_TIMER EQU TSR_IMAGE+$-4-TSR_CONTENT ; storage address for above imm operand
+
+L1:                         ; it is the end of a 6-second period
+  CS MOV SIX_SECOND_CT,110  ; reset the count of timer ticks for next 6 seconds
+  MOV AL,0                  ; load zero
+  CS XCHG STATUS,AL         ; reset STATUS to zero and fetch our STATUS values
+  TEST AL,040               ; was RING status ever set during the 6 seconds?
+  JZ >L0                    ; jump if it wasn't: telephone is not ringing
+  CS DEC RING_CT            ; phone is ringing: count down the rings
+  JNZ L9                    ; exit if the ring count is not exhausted
+  JMP 0FFFF:0               ; ring count exhausted: cold-boot the machine
+
+L0:                         ; the phone is not ringing
+  CS MOV RING_CT,0          ; reset the ring count to its full value
+RING_LIMIT EQU B[$-1]       ; ring count is plugged into the above imm value
+  JMP L9                    ; jump to common exit
+
+TSR_IMAGE_SIZE EQU $-TSR_CONTENT      ; number of bytes to copy to low memory
+TSR_SIZE EQU (TSR_IMAGE_SIZE+06D)/16  ; number of paras to go resident with
+
+

@@ -1,0 +1,29 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   I_ARG                                        See EILIB.TXT for terms
+;---------------
+
+; OPEN_I_ARG expects SI to point to some part of the command tail.  We
+;   skip leading blanks, and open for reading the file named by the
+;   following argument.  We return with AX=BX=IHANDLE= the open file handle.
+;   If anything went wrong we jump to USAGE_EXIT.
+
+; MOPEN_IHANDLE opens the DX-pointed file for reading, and stores the handle
+;   in IHANDLE.
+
+        DATA SEGMENT
+  IHANDLE  DW ?     ; open file handle for the input file
+        DATA ENDS
+
+OPEN_I_ARG:
+  CALL FILE_ARG     ; scan the first file name
+  JC >E1            ; error if there was no name
+MOPEN_IHANDLE:
+  CALL MOPEN_READ   ; open the first file
+  JC >E1            ; error if the file was not found
+  MOV IHANDLE,AX    ; set IHANDLE to the input file
+  RET
+
+E1:                 ; something went wrong
+  JMP USAGE_EXIT    ; abort the program
+
+

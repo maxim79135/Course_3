@@ -1,0 +1,73 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FIRSTFLD                                     See EILIB.TXT for terms
+;---------------
+
+; FIRSTFLD accepts as its input a text file which has been sorted by a
+;   certain field.  Our output file contains the first line from each
+;   block of lines in which that field is the same.
+
+JMP FIRSTFLD            ; jump to the program start
+
+  DB 0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FIRSTFLD startcol ncols infile outfile',0D,0A
+  DB '   outputs the first line from each block in which the given',0D,0A
+  DB '   field matches',0D,0A
+  DB 0D,0A,0,01A
+
+        DATA SEGMENT
+PREV_FIELD:             ; the field contents from the previous line
+  DB 256 DUP ?
+        DATA ENDS
+
+FIRSTFLD:
+  MOV DI,PREV_FIELD     ; point to the previous-line field buffer
+  MOV CX,256            ; load buffer size
+  MOV AL,0FF            ; load initial byte
+  REP STOSB             ; initialize the buffer with an impossible string
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_DEC       ; fetch the column number for the field
+  XCHG BP,AX            ; save the column number in BP
+  CALL VERIFY_DEC       ; fetch the size of the field
+  MOV BX,AX             ; save the size in BX
+  ADD AX,BP             ; calculate the column number beyond the field
+  INC AX,2              ; include the line-ending CRLF in the count
+  MOV LINE_LIMIT,AX     ; store the minimum line size for column checking
+  JMP PFILE_IOARG       ; parse in and out fnames, and process the input
+
+
+PFILE_REC:              ; process input bytes from SI up to DX
+  CALL PF_LINE_SIZE     ; set CX to the number of bytes in the line
+  CMP CX,01234          ; is the line big enough to contain the field?
+LINE_LIMIT EQU W[$-2]   ; line size limit is plugged into above imm word
+  JB >L9                ; skip if the line is not big enough
+  PUSH CX,SI,DI         ; save the line count and in/out pointers
+  ADD SI,BP             ; advance SI to the field
+  MOV DI,PREV_FIELD     ; point DI to the previous line's field contents
+  MOV CX,BX             ; load the size of the field
+  PUSH SI,DI            ; save the field and prev-field pointers
+  REPE CMPSB            ; set Z if the field matches the previous line
+  POP DI,SI             ; restore the prev-field and field pointers
+  MOV CX,BX             ; load the size of the field
+  REP MOVSB             ; copy this field to the prev-field buffer
+  POP DI,SI,CX          ; restore out/in pointers and line size
+  IF NE REP MOVSB       ; if the field is new then output the line
+L9:                     ; common exit
+  ADD SI,CX             ; advance the input pointer beyond any bytes not output
+  RET
+
+
+PF_LINE_SIZE:           ; set CX to the line size pointer to by SI--DX
+  PUSH ES,DI            ; save the output pointer
+  MOV ES,DS             ; point ES to the input buffer, for scanning
+  MOV DI,SI             ; point DI to our input
+  MOV CX,DX             ; copy the buffer limit to CX
+  SUB CX,SI             ; calculate the remaining buffer count
+  MOV AL,0A             ; load linefeed, for scanning
+  REPNE SCASB           ; advance DI beyond the burrent line
+  MOV CX,DI             ; copy the beyond-line pointer to CX
+  SUB CX,SI             ; calculate the number of bytes we advanced
+  POP DI,ES             ; restore the caller's output pointer
+  RET
+

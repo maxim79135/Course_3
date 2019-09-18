@@ -1,0 +1,32 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   NUMLIST                                      See EILIB.TXT for terms
+;---------------
+
+; NUMLIST outputs a list of decimal numbers from 1 upward, one number
+;   per output line, to standard output.  The number of numbers is
+;   given by the single decimal parameter.
+
+NUMLIST:
+  MOV SI,081            ; point to our command tail
+  CALL VERIFY_DEC       ; scan the single decimal argument
+  XCHG CX,AX            ; swap the count into CX, for looping
+  MOV DI,END            ; point beyond our program, for buffered output
+  PUSH DI               ; save the buffer pointer
+  SUB BP,BP             ; initialize the number counter
+L1:                     ; loop here to output each number
+  INC BP                ; increment the counter
+  MOV AX,BP             ; fetch the counter
+  MOV BX,4 BY 10        ; number length is 4, base is decimal
+  MOV DX,' ' BY 0       ; pad character is blank, upper byte is zero
+  CALL NUMOUT           ; output the number
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output terminating CRLF
+  LOOP L1               ; loop to output the next number
+  POP DX                ; restore the output buffer pointer
+  CALL OWRITE_DI        ; output the buffer
+  JMP GOOD_EXIT         ; exit back the operating system
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: NUMLIST count >out',0D,0A
+  DB '   outputs a list of decimal numbers',0D,0A,0,01A

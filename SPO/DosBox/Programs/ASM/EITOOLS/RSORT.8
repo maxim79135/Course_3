@@ -1,0 +1,156 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   RSORT                                        See EILIB.TXT for terms
+;---------------
+
+; RSORT sorts the file whose name is given as the second argument in the
+;   command tail.  We are sorting multi-line records-- a line begins a
+;   record if the first byte is non-blank; otherwise it continues a record.
+;   We do the fastest possible sort, with a simple lexicographic
+;   ordering of the record field indicated by the command-tail argument:
+;   an N ("Next") for each line to be skipped, followed by the number of
+;   columns to be skipped.
+
+PRE_LF_NEEDED EQU 1   ; we require a linefeed before the input buffer
+
+RSORT:
+  MOV SI,081          ; point to our invocation command tail
+  CALL TAIL_BLANKS    ; skip over leading blanks
+  CMP AL,'!'          ; do we see our special flip-operator?
+  JNE >L1             ; skip if not
+  INC SI              ; flip-operator seen: advance beyond it
+  MOV FLIPCODE B,090  ; enable the reversal of all COMPARE results
+  CALL TAIL_BLANKS    ; skip over intervening blanks
+L1:
+  SUB CX,CX           ; initialize the lines count
+L2:                   ; loop here for each "N" seen
+  INC CX              ; bump the lines count
+  LODSB               ; fetch the next character
+  AND AL,0DF          ; coerce the character to upper-case
+  CMP AL,'N'          ; is the character "N"?
+  JE L2               ; loop if it is, to scan for more N's
+  DEC SI              ; non-N seen: retreat back to it
+  MOV NLINES,CX       ; store the number of lines to skip
+  CALL VERIFY_DEC     ; there had better be a decimal argument: get it
+  MOV NCOLS,AX        ; store the number of columns to be skipped
+  PUSH SI             ; save file pointer, in case only one name is given
+  CALL OPEN_I_ARG     ; open the input file
+  CALL TAIL_BLANKS    ; skip over intervening blanks
+  CMP AL,0D           ; is there a second file name?
+  POP AX              ; restore first pointer, in case there isn't
+  IF E XCHG SI,AX     ; swap in the first pointer if there was no input name
+  CALL FILE_ARG       ; scan the SI-pointed file argument
+  CALL LSORT_IHANDLE  ; sort the file
+  JMP GOOD_EXIT       ; exit our program
+
+
+USAGE_MSG:
+  DB 'usage: RSORT [!] [N]colnum infile [outfile]',0D,0A
+  DB '   sorts multi-line records',0D,0A
+  DB 0
+
+
+; COMPARE is the minimal lexicographic sort of DS:BP - ES:[BX].
+
+COMPARE:
+  MOV SI,BP         ; fetch the first pointer
+  ES MOV DI,[BX]    ; fetch the second pointer
+  MOV CH,1          ; load a reasonably-sized count
+  REPE CMPSB        ; compare the strings
+FLIPCODE:
+  RET               ; return, unless a reverse sort has been implemented
+;
+; Reverse sort drops through to the following:
+;
+  IF NE L9: CMC     ; if not equal then reverse the comparison
+  RET
+
+
+
+; GEN_SORTP is called by the LSORT module to define the bounds of the
+;   SI-pointed record, by advancing SI beyond the record, and by returning AX
+;   set to a key for the record, suitable for feeding to COMPARE.  If the first
+;   line begins with a control character (e.g. EOF or blank line), we advance
+;   beyond the character and return NC/NZ signalling LSORT to ignore it.
+;   Otherwise if SI reaches BX without the end of the record being seen, we
+;   return Carry to signal an incomplete record.
+
+GEN_SORTP:
+  LODSB               ; fetch the SI-pointed byte
+  CMP AL,' '          ; is it a control character?
+  JB L9               ; if it is then return NC/NZ so it is ignored
+  DEC SI              ; record is not ignored: retreat back to first byte
+  PUSH ES,CX,DX       ; save registers across call
+  MOV DX,0            ; load the line number for our sort field
+NLINES EQU W[$-2]     ; line number is plugged into the above immediate value
+  MOV ES,DS           ; point ES to our segment, for scanning
+  XCHG DI,SI          ; swap our input pointer into DI, for scanning
+  MOV AL,0A           ; we are looking for linefeeds
+  MOV CX,BX           ; point CX beyond the available bytes
+  SUB CX,DI           ; calculate the number of buffered bytes
+  JMP >L3             ; jump into loop, for scanning
+
+L1:                   ; loop here to scan over each leading line
+  REPNE SCASB         ; scan past this line
+  JNE >L5             ; jump if the buffered bytes were exhausted
+  CMP B[DI],020       ; does the next line continue this record?
+  JA >L4              ; jump if not-- premature end of record
+L3:
+  DEC DX              ; count down lines
+  JNZ L1              ; loop if there are more lines to skip
+  LEA DX,[DI+01234]   ; we are at the correct line: load our field pointer
+NCOLS EQU W[$-2]      ; column offset is plugged into the above index value
+  REPNE SCASB         ; scan past this line
+  JNE >L5             ; jump if the buffered bytes were exhausted
+  CMP DX,DI           ; was the line too short to contain our field?
+  IF AE LEA DX,[DI-1] ; if it was then point DX to the ending linefeed instead
+L8:                   ; loop here to check for end-of-record
+  CMP B[DI],020       ; does the next line start another record?
+  XCHG AX,DX          ; swap our field pointer into AX, in case it does
+  JA >L6              ; jump if we are at the end of our record
+  XCHG DX,AX          ; not the end of the record: restore AL=0A, DX=ptr
+  REPNE SCASB         ; scan to the next line
+  JE L8               ; loop if we got to the end of this line
+L5:                   ; premature end of input buffer
+  STC                 ; Carry signals that we need more bytes
+  JMP >L7             ; jump to common exit
+
+L4:                   ; jump here if there is a premature end of record
+  LEA AX,[DI-1]       ; point our field to the terminating linefeed
+L6:
+  CMP AL,AL           ; NC/NZ signals that the record has been scanned
+L7:
+  XCHG SI,DI          ; restore SI pointing beyond the record
+  POP DX,CX,ES        ; restore clobbered registers
+  RET
+
+
+
+; COPY_SORTREC copies the SI-pointed record to DI.  Input SI can be anywhere
+;   within the multi-line record.  We scan in both directions to find
+;   the limits of the record in order to output it.
+
+COPY_SORTREC:
+  PUSH ES,DI          ; save registers across call
+  MOV ES,DS           ; point ES to our scanning segment
+  MOV DI,SI           ; point DI to the record, for SCASB scanning
+  MOV AL,0A           ; we are scanning for linefeeds
+  MOV CH,0FF          ; load huge count, to all scanning
+  DEC DI              ; retreat to the byte preceding this one
+  STD                 ; scanning is backwards
+L1:                   ; loop here to scan back each line
+  REPNE SCASB         ; scan to before the pre-terminating linefeed
+  CMP B[DI+2],020     ; is this line a continuation line?
+  JBE L1              ; loop if it is, to keep scanning backwards
+  CLD                 ; first line seen: restore forward scanning
+  INC DI,2            ; advance back to the record start
+  XCHG SI,DI          ; swap record pointer to SI, caller's SI into DI
+L2:                   ; loop here to scan forward each line
+  REPNE SCASB         ; advance to the next line
+  CMP B[DI],020       ; is it a continuation line?
+  JBE L2              ; loop if it is, to keep scanning
+  MOV CX,DI           ; end of record seen: point CX beyond the record
+  SUB CX,SI           ; calculate the size of the record
+  POP DI,ES           ; restore the output pointer
+  REP MOVSB           ; copy the record to the output buffer
+  RET
+

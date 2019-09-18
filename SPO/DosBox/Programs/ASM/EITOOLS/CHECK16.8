@@ -1,0 +1,44 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   CHECK16                                      See EILIB.TXT for terms
+;---------------
+
+; CHECK16 calculates and displays the checksum value for the file given
+;   as standard input.  The checksum is the simple sum of the 16-bit words
+;   in the file.  If the length of the file is odd, the last byte is null-
+;   extended.
+
+CHECK16:
+  SUB BP,BP           ; initial checksum is zero
+L1:                   ; loop here for each buffer-full of input
+  SUB BX,BX           ; open-file handle for standard input is zero
+  MOV DX,SI,01000     ; point DX and SI to the input buffer
+  MOV CX,06000        ; load the input buffer size
+  CALL MREAD          ; read the input buffer
+  ADD DX,AX           ; advance DX beyond the actual bytes read
+  MOV BX,DX           ; also point BX beyond the bytes, for null extending
+  MOV B[BX],0         ; store zero beyond buffer, in case the length was odd
+  JMP >L3             ; jump into the following loop
+
+L2:                   ; loop here for each word of the checksum calculation
+  LODSW               ; fetch another word from the buffer
+  ADD BP,AX           ; add the word into our checksum
+L3:
+  CMP SI,DX           ; have we reached the end of the buffer?
+  JB L2               ; loop if not, to fetch another word
+  CMP DX,07000        ; buffer is scanned: was the buffer full?
+  JE L1               ; loop if it was, to read more bytes
+  XCHG AX,BP          ; file is scanned: swap the checksum into AX
+  MOV DI,ANSWER_SLOT  ; point to the output slot
+  CALL OHEX_16        ; output the hex checksum to the slot
+  MOV DX,ANSWER       ; point to the whole output message
+  MOV CX,ANSWER_SIZE  ; load the message size
+  CALL OWRITE         ; output the checksum message
+  JMP GOOD_EXIT       ; return to the operating system
+
+ANSWER:
+  DB 'The 16-bit checksum is '
+ANSWER_SLOT:
+  DB 'xxxx.',0D,0A
+ANSWER_SIZE EQU $-ANSWER
+
+NO_DOSCHECK EQU 1     ; no need for usage error-checking

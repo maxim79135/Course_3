@@ -1,0 +1,233 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FIELDS                                       See EILIB.TXT for terms
+;---------------
+
+; FIELDS extracts specific fields from a file consisting of either fixed-sized
+;   records or lines.  We accept in the command tail the input file name,
+;   the number of leading bytes to skip, the size of each record (zero if
+;   the file has lines and not records), and then for each field to be
+;   gathered: the offset and size of the field.  If the size of a field is
+;   zero, the field runs to the end of the line.  We output to standard output
+;   the fields separated by a blank; each output record is terminated by a
+;   CRLF.
+
+; We also allow in the command tail a fixed single character, to appear
+; in the output at the designated location, as a one-character field.  The
+; specification for this is a double quote mark " followed immediately
+; by the desired character.
+ 
+        DATA SEGMENT
+
+  FCOUNT       DW ?     ; number of fields we are extracting
+  IBUFF_END    DW ?     ; pointer beyond the input buffer
+  IBUFF_LIMIT  DW ?     ; pointer to input buffer scanning limit
+DTABLE:
+  RSKIP   DW ?          ; number of initial records to skip
+  RSIZE   DW ?          ; size of each record
+          DW 100 DUP ?  ; offset and size of each field within a record
+          DB ?          ; pre-terminator byte for OBUFF
+OBUFF:                  ; output buffer
+  DB 16000 DUP ?
+OBUFF_LIM:              ; if output goes beyond here we flush
+  DB 1024 DUP ?
+IBUFF EQU $+128
+        DATA ENDS
+
+
+FIELDS:
+  CALL READ_TAIL        ; scan the numbers in the invocation command tail
+  CALL SET_COUNTS       ; set up our input buffer counts
+  MOV DX,RSKIP          ; fetch the number of initial skipped bytes
+  SUB CX,CX             ; high word of skip count is always zero
+  MOV BX,IHANDLE W      ; fetch the open-file handle of the input file
+  MOV AX,04200          ; MS-DOS function codes for SEEK_FROM_START
+  INT 021               ; skip past the indicated number of initial bytes
+  MOV DI,OBUFF-1        ; initialize the output pointer
+  MOV AL,0A             ; load the pre-terminator for OBUFF
+  STOSB                 ; pre-terminate OBUFF
+  MOV BP,DX             ; BP=DX insures there are no residual bytes at start
+L3:                     ; loop here for each buffer-full of input
+  PUSH DI               ; preserve the output pointer
+  MOV CX,DX             ; point CX beyond the residual bytes
+  MOV SI,BP             ; point SI to the residual bytes
+  SUB CX,SI             ; calculate the number of residual bytes
+  MOV BP,DI,IBUFF       ; initialize the first record pointer and set output
+  REP MOVSB             ; copy the residual bytes to the bottom of the buffer
+  MOV CX,IBUFF_END      ; point beyond the input buffer
+  MOV DX,DI             ; point DX beyond residual copy, to where we read more
+  POP DI                ; restore the output pointer
+  SUB CX,DX             ; calculate the number of bytes we need to read
+  MOV BX,IHANDLE W      ; load the open-file handle for the input file
+  CALL MREAD            ; read from standard input into the buffer
+  ADD DX,AX             ; advance DX beyond the last actual byte read
+  CMP AX,CX             ; was the entire remaining input read?
+  JE >L4                ; skip if it was not
+  MOV IBUFF_LIMIT,DX    ; entire input was read: reset the scanning limit
+  JMP >L4               ; jump into the scanning loop
+
+L1:                     ; loop here to process each record in the buffer
+  MOV BX,DTABLE+4       ; point BX to the first (offset,size) pair
+  MOV CX,FCOUNT         ; load the number of pairs
+L2:                     ; loop here to output each field
+  CALL COPY_FIELD       ; output the field
+  LOOP L2               ; loop for the next field
+L5:                     ; loop here for each trailing blank found
+  DEC DI                ; retreat to the trailing blank
+  CMP B[DI-1],' '       ; is there another trailing blank?
+  JE L5                 ; loop if there is
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output the terminating CRLF
+  CMP DI,OBUFF_LIM      ; has the output buffer gotten full?
+  IF AE CALL FLUSH_OBUFF; if yes then flush it
+ADVANCE_OPCODE DW       ; record-oriented code changes this to ADD BP,RSIZE
+  CALL NEXT_BP_LINE     ; if line-oriented then advance BP to the next line
+  NOP                   ; make room for ADD BP,RSIZE
+L4:
+  CMP BP,IBUFF_LIMIT    ; have we reached the end of the records read?
+  JB L1                 ; loop if not, to process the next record
+  CMP DX,IBUFF_END      ; was this buffer filled?
+  JE L3                 ; loop if it was, to read another buffer
+  CALL FLUSH_OBUFF      ; write out any remaining buffered output
+  JMP GOOD_EXIT         ; go back to the operating system
+
+
+NEXT_BP_LINE:           ; advance BP to the next line
+  INC BP                ; increment the pointer
+  CMP B[BP-1],0A        ; have we moved beyond the line?
+  JNE NEXT_BP_LINE      ; loop if not, to continue scanning
+  RET
+
+
+; COPY_FIELD copies the field whose offset and size are at BX, from the record
+;   at BP to the DI-pointed output buffer.  We also output a trailing blank.
+
+COPY_FIELD:
+  PUSH CX               ; preserve register across call
+  MOV CX,[BX]           ; fetch the offset within the record
+  INC BX,2              ; advance BX to the size
+  CMP CX,0FFFF          ; is it a special fixed-character marker?
+  JE >L1                ; jump if it was
+  MOV SI,BP             ; point SI to the start of the line
+  CALL SKIP_FIELD       ; advance to the desired field
+  MOV CX,[BX]           ; fetch the size of the field
+  CALL SCAN_FIELD       ; copy the desired field to output
+L2:
+  MOV AL,' '            ; load blank
+  STOSB                 ; output a trailing blank
+  POP CX                ; restore clobbered register
+  INC BX,2              ; advance BX to the next (offset,size) pair
+  RET
+
+L1:                     ; the field is a fixed-character marker
+  MOV AL,[BX]           ; fetch the fixed character
+  STOSB                 ; output the character into the buffer
+  JMP L2                ; join common exit code
+
+
+; SKIP_FIELD and SCAN_FIELD are called in succession, to advance the input
+;   pointer to the record we are outputting, and then to output the record.
+;   We execute the same code for the two operations, toggling the NOP
+;   instruction into a STOSB instruction to switch between skipping and
+;   copying the scanned bytes.  
+
+SKIP_FIELD:
+  JCXZ >L9              ; skip the loop if the count is zero
+SCAN_FIELD:
+  LODSB                 ; fetch a byte from the record
+  CMP AL,0D             ; is it a terminating carriage return?
+SCAN_OPCODE DB          ; CR checking code is disabled by zapping the JE
+  JE >L1                ; jump if it is a CR, to exit the loop
+L4:                     ; following NOP toggles to STOSB for copying
+  NOP                   ; either skip the byte or output it
+  LOOP SCAN_FIELD       ; loop to scan the next byte
+L9:                     ; common exit
+  XOR L4 B,0AA XOR 090  ; toggle between NOP and STOSB for the next call
+  RET
+
+L1:                     ; terminating CR is seen
+  MOV AL,' '            ; load blank instead of CR
+  DEC SI                ; retreat the input pointer to the CR
+  JMP L9                ; join common exit
+
+
+
+; READ_TAIL reads the numbers list from the invocation command tail.  There
+;   must be a record size, skip count, and at least one offset-and-size pair.
+
+READ_TAIL:
+  MOV SI,081            ; point to the command tail
+  CALL OPEN_I_ARG       ; open the input file
+  MOV DI,DTABLE         ; we will output to our configuration buffer
+  CALL GATHER_PAIR      ; fetch the skip count and record size 
+L1:                     ; loop here to gather each offset-and-size pair
+  CALL GATHER_PAIR      ; fetch and output an offset-and-size
+  CALL TAIL_BLANKS      ; skip over trailing blanks
+  CMP AL,0D             ; have we reached the end of the command line?
+  JNE L1                ; loop if not, to scan another pair of numbers
+  SUB DI,DTABLE+4       ; calculate the number of offset-and-pair bytes
+  SHR DI,1              ; convert to words
+  SHR DI,1              ; convert to pairs
+  MOV FCOUNT,DI         ; store the number of fields in each record
+  RET
+
+
+
+; GATHER_PAIR requires SI to point to at least 2 decimal numbers.  We read the
+;   numbers, and output their word-values to DI.
+
+GATHER_PAIR:
+  CMP AL,'"'            ; is it a fixed-character specification?
+  JNE >L2               ; jump if not, to scan the two numbers
+  MOV AX,0FFFF          ; load fixed-character marker for the count
+  STOSW                 ; output the marker
+  INC SI                ; advance beyond the " double-quotes mark
+  LODSB                 ; fetch the fixed character
+  STOSW                 ; output the character, and an unused placeholder
+  RET
+  
+L2:                     ; we did not see a fixed-character marker
+  CALL >L1              ; gather and output the first number
+L1:                     ; drop here to gather and output the second number
+  CALL VERIFY_DEC       ; gather the number
+  STOSW                 ; output the number
+  RET
+
+
+; SET_COUNTS calculates an input-buffer size that is an exact multiple of
+;   our record size, and sets IBUFF_LIMIT and IBUFF_END accordingly.  We
+;   also check if we have a fixed record size, and, if we do, we align
+;   IBUFF_LIMIT to a record boundary, and we modify our SCAN_FIELD code
+;   to advance by the fixed count RSIZE to get to the next record.
+
+SET_COUNTS:
+  MOV AX,SP             ; point beyond available memory
+  SUB AX,1024           ; make room for 1024 bytes of stack space
+  MOV BX,OFFSET RSIZE   ; fetch our record size
+  TEST W[BX]            ; do we have fixed-size records?
+  JNZ >L1               ; jump if we do
+  MOV IBUFF_END,AX      ; line-oriented: mark the end of the input buffer
+  SUB AX,4096           ; allocate a 4K overflow area
+  JMP >L2               ; jump to common exit code
+
+L1:                         ; the file consists of fixed-size records
+  MOV SCAN_OPCODE,03C       ; disable CR checking in SCAN_FIELD
+  MOV ADVANCE_OPCODE,02E03  ; load opcodes for ADD BP,iw
+  MOV ADVANCE_OPCODE[2],BX  ; load the record size as the iw of the plugged ADD
+  SUB AX,IBUFF              ; calculate available size, leaving room for stack
+  SUB DX,DX                 ; extend word AX to doubleword DXAX
+  MOV CX,AX                 ; make a copy of the available size
+  DIV W[BX]                 ; calculate the total number of records in a buffer
+  SUB CX,DX                 ; reduce the byte size by the remainder
+  XCHG AX,CX                ; swap the even-multiple byte size into AX
+  ADD AX,IBUFF              ; calculate the pointer beyond the buffer
+  MOV IBUFF_END,AX          ; store the pointer beyond the buffer
+L2:
+  MOV IBUFF_LIMIT,AX        ; for even records the end-pointer is also the limit
+  RET
+
+ 
+USAGE_MSG:
+DB 'usage: FIELDS fname skipct recsize f_offset f_size [... f_offset f_size]'
+DB 0D,0A
+DB 0
+

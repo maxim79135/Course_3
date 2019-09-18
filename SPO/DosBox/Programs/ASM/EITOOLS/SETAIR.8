@@ -1,0 +1,26 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SETAIR                                       See EILIB.TXT for terms
+;---------------
+
+; SETAIR sends a sequence of formatting codes to an HP Laserjet printer,
+;   for printing to an airletter form.
+
+PRINT_CODES:
+  MOV DX,PRN_NAME   ; point to the printer's device name
+  MOV AX,03D01      ; MSDOS codes for "open for writing"
+  INT 021           ; call MSDOS to open the printer device
+  XCHG BX,AX        ; swap the printer's open-file handle into BX
+  MOV DX,CODES      ; point to the codes we are outputting
+  MOV CX,LENGTH     ; load the number of code bytes
+  MOV AH,040        ; MSDOS code for "write"
+  INT 021           ; write the codes to the printer
+  MOV AX,04C00      ; MSDOS codes for "successful process termination"
+  INT 021           ; go back to the operating system
+
+PRN_NAME:           ; device name for opening the printer output stream
+  DB 'PRN',0
+
+CODES:
+  DB 01c,01b,025,'C096'
+LENGTH EQU $-CODES
+

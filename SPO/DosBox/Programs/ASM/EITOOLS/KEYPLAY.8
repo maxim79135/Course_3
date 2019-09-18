@@ -1,0 +1,32 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   KEYPLAY                                      See EILIB.TXT for terms
+;---------------
+
+; KEYPLAY inserts the command-tail string into the BIOS keystrokes buffer.
+
+        DATA SEGMENT
+PLAYBACK_COUNT  DW ?      ; number of bytes in the string to be played back
+PLAYBACK_STRING:
+          DB 128 DUP ?     ; contents of the string to be played back
+        DATA ENDS
+
+KEYPLAY:
+  CALL INIT_PUT_KEY
+  MOV SI,081              ; point to our invocation command tail
+  MOV DI,PLAYBACK_STRING  ; point to the buffer for the playback string
+  PUSH DI                 ; save the buffer pointer
+  CALL SCAN_STRING        ; parse and output the string
+  POP SI                  ; restore the string buffer pointer
+L1:                       ; loop here to insert each byte
+  LODSB                   ; fetch the byte
+  CALL PUT_KEY            ; insert the byte in the BIOS keyboard buffer
+  LOOP L1                 ; loop to insert the next byte
+  JMP GOOD_EXIT           ; exit back to the operating system
+
+E1:                       ; error exit
+  JMP USAGE_EXIT          ; output the following usage message
+
+USAGE_MSG:
+  DB  'usage: KEYPLAY string',0D,0A
+  DB  '   plays back a string through BIOS key buffer',0D,0A,0
+

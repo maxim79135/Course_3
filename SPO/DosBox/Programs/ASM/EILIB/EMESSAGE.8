@@ -1,0 +1,17 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  EMESSAGE                                      See EILIB.TXT for terms
+;---------------
+
+; EMESSAGE outputs the CS:AX-pointed, null-terminated message to error output.
+
+EMESSAGE:
+  PUSH BX,CX,DX,DS    ; preserve registers across call
+  MOV DS,CS           ; point DS to CS, to scan the message
+  XCHG SI,AX          ; swap message pointer into SI
+  CALL STR_LENGTH     ; set CX to the length of the message
+  XCHG AX,SI          ; swap the message pointer back to AX, and restore SI
+  XCHG DX,AX          ; swap the message pointer into DX, for output
+  CALL EWRITE         ; output the message
+  POP DS,DX,CX,BX     ; restore clobbered registers
+  RET
+  

@@ -1,0 +1,58 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    PFIO                                        See EILIB.TXT for terms
+;---------------
+
+; PFILE_IOARG can be jumped to, to perform the main-program processing
+;   for an SI-pointed command-tail consisting of an input file name
+;   followed by an output file name.  We open the files, set up DI for
+;   output to OBUFF, and call PROCESS_FILE to process the input file.
+;   The caller should supply the PFILE_REC routine, to process input
+;   buffered at SI up to DX, and output to DI.  The caller should call
+;   CHECK_OBUFF often enough to avoid output-buffer overflow.  The caller
+;   should also supply the USAGE_MSG for the program.
+
+; OWR_CLOSE_EXIT flushes the OBUFF output buffer, closes the OWRITE_H
+;   output file, and exits the program.
+
+        #if PFIO_SAVDAT ; if this flag is set then we copy the date-time stamp
+PFILE_DATE EQU 1        ; we will have PROCESS_FILE read the input date-time
+        #endif
+
+        #if ref PFILE_IOARG
+PFILE_IOARG:
+  PUSH BX               ; save our caller's BX value
+        #if IFILE_OPTIONAL
+  CALL TAIL_BLANKS      ; advance to the file name
+  SUB DX,DX             ; load null pointer, in case there is no file
+  CMP AL,0D             ; is there a file name?
+  JE >L1                ; skip FILE_ARG call if there is no name
+        #endif
+  CALL FILE_ARG         ; scan the input file name
+L1:
+  MOV DI,OBUFF          ; set up our output pointer
+  CALL OWRITE_ARG       ; open the output file
+  CALL NO_MORE_ARGS     ; the command tail should have no further arguments
+  POP BX                ; restore our caller's BX value
+  CALL PROCESS_FILE     ; process the input file
+        #if def PFIO_POSTPROCESS
+        #if PFIO_SAVDAT ; if this flag is set then we copy the date-time stamp
+  PUSH CX,DX
+        #endif
+  CALL PFIO_POSTPROCESS ; call a postprocess routine if the caller has one
+        #if PFIO_SAVDAT ; if this flag is set then we copy the date-time stamp
+  POP DX,CX
+        #endif
+        #endif
+        #endif
+OWR_CLOSE_EXIT:
+  CALL FLUSH_OBUFF      ; flush any remaining buffered output
+  MOV BX,OWRITE_H W     ; fetch the output file handle
+        #if PFIO_SAVDAT
+  MOV AX,05701          ; MS-DOS function number for SET_DATE_TIME
+  INT 021               ; copy the input date-time to the output file
+        #endif
+  CALL MCLOSE           ; close the output file
+  JMP GOOD_EXIT         ; exit the program
+
+
+

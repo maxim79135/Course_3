@@ -1,0 +1,38 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MRENAME                                      See EILIB.TXT for terms
+;--------------- 
+
+; MRENAME renames the file DS:DX to ES:DI.  If the second name already
+;   exists, it is deleted.
+
+MRENAME:
+  PUSH ES           ; preserve the second file's segment
+  MOV DS,ES         ; copy second segment to DS
+  XCHG DX,DI        ; swap second offset into DX
+        #if RENAME_ATTRIB
+  PUSH CX           ; preserve register across call
+  SUB CX,CX         ; load zero attributes
+  MOV AX,04301      ; DOS function codes for "set attributes"
+  INT 021           ; zero out all the attributes of the file to be deleted
+  POP CX            ; restore clobbered register
+        #endif
+        #if LONG_FNAMES
+  PUSH CX,SI        ; save registers during delete
+  SUB CX,CX         ; no attribute matching
+  SUB SI,SI         ; no wildcard action
+  MOV AX,07141      ; MS-DOS function number for RENAME
+  INT 021           ; delete the second file
+  POP SI,CX         ; restore clobbered registers
+        #else
+  MOV AH,041        ; MS-DOS function number for DELETE
+  INT 021           ; delete the second file
+        #endif
+  XCHG DI,DX        ; swap second offet back to DI, first offset to DX
+  POP ES            ; restore the second segment
+        #if LONG_FNAMES
+  MOV AX,07156      ; long-names MS-DOS function number for RENAME
+        #else
+  MOV AH,056        ; MS-DOS function number for RENAME
+        #endif
+  INT 021           ; rename the first file to the second
+  RET

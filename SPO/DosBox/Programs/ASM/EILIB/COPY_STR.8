@@ -1,0 +1,13 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COPY_STR                                     See EILIB.TXT for terms
+;---------------
+
+; COPY_STRING copies the SI-pointed, null-terminated string to DI.
+
+L0:           ; loop here for each non-null character found
+  STOSB       ; output the character
+COPY_STRING:
+  LODSB       ; fetch a character from the string
+  TEST AL     ; is it the terminating null?
+  JNZ L0      ; loop if not, to output it
+  RET

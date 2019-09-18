@@ -1,0 +1,28 @@
+        ;--------------                          Copr.2000 Eric Isaacson
+LINE_FILTER  TEXTONLY                          ; See EILIB.TXT for terms
+        ;--------------
+
+; TEXTONLY removes all non-text characters from lines.
+
+PROCESS_LINE:           ; filter CX bytes at SI--DI to BP
+  PUSH SI               ; preserve the pointer to the line
+  MOV DI,SI             ; we will copy to the line
+L1:                     ; loop here for each character in the line
+  LODSB                 ; fetch a character
+  CMP AL,07E            ; is it too high to be a text byte?
+  JA >L3                ; jump if it is too high, to skip output
+  CMP AL,020            ; is it a text byte?
+  JAE >L2               ; jump if it is a text byte, to make output
+  CMP AL,09             ; is it a tab?
+  JB >L3                ; include tabs
+  CMP AL,0B             ; is it a ctrl-K?
+  JE >L3                ; do not include ctrl-K; include CR,LF and FF
+L2:                     ; we are including this byte
+  STOSB                 ; output the byte
+L3:                     ; jump here if we are not including the byte
+  LOOP L1               ; loop to scan the next byte
+  POP SI                ; restore the pointer to the start of the line
+  MOV CX,DI             ; point CX beyond the line
+  SUB CX,SI             ; calculate the number of bytes in the line
+  JMP OUT_PROCESS_LINE  ; output the resulting line
+

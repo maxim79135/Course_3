@@ -1,0 +1,52 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COPYFILE                                     See EILIB.TXT for terms
+;---------------
+
+; COPY_FILE copies a disk file from DS:DX to DS:DI, using a buffer of size SI
+;   at ES:0 to transfer the contents.  We return Carry if the copy was not
+;   successful.
+
+COPY_FILE:
+  PUSH BX,CX,DX,BP,DS   ; preserve registers across call
+  CALL MOPEN_READ       ; open the source file for reading
+  JC >L9                ; return Carry if the open failed
+  XCHG BP,AX            ; swap the input file handle into BP
+  MOV AX,05700          ; DOS function codes for GET_FILE_DATE
+  INT 021               ; set DXCX to the date/time stamp of the file
+  PUSH CX,DX            ; save the date/time stamp on the stack
+  MOV DX,DI             ; point DX to the output file name
+  CALL MCREAT           ; create the output file
+  JC >L8                ; return Carry if there was an error creating the file
+  MOV DS,ES             ; point to the contents buffer
+  SUB DX,DX             ; buffer starts at offet zero within its segment
+L2:                     ; loop here to read each bufferful of file contents
+  XCHG BP,BX            ; swap the input pointer into BX
+  MOV CX,SI             ; load the buffer size
+  CALL MREAD            ; read another bufferful of the input file
+  XCHG BX,BP            ; restore the output file handle
+  JC >L7                ; return Carry if there was an error reading the file
+  XCHG CX,AX            ; swap the actual count into CX, for writing
+  CALL MWRITE           ; output the buffer contents to the file
+  JC >L7                ; jump if there was an error in the output
+  CMP AX,CX             ; did we output less than we wanted to?
+  JB >L7                ; return Carry if we did
+  CMP SI,CX             ; was the previous buffer filled?
+  JE L2                 ; loop if it was, to read another bufferful
+L7:
+  POP DX,CX             ; restore the date/time stamp
+  PUSHF                 ; save Carry in case we jumped here on an error
+  MOV AX,05701          ; DOS function codes for SET_FILE_DATE
+  INT 021               ; set the file's date-time stamp
+  CALL MCLOSE           ; close the input file
+  POPF                  ; restore return status Carry flag
+  DB 0BB                ; MOV BX,imm skips over the POP AX,AX to MOV BX,BP
+L8:                     ; jump here if there was an error
+  POP AX,AX             ; discard the date/time stamp
+  MOV BX,BP             ; fetch the input file handle
+  PUSHF                 ; save Carry in case we jumped here on an error
+  CALL MCLOSE           ; close the input file
+  POPF                  ; restore return status Carry flag
+L9:
+  POP DS,BP,DX,CX,BX    ; restore clobbered registers
+  RET
+

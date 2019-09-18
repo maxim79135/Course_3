@@ -1,0 +1,32 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SHIFCHEK                                     See EILIB.TXT for terms
+;---------------
+
+; SHIFCHEK examines the shift-state byte within the BIOS, and returns an
+;   error code equal to that value masked with the decimal parameter
+;   given in the command tail.  This allows batch files to alter their
+;   behavior, depending on the state of any keyboard toggle; e.g.
+;   SHIFCHEK 32 will cause a following IF ERRORLEVEL 1 to test true if
+;   NumLock is on.
+
+SHIFCHEK:
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_1_DEC     ; fetch the single masking argument
+  SUB BX,BX             ; load zero
+  MOV DS,BX             ; set DS to 0, to access the BIOS memory area
+  AND AL,B[0417]        ; mask the key-shift-state byte against our value
+  JMP EXIT              ; return the masked value as our program error code
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: SHIFCHEK n',0D,0A
+  DB '   returns ERRORLEVEL 1 if BIOS key-shift-state byte masked with n is NZ'
+  DB 0D,0A,0A
+  DB '  SHIFCHECK 3   if either Shift key is depressed',0D,0A
+  DB '  SHIFCHECK 4   if the Ctrl key is depressed',0D,0A
+  DB '  SHIFCHECK 8   if the Alt key is depressed',0D,0A
+  DB '  SHIFCHECK 16  if Scroll Lock is enabled',0D,0A
+  DB '  SHIFCHECK 32  if NumLock is enabled',0D,0A
+  DB '  SHIFCHECK 64  if CapsLock is enabled',0D,0A
+  DB '  SHIFCHECK 128 if Insert has been toggled',0D,0A
+  DB 0D,0A,0,01A

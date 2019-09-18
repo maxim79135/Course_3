@@ -1,0 +1,24 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   O_ARG                                        See EILIB.TXT for terms
+;---------------
+
+; OPEN_O_ARG expects SI to point to some part of the command tail.  We
+;   skip leading blanks, and create and open for writing the file named by the
+;   following argument.  We return with AX=BX=OHANDLE= the open file handle.
+;   If anything went wrong we jump to USAGE_EXIT.
+
+        DATA SEGMENT
+  OHANDLE  DW ?     ; open file handle for the output file
+        DATA ENDS
+
+OPEN_O_ARG:
+  CALL FILE_ARG     ; scan the name of the output file
+  JC >E1            ; error if there was no output file name
+  CALL MCREAT       ; create and open the output file for writing
+  JC >E1            ; error if we could not open the file
+  MOV OHANDLE,AX    ; set OHANDLE to the output file
+  RET
+
+E1:                 ; something went wrong
+  JMP USAGE_EXIT    ; abort the program
+

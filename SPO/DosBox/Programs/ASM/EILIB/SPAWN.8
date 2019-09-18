@@ -1,0 +1,44 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SPAWN                                        See EILIB.TXT for terms
+;---------------
+
+; SPAWN_CHILD reduces our memory to 64K, then calls the child program whose
+;   full path is pointed to by CS:DX, with the command tail pointed to
+;   by CS:SI.  We do not attempt to set up valid FCB blocks for the child
+;   program.  We return NoCarry if the program call was successful.
+
+; This procedure assumes that SS=CS on entry, and returns with DS=ES=SS=CS.
+
+SPAWN_CHILD:
+  MOV BX,CS           ; point BX to our program segment
+  DEC BX              ; retreat to our memory control block
+  MOV DS,BX           ; point DS to our memory control block
+  PUSH W[3]           ; save the current number of paras allocated to us
+  MOV DS,ES,CS        ; restore all segments to our CS
+  MOV >L8 W,SP        ; store the current stack pointer
+        #if def SPAWN_PROGSIZE
+  MOV BX,SPAWN_PROGSIZE  ; if caller declared a different progsize load it
+        #else
+  MOV BX,01000        ; load the number of paras in 64K bytes
+        #endif
+  CALL >L9            ; reduce our program's allocation to 64K bytes
+  MOV CX,05C          ; point CX to our FCB1 block
+  PUSH CS,CX,CS,CX    ; push two copies of the far FCB1 pointer
+  PUSH CS,SI          ; push the far pointer to the child's command tail
+  PUSH W[02C]         ; push the segment address of our environment
+  MOV BX,SP           ; point to the parameter block we just constructed
+  MOV AX,04B00        ; MS-DOS function codes for EXECUTE_CHILD_PROCESS
+  INT 021             ; execute the child program
+  MOV SS,DS,ES,CS     ; program is finished: restore all segment registers
+  MOV SP,0            ; restore our stack pointer
+L8 EQU W[$-2]         ; saved value of our SP across child call
+  STI                 ; re-enable interrupts
+  POP BX              ; restore the old paragraph allocation count
+L9:
+  PUSHF               ; save the Carry flag from the child's call
+  MOV AH,04A          ; MS-DOS function code for CHANGE_ALLOCATION
+  INT 021             ; change our memory allocation to BX paragraphs
+  POPF                ; restore the Carry flag from the child's call
+  RET
+
+

@@ -1,0 +1,162 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SIDISORT                                     See EILIB.TXT for terms
+;---------------
+
+; SIDI_SORT sorts an array of 16-bit keys.  The first key in the array is
+;   pointed to by SI; the last key is pointed to by DI (thus DI+2 points
+;   beyond the array).  The keys are rearranged in increasing order.  "Order"
+;   is defined by the subroutine COMPARE, which must be provided by the
+;   module linking to SIDI_SORT.
+
+; COMPARE must set the Z and C flags according to the unsigned comparison of
+;   key BP - key [BX].  (The tests JA, JAE, JB, and JBE must be valid on return
+;   from COMPARE.)  Note that BP is the first key itself, while BX points to the
+;   second key.  Thus, if the keys are themselves pointers to records to be
+;   compared, COMPARE will begin with the statements MOV SI,BP; MOV DI,[BX].
+;   COMPARE must preserve BP,BX,DX, and DS; but it may clobber AX,CX,SI,DI, and
+;   ES if it wishes.
+
+; WARNING----- SI must be greater than zero!  If your pointers array starts
+;   at the beginning of a segment, start it at offset 2, not 0.  SIDI_SORT
+;   needs to be able to scan below SI and be assured that a comparison of
+;   SI-2 to pointers in the SI--DI range will yield a BELOW result.  If SI
+;   starts out 0 this won't work, and SIDI_SORT will crash.  Fixing this
+;   problem would degrade performance, so it's better to have this minor
+;   limitation.
+
+; SIDI_SORT promises not to touch CX or ES at any time; so these registers
+;   can be set before calling SIDI_SORT; and the caller knows they will retain
+;   their values upon reaching COMPARE.
+
+L3:                 ; sort exactly 3 keys at SI, SI+2, DI=SI+4
+  MOV BP,[SI]       ; fetch low key
+  MOV BX,DI         ; point BX to high key
+  CALL COMPARE      ; compare L - H
+  IF A XCHG BP,[BX] ; insure L < H
+  DEC BX,2          ; point BX to M
+  CALL COMPARE      ; compare L - M
+  IF A XCHG BP,[BX] ; insure L < M so that L is now the lowest of the three
+  MOV [BX-2],BP     ; store L in case it changed
+  MOV BP,[BX]       ; fetch M
+  INC BX,2          ; point BX to H
+  JMP >L4           ; join common code to sort M and H into proper order
+
+L2:                 ; exactly two keys to sort
+  MOV BP,[SI]       ; fetch first key
+  MOV BX,DI         ; second pointer into BX
+L4:                 ; common code with M and H of the 3-key case
+  CALL COMPARE      ; compare keys
+  JBE RET           ; return if first < second-- they are already in order
+  XCHG BP,[BX]      ; two words are reversed-- switch them
+  MOV [BX-2],BP     ; store the new first key
+  RET               ; switch of two words is complete
+
+
+SIDI_SORT:
+  MOV AX,DI         ; high pointer
+  SUB AX,SI         ; compute (high - low)
+  JBE RET           ; return if pointers are equal or crossed
+  SHR AX,1          ; convert difference into a number of words
+  CMP AX,2          ; three cases: diff= 1,2,>3 i.e. #words to sort= 2,3,>4
+  JB L2             ; jump if there are two words to sort
+  JE L3             ; jump if there are three words to sort
+;
+; At this point we have determined that there are 4 or more words to sort.
+;   We sample three keys from the array (first, middle, and last), and swap
+;   them as necessary to insure that the first key is in the middle of the
+;   sorted order of the three sampled keys.  This increases the chance that
+;   the partitioning process will produce a split of our array into two
+;   subarrays of nearly even size.
+;
+  MOV BX,SI         ; copy low pointer
+  AND AL,0FE        ; make sure word count is even so we land on a pointer
+  ADD BX,AX         ; add word count to produce a pointer midway through array
+  PUSH SI,DI,SI     ; preserve low and high pointers
+  MOV DX,DI         ; save H pointer also in DX
+  MOV BP,[SI]       ; fetch low key
+  CALL COMPARE      ; compare L - M
+  XCHG BX,DX        ; swap H pointer into BX, M pointer into DX
+  JBE >L1           ; jump if L < M
+  CALL COMPARE      ; compare L - H
+  JBE >L7           ; jump if L < H: no switching, L is already in the middle
+  XCHG BP,[BX]      ; L is the biggest: exchange L and H so H is biggest
+  XCHG BX,DX        ; swap M pointer into BX, H pointer into DX
+  CALL COMPARE      ; compare L - M
+  JAE >L6           ; jump if L > M -- L is already middle value
+  XCHG BP,[BX]      ; L < M -- switch so L > M
+  JMP >L6           ; drop into partition code
+
+L1:                 ; L < M
+  CALL COMPARE      ; compare L - H
+  JAE >L7           ; jump if L > H: no switching, L is already in the middle
+  XCHG BP,[BX]      ; L is the smallest: exchange L and H so H is smallest
+  XCHG BX,DX        ; swap M pointer into BX, H pointer into DX
+  CALL COMPARE      ; compare L - M
+  IF A XCHG BP,[BX] ; insure L < M so that L is the middle value
+L6:
+  MOV BX,DX         ; move H pointer back into BX
+L7:                 ; L is now guaranteed to be middle of 3 sampled keys
+  INC BX,2          ; start out beyond last pointer
+  POP DX            ; pop copy of L pointer into DX
+;
+; Now we have in BP a key that we hope to be in the middle range of ordered
+;   key values.  We have set up two pointers, one at each end of the array,
+;   to compare each key to the BP key.  When we find a key in the top part
+;   that belongs below key BP, we move it to the bottom pointer.  Then we look
+;   for a key in the bottom part to occupy the just-vacated slot in the top.
+;   The process continues, switching searches between bottom and top, until
+;   the two pointers come together in the middle.
+;
+L2:                 ; look in the top for a key belonging to bottom
+  DEC BX,2          ; top pointer decrements towards middle
+  CMP BX,DX         ; have the two pointers come together?
+  JBE >L1           ; if so then move on to the next stage
+  CALL COMPARE      ; compare BP - top key
+  JBE L2            ; loop if top key is bigger-- it is correctly placed
+  MOV AX,[BX]       ; top key belongs on bottom-- fetch it into AX
+  XCHG BX,DX        ; switch bottom pointer into BX
+  MOV [BX],AX       ; store key from top half in the available bottom slot
+L3:                 ; look in the bottom for a key belonging to top
+  INC BX,2          ; bottom pointer increments towards middle
+  CMP BX,DX         ; have the two pointers come together?
+  JAE >L1           ; if so then move on to the next stage
+  CALL COMPARE      ; compare BP - bottom key
+  JAE L3            ; loop if bottom key is smaller-- it is correctly placed
+  MOV AX,[BX]       ; bottom key belongs on top-- fetch it into AX
+  XCHG BX,DX        ; switch top pointer into BX
+  MOV [BX],AX       ; store key from bottom half into the available top slot
+  JMP L2            ; loop to continue searching in top half
+
+; The pointers from each end have come together in the middle.  All keys below
+;   the meeting point are less than BP; and all keys above the meeting point
+;   are greater than BP.  Thus we have split our sorting problem into two
+;   independent sub-problems, to be handled by calling SIDI_SORT recursively.
+;   By insuring that the shorter subarray is sorted first, we guarantee that
+;   the depth of recursion is limited to the logarithm (base 2) of the number
+;   of keys.
+
+L1:
+  MOV [BX],BP       ; store the BP key in its final, middle resting place
+  POP DI,DX         ; array is now split  DX------BX------DI
+  LEA SI,[BX+2]     ; point to start of high half
+  DEC BX,2          ; array is now  DX------BX goodkey SI------DI
+  MOV AX,BX         ; fetch top pointer of bottom half
+  SUB AX,DX         ; compute AX = size of bottom half
+  JBE SIDI_SORT     ; jump if bottom half is empty-- top half is whole problem
+  MOV CX,DI         ; fetch top pointer of top half
+  SUB CX,SI         ; compute CX = size of top half
+  JA >L6            ; jump if top half is also non-empty
+  XCHG DX,SI        ; top half is empty: switch in pointers to bottom half
+  XCHG BX,DI
+  JMP SIDI_SORT     ; jump to sort bottom half, the only remaining problem
+
+L6:                 ; both halves are non-empty
+  CMP AX,CX         ; compare bottom size - top size
+  JA >L5            ; jump if bottom is bigger-- do top first
+  XCHG DX,SI        ; top is bigger-- swap pointers to do bottom first
+  XCHG BX,DI
+L5:
+  PUSH DX,BX        ; save pointers to the longer sub-array
+  CALL SIDI_SORT    ; sort the shorter sub-array
+  POP DI,SI         ; restore pointers to longer array
+  JMP SIDI_SORT     ; finish problem by sorting longer array

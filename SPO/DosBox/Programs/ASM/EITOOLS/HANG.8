@@ -1,0 +1,11 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    HANG                                        See EILIB.TXT for terms
+;---------------
+
+; HANG is a two-byte program that endlessly loops in a single JMP instruction.
+;   The program is useful as a diagnostic within multi-tasking operating
+;   systems.
+
+JMP 0100            ; endlessly loop to this one instruction
+
+

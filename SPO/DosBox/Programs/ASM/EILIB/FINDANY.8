@@ -1,0 +1,131 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FINDANY                                      See EILIB.TXT for terms
+;---------------
+
+; FIND_ANY searches for any of the strings from buffer SI, within the array
+;   CX--ES:DI.  The buffer is a sequence of string records, consisting of
+;   a marker word that we will use, a length word, and the string itself.
+;   The buffer is terminated by a zero length word.  We supply a routine
+;   CLEAR_FANY that will set all marker words to 0FFFF.  Our caller should
+;   call CLEAR_FANY every time the search array buffer is refilled.  We
+;   will then use the markers to store the first instance of each string
+;   within the current array buffer.
+;
+;   Return Z if found, with ES:DI pointing to the found string.  Return NZ if
+;   not found; with ES:DI pointing to CX residual bytes at the end of the
+;   buffer, which should be carried over if there is another buffer.  Return
+;   CX = 0 (there are no residual bytes) if the first character of the target
+;   string does not occur in the last BX-1 bytes of the array.
+
+        #if !def FANY_PROC
+FANY_PROC EQU FIND_NOCASE
+        #endif
+
+FIND_ANY:
+  PUSH DX,SI,BP       ; preserve registers across call
+  MOV DX,0FFFF        ; initialize our running minimum to a high value
+L1:                   ; loop here for each string record in the buffer
+  LODSW               ; fetch the marker pointer for this string
+  XCHG BX,AX          ; temporarily swap the marker into BX
+  LODSW               ; fetch the length word for this string
+  XCHG BX,AX          ; swap the length into BX, marker pointer into AX
+  TEST BX             ; is this the terminating zero length word?
+  JZ >L4              ; exit the loop if it is
+  CMP AX,0FFFF        ; has this string been searched yet?
+  JNE >L2             ; skip if it has
+  PUSH CX,DI          ; string has not been searched: save registers
+  CALL FANY_PROC      ; find the string in the buffer
+  MOV [SI-4],AX,DI    ; store the new marker and set AX to it
+  POP DI,CX           ; restore clobbered registers
+L2:
+  CMP AX,DX           ; is our marker below the running minimum marker value?
+  JAE >L3             ; skip if not
+  XCHG DX,AX          ; swap the new minimum value into DX
+  MOV BP,SI           ; set BP to the string pointer for the new minimum
+L3:
+  ADD SI,BX           ; advance SI to the next string record
+  JMP L1              ; loop to check the next string record
+
+L4:                   ; all string records have been scanned
+  MOV SI,BP           ; point SI to the winning string
+  MOV W[SI-4],0FFFF   ; cancel that string's marker
+  MOV BX,W[SI-2]      ; fetch the length of the winning string
+  ADD CX,DI           ; point CX beyond the buffer array
+  MOV DI,DX           ; point DI to the found string (or residual bytes)
+  SUB CX,DI           ; calculate the new count of remaining array bytes
+  CMP CX,BX           ; does the remaining array contain the whole string?
+  SBB AL,AL           ; set Z (success) if it does; NZ (failure) if it does not
+  POP BP,SI,DX        ; restore clobbered registers
+  RET
+
+
+CLEAR_FANY:           ; clear all marker words in BP-pointed string buffer
+  PUSH SI             ; save caller's SI
+  MOV SI,BP           ; point SI to the string buffer
+L1:                   ; loop here to clear each marker
+  SS MOV W[SI],0FFFF  ; clear this string's marker
+  INC SI,2            ; move past the marker we just stored
+  SS LODSW            ; fetch the string length
+  ADD SI,AX           ; advance SI beyond the string
+  TEST AX             ; was it the zero terminator length?
+  JNE L1              ; loop if not, to clear another marker
+  POP SI              ; restore clobbered register
+  RET
+
+
+
+; SCAN_FANY_STRINGS performs the command-tail scanning of a sequence
+;   of any number of strings.  The strings are terminated either by the
+;   end-of-line carriage-return, or by a @ marker.  We return with BP
+;   pointing to the accumulated strings buffer (suitable for passing to
+;   FIND_ANY), and DX set to the number of strings we scanned.  If there
+;   were no strings, we jump to USAGE_EXIT.
+
+        #if ref SCAN_FANY_STRINGS
+        DATA SEGMENT
+FANY_STRINGS:         ; buffer containing the strings
+  DB 512 DUP ?
+        DATA ENDS
+
+SCAN_FANY_STRINGS:
+  SUB DX,DX                 ; initialize the strings counter
+  MOV DI,FANY_STRINGS       ; initialize output and set BP for return
+  PUSH DI                   ; save the output pointer for return in BP
+L1:                         ; loop here to scan each string
+  MOV AX,0FFFF              ; load unsearch-marker
+  STOSW                     ; output unsearch-marker 
+  CALL TAIL_BLANKS          ; advance the input pointer to the next nonblank
+  CMP AL,0D                 ; have we reached the end of the line?
+  JE >L2                    ; return if we have
+        #if !NO_FANY_FILES
+  CMP AL,'@'                ; have we reached the strings terminator marker?
+  JE >L3                    ; jump if we have
+        #endif
+  MOV BP,SI                 ; save the pointer, in case we retract to it
+  STOSW                     ; skip past length word; SCAN_STRING back-plugs it
+  CALL SCAN_STRING          ; scan the string and output it to DI
+  ADD DI,CX                 ; advance DI beyond the string
+  INC DX                    ; increment the strings counter
+  JMP L1                    ; loop to scan the next string
+
+L2:                         ; end of line seen without @
+  DEC DX                    ; decrement the strings count
+  JS >E1                    ; abort if there had been no strings at all
+        #if NO_FANY_FILES
+  INC DX                    ; restore the strings count
+        #else
+  SUB DI,4                  ; retreat output by this marker and prev length
+  SUB DI,CX                 ; retreat output pointer to previous length
+  LEA SI,[BP-1]             ; retrat input to previous string, cancelling INC
+L3:                         ; @ terminator was seen
+  INC SI                    ; advance the input pointer beyond the @
+       #endif
+  SUB AX,AX                 ; load null length
+  STOSW                     ; terminate the strings buffer with a null length
+  POP BP                    ; return the strings buffer pointer in BP
+  TEST DX                   ; set Z according to whether there were any strings
+  JNZ RET                   ; return if there were strings
+E1:
+  JMP USAGE_EXIT            ; error if there were no strings
+        #endif  
+

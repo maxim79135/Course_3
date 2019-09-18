@@ -1,0 +1,62 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   GETPATH                                      See EILIB.TXT for terms
+;---------------
+
+; GET_PATH outputs to DI the full path name associated with the SI-pointed
+;   file name.  We do so by prepending the drive letter and/or current
+;   directory if they are not already specified.  We assume DS=ES.
+
+; OUT_CURR_DIR outputs the current directory of drive AL (0=curr, 1=A, 2=B ...)
+;    with its leading and trailing backslashes.  We assume DS=ES.
+
+GET_PATH:
+  CALL TAIL_BLANKS      ; scan to the first non-blank in the input stream
+  MOV AX,[SI]           ; fetch the first two characters of the file name
+  CMP AX,'\\'           ; is it a network path?
+  JE >L2                ; skip prepend code if yes: a network path is complete
+  CMP AH,':'            ; is there a drive specifier?
+  JE >L1                ; skip drive-output code if there is
+  MOV AH,019            ; MS-DOS function code for GET_CURRENT_DRIVE
+  INT 021               ; set AL to the current drive 0=A 1=B 2=C...
+  ADD AL,'A'            ; convert the drive number to its letter
+  DB 03D                ; skip over the following LODSW to the MOV AH,':'
+L1:                     ; jump here if the drive is already given
+  LODSW                 ; load the drive letter and the colon
+  MOV AH,':'            ; load colon, for output
+  STOSW                 ; output the drive letter and the colon
+  CMP B[SI],'\'         ; is there a leading backslash for the full path?
+  JE >L2                ; skip if there is
+  AND AL,0DF            ; path is relative: coerce drive letter to upper case
+  SUB AL,040            ; convert the drive letter to a number 1=A 2=B ...
+  CALL OUT_CURR_DIR     ; output the current directory of the drive
+L2:                     ; loop here to output the main file name
+  LODSB                 ; fetch a byte from the name
+  STOSB                 ; output the byte
+  CMP AL,','            ; is it a terminating comma?
+  JE >L3                ; exit the loop if it is
+  CMP AL,' '            ; is it a blank or less?
+  JA L2                 ; loop if not, to output the next byte
+L3:
+  DEC DI                ; retract the terminating byte
+  RET
+
+
+OUT_CURR_DIR:
+  PUSH SI               ; save the caller's input pointer
+  XCHG DX,AX            ; swap the drive letter into DL, for the DOS call
+  MOV AL,'\'            ; load backslash
+  STOSB                 ; output the leading backslash
+  MOV SI,DI             ; point SI to the output, for DOS
+  MOV AH,047            ; MS-DOS function code for GET_CURRENT_DIR
+  INT 021               ; output the current directory to DS:SI
+L1:                     ; loop here to scan over the string just output
+  LODSB                 ; fetch a byte from the string
+  CMP AL,0              ; is it the terminating null?
+  JNE L1                ; loop if not, to continue scanning
+  LEA DI,[SI-1]         ; point DI to the terminating null
+  MOV AL,'\'            ; load backslash
+  STOSB                 ; output the trailing backslash
+  POP SI                ; restore the caller's input pointer
+  RET
+
+

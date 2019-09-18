@@ -1,0 +1,124 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  F_NOCASE                                      See EILIB.TXT for terms
+;---------------
+
+; FIND_NOCASE searches for the string BX--DS:SI within the array CX--ES:DI.
+;   The search disregards the distinction between upper and lower case letters.
+;   Return Z if found, with ES:DI pointing to the found string.  Return NZ if
+;   not found; with ES:DI pointing to CX residual bytes at the end of the
+;   buffer, which should be carried over if there is another buffer.  Return
+;   CX = 0 (there are no residual bytes) if the first character of the target
+;   string does not occur in the last BX-1 bytes of the array.
+
+; We first scan the target string, determining which characters are letters
+; and which are not.  We make a buffer on the stack, consisting of one word
+; for every character in the target string.  The low byte of the word is the
+; target character; the high byte is a mask that will coerce the difference to
+; zero if the target and buffer bytes are the same letter with different
+; cases.  This saves us from repeating the letter-determining logic for every
+; prospective match.
+
+  RET               ; needed to satisfy JZ RET below
+
+FIND_NOCASE:
+  TEST BX           ; are we looking for a null string?
+  JZ RET            ; always successful if yes
+  PUSH AX,DX,SI,BP  ; save registers across call
+  PUSH DS           ; also save DS across call
+  MOV DX,DI         ; point DX to the search buffer
+  ADD DX,CX         ; advance DX beyond the buffer
+  SUB SP,BX         ; allocate room on the stack for target bytes
+  SUB SP,BX         ; now there is a word on the stack for each target byte
+  MOV BP,SP         ; point BP to the allocated space
+  MOV CX,BX         ; copy target size to CX, for scanning loop
+L1:                 ; loop here to scan each byte of the target
+  LODSB             ; fetch a byte
+  MOV [BP],AL       ; place it into the allocated stack area
+  CMP AL,'?'        ; is the character the wildcard specifier?
+  JE >L0            ; jump if it is, to set the match-everything mask
+  OR AL,020         ; coerce the byte to lower case
+  SUB AL,'a'        ; reduce alphabet range to zero
+  CMP AL,26         ; was the byte a letter?
+  MOV AL,0FF        ; load non-coercion mask, in case it is not a letter
+  IF B MOV AL,0DF   ; if it is a letter load the coercion mask
+  DB 03D            ; skip over the following MOV AL,0 instruction
+L0:                 ; jump here if the byte was the wildcard character "?"
+  MOV AL,0          ; mask of zero will cause any buffer character to match
+  MOV [BP+1],AL     ; store the mask in the high byte of this target word
+  INC BP,2          ; advance the output pointer to the next word
+  LOOP L1           ; loop to scan the next target byte
+;
+; We have completed scanning of the target string.  Now we start looking for
+; the string in the DI search buffer.  We enter a loop that keeps two pointers,
+; one for the next instance of the upper-case first target letter, the other for
+; the next instance of the lower-case first target letter.  We examine
+; subsequent bytes only after we have verified that the opposite case does not
+; occur first.  If the first target byte is not a letter, we disable the
+; "other pointer" BP, and use only the pointer DI.
+;
+  MOV DS,SS         ; we will henceforth be scanning the stack
+  DEC BX            ; set BX to the number of subsequent target letters
+  POP AX            ; pop the first target byte and mask from the stack
+  INC AH            ; is the first target byte a letter?
+  MOV BP,DX         ; it not then "other pointer" is disabled
+  JZ >L2            ; jump if the first target byte is not a letter
+  MOV BP,DI         ; point the "other pointer" to the start of buffer
+  MOV CX,DX         ; point CX beyond the search buffer
+  SUB CX,DI         ; calculate the number of remaining bytes
+  REPNE SCASB       ; look for the first target byte in the buffer
+  XOR AL,020        ; switch the case of the target letter
+  XCHG DI,BP        ; swap the pointers to the two cases
+L2:                 ; loop here after each first-byte match, both cases active
+  MOV CX,DX         ; point CX beyond the search buffer
+  SUB CX,DI         ; calculate the number of remaining bytes
+  REPNE SCASB       ; look for the first target byte in the buffer
+  JNE >L8           ; jump if not found, to exhaust the other case
+  CMP DI,BP         ; byte was found: was it beyond the other case?
+  JB >L4            ; skip if not: we use this case
+L3:
+  XOR AL,020        ; other case first: use it instead
+  XCHG DI,BP        ; swap the pointers to the two cases
+L4:
+  TEST BX           ; are there subsequent bytes?
+  JZ >L6            ; return success if target is only one byte
+  MOV CX,DX         ; fetch pointer beyond the search buffer
+  SUB CX,DI         ; calculate the number of remaining bytes in the buffer
+  CMP BX,CX         ; are there enough bytes for the rest of the target string?
+  JA >L7            ; jump if not, to exhaust the other case
+  MOV SI,SP         ; point to our array of target words on the stack
+  MOV CX,BX         ; fetch the remaining length of the word
+  PUSH AX,DI        ; save the current first letter
+L5:                 ; loop here to compare each letter of the target string
+  LODSW             ; fetch a letter from the target
+  ES XOR AL,[DI]    ; compare to the letter in the buffer
+  INC DI            ; advance the buffer pointer
+  AND AL,AH         ; force the case-difference bit to zero
+  LOOPZ L5          ; loop if all the other bits matched
+  POP DI,AX         ; restore pointers to pre-comparison values
+  JNZ L2            ; loop if the subsequent bytes did not match
+L6:                 ; we have found a match
+  DEC DI            ; retreat back to the matching first byte
+  MOV AL,0          ; zero value will set the Z flag
+  JMP >L9           ; jump to common exit
+
+L7:                 ; one-byte match too close to end, one case active
+  DEC DI            ; retreat back to the match
+L8:                 ; one first-character is exhausted: now look for the other
+  MOV CX,DX         ; point CX beyond the search buffer
+  SUB CX,BP         ; calculate the number of bytes beyond the other pointer
+  CMP BX,CX         ; are there enough bytes for the target string?
+  JB L3             ; jump if yes, to swap in the other pointer
+  CMP DI,BP         ; both pointers exhausted: see which is the lesser
+  IF A XCHG DI,BP   ; ensure that DI is the lesser of the two pointers
+  MOV AL,1          ; nonzero value will set the NZ flag
+L9:                 ; common exit point
+  ADD SP,BX         ; release allocated space on the stack
+  ADD SP,BX         ; we are releasing BX words
+  INC BX            ; restore BX to the number of target bytes
+  MOV CX,DX         ; point CX beyond the search buffer
+  SUB CX,DI         ; calculate the number of bytes remaining
+  TEST AL           ; set Z or NZ according to AL
+  POP DS,BP,SI,DX,AX; restore clobbered registers
+  RET
+
+

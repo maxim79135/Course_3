@@ -1,0 +1,114 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PAGINATE                                     See EILIB.TXT for terms
+;---------------
+
+; PAGINATE breaks the input file into 59-line pages, appending a chapter-and-
+;   page-number header at the top of each page.  The chapter number must be
+;   given in the invocation line, before the file name(s). If the file names
+;   are not given, standard I/O is used.
+
+; This is an older program, written before the PROCESS_FILE buffering machenism
+; was formulated.  It can handle only short files, that fit entirely into
+; a single memory buffer.
+
+        DATA SEGMENT
+BUFFER:                   ; input buffer
+  DB 08000 DUP ?
+BUFFER_SIZE EQU $-BUFFER
+OBUFF:                    ; output buffer
+  DB 6000 DUP ?
+CHAP_NUMBER DW ?          ; chapter number scanned from command tail
+        DATA ENDS
+
+PAGINATE:
+  CALL NONBLANK_TAIL    ; verify nonblank command tail
+  MOV DI,OBUFF          ; initialize the output pointer
+  PUSH DI               ; save the output pointer
+  CALL VERIFY_DEC       ; fetch the chapter number from the command tail
+  MOV CHAP_NUMBER,AX    ; store the chapter number
+  CALL OPEN_OPT_IFILE   ; open the input file
+  PUSH SI               ; save the output-file tail pointer
+  MOV DX,BUFFER         ; point to our buffer
+  MOV DI,DX             ; also point DI to the buffer, for later scanning
+  MOV CX,BUFFER_SIZE    ; load the largest number of bytes we'll take
+  CALL MREAD            ; read the file
+  JC >L9                ; jump if there was an error
+  CMP AX,CX             ; was the entire buffer filled?
+  JE >L8                ; error if it was
+  XCHG CX,AX            ; swap the actual count into CX
+  CALL CLOSE_OPT        ; close the input file
+  POP SI,BP             ; restore SI pointer to output file name, BP out ptr
+  CALL OUT_FILE         ; write the output
+  JMP GOOD_EXIT         ; return to the operating system
+
+L9:                     ; we couldn't read
+  JMP USAGE_EXIT        ; abort the program
+
+L8:                     ; the buffer was filled
+  MOV AX,TOO_BIG_MSG    ; point to message to that effect
+  JMP ERROR_EXIT        ; tell the user and abort
+
+
+; OUT_FILE creates the output file, whose name (if given) is pointed to by
+;   SI.  The sorted pointers are at BP up to CX.  We find the start and end
+;   of the associated lines, and we output them.
+
+OUT_FILE:
+  MOV BX,CX             ; copy the actual file size to BX, for indexing
+  MOV B[BX+DI],01A      ; mark the end of the file
+  CALL OPEN_OPT_OFILE   ; open the output file
+  MOV SI,DI             ; point SI to our input buffer
+  SUB DX,DX             ; initialize the page counter to zero
+  MOV DI,BP             ; copy the output pointer to DI
+  MOV CX,OBUFF+55       ; load the buffer position for the first header
+  SUB CX,DI             ; calculate the indentation spacing for first header
+L1:                     ; loop here for each page of output
+  CALL HEADER_LINE      ; output the header lines for the page
+L2:                     ; loop here to scan each byte of a line
+  LODSB                 ; fetch a byte
+  STOSB                 ; output the byte
+  CMP AL,01A            ; is it an end-of-file marker?
+  JE >L3                ; exit if it is
+  CMP AL,0A             ; is it a linefeed?
+  JNE L2                ; loop if not, to continue this line
+  LOOP L2               ; linefeed is seen: countdown and loop
+  CALL FLUSH            ; page is complete: flush it
+  MOV CX,55             ; load the indentation for the next page's header
+  JMP L1                ; loop to continue scanning
+
+L3:                     ; end-of-file marker is seen
+  DEC DI                ; retract the output of the marker
+FLUSH:                  ; page is complete: flush it
+  MOV AL,0C             ; load formfeed
+  STOSB                 ; output a formfeed to terminate the page
+  PUSH DX               ; save the page number
+  MOV DX,OBUFF          ; point to the output buffer
+  MOV CX,DI             ; copy the beyond-pointer to CX
+  SUB CX,DX             ; calculate the number of bytes buffered
+  MOV DI,DX             ; reset the output pointer to the start of the buffer
+  CALL MWRITE           ; write the output buffer
+  POP DX                ; restore the page number
+  RET
+
+
+HEADER_LINE:            ; output the header lines for a page
+  MOV AL,' '            ; load blank
+  REP STOSB             ; indent the first line according to the CX parm
+  MOV AX,CHAP_NUMBER    ; load the chapter number
+  CALL OUT_DEC_AX       ; output the chapter number
+  MOV AL,'-'            ; load intervening hyphen
+  STOSB                 ; output the intervening hyphen
+  INC DX                ; increment the page number
+  MOV AX,DX             ; fetch the page number
+  CALL OUT_DEC_AX       ; output the page number
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output a CRLF
+  MOV CX,57             ; load the line count for a page
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: PAGINATE chap_num [infile [outfile]]',0D,0A,0
+
+TOO_BIG_MSG:
+  DB 'File is too big.',0D,0A,0

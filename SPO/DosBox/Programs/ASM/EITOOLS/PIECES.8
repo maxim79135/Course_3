@@ -1,0 +1,55 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PIECES                                       See EILIB.TXT for terms
+;---------------
+
+; PIECES is a program that outputs to standard output the first piece of
+;   a file, followed by the second piece of another file.  You invoke
+;   PIECES with the command
+;
+;   PIECES n f1 f2
+;
+;   where n is a decimal number, and f1 and f2 are the names of the input
+;   files.  PIECES will output n bytes of f1, and skip the rest of f1.
+;   Then it will skip the first n bytes of f2, and output the rest of f2.
+;
+; I wrote PIECES to combine two COM files: the first, stable part, followed
+; by the second, changing part.  The f1 file in this case was a program
+; I wished to modify at a remote site.  The f2 file was the part of the
+; program whose source I was working on.  The source had a temporary ORG n+256
+; statement at the start, to skip over the unchanging part of the program.
+; I could modify and assemble the source, then link it to the original
+; program with PIECES.  That way I didn't need to have the entire source
+; at the remote site.
+
+PIECES:
+  MOV SI,081        ; point to the invocation command tail
+  CALL VERIFY_DEC   ; scan the decimal argument
+  XCHG CX,AX        ; swap the count into CX
+  CALL READ_N_BYTES ; read the first n bytes of the first input file
+  CALL OWRITE       ; write the bytes to standard output
+  CALL READ_N_BYTES ; read the first n bytes of the second input file
+  MOV CX,0E000      ; load a huge count for the second input file
+  CALL MREAD        ; read the remainder of the second input file
+  XCHG CX,AX        ; swap the actual count into CX
+  CALL OWRITE       ; write the bytes to standard output
+  JMP GOOD_EXIT     ; go back to the DOS command shell
+
+
+READ_N_BYTES:       ; open SI-pointed file, and read CX bytes from the file
+  CALL FILE_ARG     ; scan the first input file name argument
+  CALL MOPEN_READ   ; open the first input file for reading
+  JC >E1            ; abort if then was an error
+  MOV DX,01000      ; point to free memory buffer
+  CALL MREAD        ; read the bytes
+  JC >E1            ; abort if there was an error
+  CMP AX,CX         ; there had better have been the full number of bytes
+  JB >E1            ; abort if not
+  RET
+
+E1:                 ; an error was detected
+  JMP USAGE_EXIT    ; output our usage message and exit the program
+
+USAGE_MSG:
+  DB 'usage: PIECES n file1 file2 >outfile',0D,0A
+  DB '   writes first decimal n bytes from file1',0D,0A
+  DB '   then bytes beyond n from file2',0D,0A,0

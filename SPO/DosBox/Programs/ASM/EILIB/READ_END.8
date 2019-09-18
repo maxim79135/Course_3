@@ -1,0 +1,26 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  READ_END                                      See EILIB.TXT for terms
+;---------------
+
+; READ_END reads the last CX bytes of the BX-handle file to memory at DX.
+
+READ_END:
+  PUSH DX,CX        ; preserve registers until the read
+  SUB CX,CX         ; zero the high word of the seek
+  SUB DX,DX         ; zero the low word of the seek
+  MOV AX,04202      ; MS-DOS function codes for SEEK_FROM_END
+  INT 021           ; seek to the end of the file and set DXAX to its offset
+  POP CX            ; restore the desired count
+  PUSH CX           ; repush the count
+  SUB AX,CX         ; subtract the count from the ending offset
+  SBB DX,0          ; carry the subtraction to the high work
+  JAE >L1           ; skip if the offset was big enough for the subtraction
+  SUB AX,AX         ; file is too small: load a zero offset
+  SUB DX,DX         ; zero out the high word as well
+L1:                 ; DXAX is our desired offset
+  XCHG DX,AX        ; AXDX is our desired offset
+  XCHG CX,AX        ; CXDX is our desired offset
+  MOV AX,04200      ; MS-DOS function codes for SEEK_FROM_START
+  INT 021           ; seek to the last bytes of the file
+  POP CX,DX         ; restore the desired count and memory location
+  JMP MREAD         ; read the end of the file

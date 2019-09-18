@@ -1,0 +1,34 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DASHESPF                                     See EILIB.TXT for terms
+;---------------
+
+; DASHES_PFNAME outputs ten dashes, a blank, the current PFILE_NAME,
+;   another blank, and dashes to fill out a line.
+
+DASHES_PFNAME:
+  SS MOV AX,PFILE_NAME W  ; point SI to this file name
+  CMP AX,0FF7F            ; has this name already been output?
+PREV_DASHES EQU W[$-2]    ; prev name is plugged into above imm value
+  JE RET                  ; return, doing nothing, if it has been output
+  CS MOV PREV_DASHES,AX   ; plug this new name into the prev-name slot
+  PUSH CX                 ; save register across call
+  PUSH AX                 ; save the file-name pointer
+  MOV AL,'-'              ; we'll start out with some dashes
+  MOV CX,10               ; we will output 10 dashes
+  REP STOSB               ; the dashes are output
+  MOV AL,' '              ; load a separator-space
+  STOSB                   ; output the space
+  POP AX                  ; restore the file-name pointer
+  SS MOV AX,PFILE_NAME W  ; point SI to this file name
+  LEA CX,[DI+68]          ; point CX to the end of the output-line
+  CALL COPYZ_AX           ; output the file name
+  MOV AL,' '              ; load another separator-space
+  STOSB                   ; output the space
+  SUB CX,DI               ; calculate the number of trailing dashes
+  MOV AL,'-'              ; load a dash, for propagating
+  IF A REP STOSB          ; if there is room then output the dashes
+  MOV AX,0A0D             ; load CRLF
+  STOSW                   ; terminate the line with the CRLF
+  POP CX                  ; restore clobbered register
+  RET
+

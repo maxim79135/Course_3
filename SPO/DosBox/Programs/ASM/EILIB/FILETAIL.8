@@ -1,0 +1,76 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FILETAIL                                     See EILIB.TXT for terms
+;---------------
+
+; FILE_TAIL is called to scan a program command tail that might contain
+;   escape-to-file terms, each consisting of a @ followed by a file name.
+;   Each such term is replaced by the entire contents of the named file.
+;   The expanded command tail is placed in a temporary buffer at CS:08000
+;   (hence the files should not exceed 30K, and the command-tail processing
+;   should not output to CS-memory above 08000).
+;
+; The caller must supply the routine TAIL_AL, which we call to process
+; command tail elements that are not escape-to-file terms.  TAIL_AL is
+; called with AL set to the SI-pointed command tail character.  TAIL_AL
+; must preserve DX, and must advance SI beyond any characters that it
+; processes.  TAIL_AL can do anything it wants with BX,CX,DI,BP; we promise
+; not to touch those registers.
+
+FILE_TAIL:
+  MOV SI,080          ; point SI to count-and-tail
+  LODSB               ; load the command tail count
+  CBW                 ; extend the count AL to a word AX
+  ADD AX,SI           ; advance SI beyond the command tail
+  XCHG DX,AX          ; swap the beyond-pointer into DX
+  SUB BP,BP           ; initial maximum length is zero
+  DB 081              ; skip over the following CALL, to L3 below
+L1:                   ; jump here if a file name was detected
+  CALL INS_TAIL_FILE  ; insert the file contents into the command tail
+  DB 03D              ; skip over the following INC SI,2 to L3 below
+L2:                   ; loop here at the end of each line
+  INC SI,2            ; advance beyond the terminating CRLF
+L3:                   ; loop here for each input line
+  CMP SI,DX           ; have we reached the end of the file?
+  JAE RET             ; return if we have
+  CALL TAIL_BLANKS    ; not the end: skip over leading blanks
+  CMP AL,0D           ; is there any content on this line?
+  JE L2               ; loop if not, to look at the next line
+  CMP AL,'@'          ; does the string begin with the file-name marker?
+  JE L1               ; jump if it does, to insert a file
+  CALL TAIL_AL        ; not a file name: process the character
+  JMP L3              ; loop to continue scanning
+
+
+; INS_TAIL_FILE is called with the command tail SI up to DX pointing to a
+;   @ followed by a file name.  We replace the name with the contents
+;   of the file, buffered at 08000.  We return with SI and DX set to reflect
+;   the insertion that has taken place.
+
+INS_TAIL_FILE:
+  PUSH BX,CX,DI       ; preserve registers across call
+  INC SI              ; advance beyond the @ mark to the file name
+  PUSH DX             ; save the beyond-tail pointer
+  CALL OPEN_I_ARG     ; open the string-list input file
+  MOV DX,SI           ; point DX to the remaining tail
+  POP SI              ; point SI beyond the tail, to the terminating CR
+  LEA CX,[SI+1]       ; point CX beyond the terminating CR
+  SUB CX,DX           ; calculate the number of tail bytes to copy
+  MOV DI,0EFFF        ; point DI to the top of our insertion buffer
+  PUSH CX             ; save the tail count
+  STD                 ; copying is backwards in memory
+  REP MOVSB           ; copy the tail to the top of the buffer
+  CLD                 ; restore forward scanning
+  LEA SI,[DI+1]       ; point SI to the first byte of the tail's copy
+  MOV DX,08000        ; point to the middle of our segment, for input
+  MOV CX,SI           ; point CX beyond available memory
+  SUB CX,DX           ; calculate the available bytes
+  CALL MREAD          ; read the file into memory
+  ADD DX,AX           ; calculate the pointer beyond the bytes read
+  MOV DI,DX           ; point DI beyond the bytes read
+  CALL MCLOSE         ; close the input file
+  POP CX              ; restore the tail count
+  REP MOVSB           ; copy the tail back down beyond the inserted file
+  MOV DX,DI           ; DX now points beyond the expanded tail
+  MOV SI,08000        ; SI now points to the expanded tail
+  POP DI,CX,BX        ; restore clobbered register
+  RET

@@ -1,0 +1,13 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   CAPSON                                       See EILIB.TXT for terms
+;---------------
+
+; CAPSOFF turns on the CapsLock light on the keyboard.
+
+; We exploit the fact that a COM program always starts with a zero pushed
+;   onto the stack, to reduce this program to only three instructions!
+
+CAPSON:
+  POP DS            ; point DS to the zero segment
+  OR B[0417],040    ; turn on the CapsLock bit
+  JMP 0             ; exit the program

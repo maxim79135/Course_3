@@ -1,0 +1,14 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ONSCROLL                                     See EILIB.TXT for terms
+;---------------
+
+; This program turns the Scroll Lock light of the keyboard on.  Scroll
+;   lock is rarely used for anything, but I use it on a computer dedicated
+;   to reception of faxes.  This program is run from a batch file, to
+;   let me know that a fax has been received, without my having to turn
+;   on the monitor.
+
+  SUB AX,AX           ; load zero
+  MOV DS,AX           ; point DS to zero, to address the BIOS data area
+  OR B[0417],010      ; turn on the ScrollLock bit
+  RET

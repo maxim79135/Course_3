@@ -1,0 +1,23 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   Z28                                          See EILIB.TXT for terms
+;---------------
+
+; Z resets the VGA font patterns for characters digit zero and capital O
+;    to new values, such that neither has any slashes through them, or
+;    dots in them.  We also reset the character set to EGA 8x14, causing
+;    VGA screens to have 28 lines, and we set the screen to a color depending
+;    on the day of week.
+
+Z:
+  CALL GOODZ          ; change the font pattern for letter O and digit 0
+  SUB DX,DX           ; DH row 0, DL column 0
+  MOV BH,0            ; display page number zero
+  MOV AH,2            ; BIOS function number for SET_CURSOR_POSITION
+  INT 010             ; reset the video screen page zero, cursor at upper left
+DOW_FILL:
+  MOV ES,BX,0B800     ; we will output directly to the color screen
+  JMP COLOR_C         ; set the video screen to today's color
+
+CHARHT EQU 14         ; we are working with the 8x14 character set
+include COLOR.8       ; code for setting the screen to given color
+

@@ -1,0 +1,34 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    DEBRACK                                     See EILIB.TXT for terms
+;---------------
+
+; DEBRACK eliminates all bracketed HTML code from a file.
+
+DEBRACK:
+  MOV SI,081            ; point to the command tail
+  JMP PFILE_IOARG       ; process the files
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: DEBRACK infile outfile',0D,0A
+  DB '   eliminates all bracketed HTML code from a file',0D,0A
+  DB 0,01A
+
+L1:                   ; loop here to store each byte within a word
+  STOSB               ; output the byte
+PFILE_REC:
+  CMP SI,DX           ; have we reached the buffer limit?
+  JAE >L9             ; exit if we have
+  LODSB               ; scan the next byte
+  CMP AL,'<'          ; have we found the start of a brackets-construct?
+  JNE L1              ; loop if not, to output the byte
+L2:                   ; left bracket seen: loop here to skip bytes
+  CMP SI,DX           ; have we reached the buffer limit?
+  JAE >L9             ; exit if we have
+  LODSB               ; fetch a byte
+  CMP AL,'>'          ; is it the close bracket?
+  JNE L2              ; loop if not, to skip the byte
+  MOV AL,' '          ; close bracket seen: load blank
+  STOSB               ; replace the entire bracketed construct with a blank
+L9:
+  JMP CHECK_OBUFF     ; check the output buffer

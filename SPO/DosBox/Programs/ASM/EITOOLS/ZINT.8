@@ -1,0 +1,43 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ZINT                                         See EILIB.TXT for terms
+;---------------
+
+; ZINT modifies ZIPKEY.COM to reset the ZIPKEY interrupt from its default
+;   of 179 to the decimal operand given in the command tail.  Values from 52
+;   to 255 are accepted.
+
+ZINT:
+  MOV SI,081          ; point to our invocation command tail
+  CALL VERIFY_1_DEC   ; fetch the interrupt number
+  PUSH AX             ; place the number on the stack
+  SUB AX,52           ; reduce 52--255 range to zero
+  CMP AX,255-52       ; is the number in the correct range?
+  JA >E1              ; error if not in the correct range
+  MOV DX,ZCOM         ; point to ZIPKEY.COM file name
+  MOV AL,2            ; open-type is "update"
+  CALL MOPEN          ; open ZIPKEY.COM
+  MOV AX,04200        ; MS-DOS function codes for "seek from start"
+  MOV DX,3            ; we are seeking 3 bytes from the start of the file
+  SUB CX,CX           ; high word of seek pointer is zero
+  INT 021             ; seek to the interrupt slot within ZIPKEY.COM
+  MOV DX,SP           ; point to the interrupt number on our stack
+  MOV CX,1            ; we are writing just one byte
+  CALL MWRITE         ; write the new interrupt to ZIPKEY.COM
+  MOV AX,04202        ; MS-DOS function codes for "seek from end"
+  CWD                 ; we seek zero bytes from the end
+  DEC CX              ; high word of the seek count is zero also
+  INT 021             ; seek to the end of the file, to preserve its length
+  CALL MCLOSE         ; close the updated file
+  JMP GOOD_EXIT       ; exit the program
+
+E1:                   ; decimal value was out of range
+  JMP USAGE_EXIT      ; output an error message
+
+USAGE_MSG:
+  DB 'usage: ZINT n',0D,0A
+  DB '   sets ZIPKEY.COM to take over decimal interrupt n',0D,0A
+  DB '   n can be between 52 and 255',0D,0A,0
+
+ZCOM:
+  DB 'ZIPKEY.COM',0
+

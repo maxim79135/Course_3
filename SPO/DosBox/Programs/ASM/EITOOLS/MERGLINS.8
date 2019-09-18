@@ -1,0 +1,44 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  MERGLINS                                      See EILIB.TXT for terms
+;---------------
+
+; MERGLINS is a filter that merges all consecutive, non-blank lines into
+;   a single paragraph-line.
+
+MERGLINS:
+  CALL VERIFY_NO_ARGS   ; ensure there are no command-tail arguments
+  CALL PROCESS_RECORDS  ; process standard input using PROCESS_RECORD below
+  JMP GOOD_EXIT         ; exit the program
+
+L0:                     ; end of line, but not the end of the paragraph
+  SUB DI,3              ; retreat to the last byte before the CRLF
+  MOV AL,' '            ; load blank
+  SCASB                 ; was the byte a blank?
+  IF NE STOSB           ; if not then output a blank
+PROCESS_RECORD:         ; process bytes from SI up to DX
+  CMP SI,DX             ; is there any input left?
+  JAE RET               ; return if there is not
+  LODSB                 ; fetch a byte from the input stream
+  STOSB                 ; output the byte
+  CMP AL,0A             ; is it a linefeed?
+  JNE PROCESS_RECORD    ; loop if not, to continue copying bytes
+  CMP SI,DX             ; end of line seen: is it also the end of the file?
+  JAE RET               ; return if it is
+  CMP W[SI],0A0D        ; is the next line blank?
+  JNE L0                ; loop if not, to retract the output of the last CRLF
+L1:                     ; end of paragraph: loop here to skip excess CRLFs
+  CMP SI,DX             ; have we reached the end of the file?
+  JAE RET               ; return if we have
+  LODSW                 ; load a word
+  CMP AX,0A0D           ; is it a CRLF
+  JE L1                 ; loop if it is, to skip it
+  DEC SI,2              ; retreat back to the non-CRLF we have found
+  RET
+
+
+
+USAGE_MSG:
+  DB 'usage: MERGLINS <in >out',0D,0A
+  DB '  merges consecutive lines into a single paragraph-line',0D,0A
+  DB 0
+

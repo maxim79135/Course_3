@@ -1,0 +1,63 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ENCOTIME                                     See EILIB.TXT for terms
+;---------------
+
+; ENCODE_TIME encodes a day-of-year and time to the nearest tenth-second,
+;   in a 32-bit space.  BCD inputs are BH month, BL day, CH hours, CL minutes,
+;   DH seconds, and DL hundredths.  We return the encoded time in a sortable
+;   32-bit value BXDX, in a way that none of the bytes is ever zero.  The
+;   fields, in descending significance, are:
+;
+;     4-bit month (1 to 12)
+;     5-bit day (1 to 31)
+;     5-bit hour-plus-one (1 to 24)
+;     6-bit minute (0 to 59)
+;     1-bit always 1
+;     6-bit seconds (0 to 59)
+;     1-bit always 1
+;     4-bit tenths (0 to 9)
+
+ENCODE_CTIME:
+  MOV AH,4          ; BIOS function number for GET_DATE
+  INT 01A           ; set DH to the month, DL to the day
+  PUSH DX           ; save the month and day
+  MOV AH,2          ; BIOS function number for GET_TIME
+  INT 01A           ; get the time: CH hours, CL minutes, DH secs, DL hundths.
+  POP BX            ; restore BH month, BL day
+ENCODE_TIME:
+  PUSH CX           ; save the CL minutes reading
+  MOV AL,BH         ; fetch the month
+  AAM 16            ; unpack the BCD digits of the month
+  AAD               ; repack the month to a binary number
+  XCHG BX,AX        ; swap the month to BL, the day to AL
+  AAM 16            ; unpack the BCD digits of the day
+  AAD               ; repack the day to a binary value
+  SHL BX,CL,5       ; make room for a 5-bit day field in BX
+  OR BL,AL          ; place the day into the bottom of BX
+  MOV AL,CH         ; fetch the hour
+  AAM 16            ; unpack the BCD digits of the hour
+  AAD               ; repack the hour to a binary value
+  INC AX            ; ensure the hour field is nonzero
+  SHL BX,CL         ; make room for a 5-bit hour field in BX
+  OR BL,AL          ; place the hour into the bottom of BX
+  POP AX            ; restore the minutes to AL
+  AAM 16            ; unpack the BCD digits of the minutes
+  AAD               ; repack the minutes to a binary value
+  AAM 16            ; unpack the top 2 bits to AH, the bottom 4 bits to AL
+  SHL BX,CL,2       ; make room in BX for the top 2 bits of the minutes
+  OR BL,AH          ; place the top 2 bits of the minutes into BX
+  SHL AL,CL,4       ; rotate the bottom 4 minutes-bits to the top nibble of AL
+  OR AL,8           ; 1-bit field insures AL will always be nonzero
+  XCHG AL,DH        ; swap the seconds into AL
+  AAM 16            ; unpack the BCD digits of the seconds
+  AAD               ; repack the seconds to a binary value
+  AAM 8             ; separate the seconds into 3-bit fields
+  OR DH,AH          ; top 3 bits place into the bottom of DH
+  STC               ; ready to rotate 1 into AL
+  RCL AL,1          ; 1-bit field insures AL will always be nonzero
+  AND DL,0F0        ; mask away the second digit of the hundredths
+  OR DL,AL          ; replace that field with the lower 3 bits of the seconds
+  ROL DL,CL         ; swap the nibbles so the seconds are more significant
+  RET
+
+

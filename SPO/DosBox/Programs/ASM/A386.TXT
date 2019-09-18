@@ -1,0 +1,23 @@
+This text file is packaged with the official-release files of A386
+and D386.  All the documentation for those programs has been folded
+into the main manuals for A86 and D86, whose text is contained in the
+files A86MANU.TXT and D86MANU.TXT.
+
+If you have existing source files written for A86, and would like to
+use them on A386, you should be able to do so with minimal
+difficulty.  A386 is in general backwards-compatible; the main
+exceptions are the added set of built-in symbols for all the new
+registers and instructions.  If your A86 programs use any of those as
+user symbols, they will need to be changed.  This includes the new
+prefix instructions A2, A4, O2, O4, which you might have used as
+local labels in your A86 programs.
+
+A386 still looks for the catalog file A86.LIB, not A386.LIB, to try to
+resolve any undefined symbols.  However, the environment variables
+A86 and A86LIB are changed to A386 and A386LIB for A386.
+
+I have also included a couple of extra files, to point people in
+the right direction for Windows programming.  The package AWIN.ZIP
+contains the A386 source code for a "Hello, World!" program in
+16-bit Windows (which will also run in Win95, Win98, etc.).  The
+file NULL32.8 is a do-nothing template for a 32-bit Windows program.

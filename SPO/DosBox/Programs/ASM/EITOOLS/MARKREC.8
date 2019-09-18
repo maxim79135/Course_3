@@ -1,0 +1,72 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  MARKREC    ,SCAN_TAIL             ; See EILIB.TXT for terms
+        ;---------------
+
+; MARKREC outputs a marked record from a line.  The command tail consists
+;   of a record-marker character, the number of such characters to find before
+;   the starting offset, the offset beyond the last character of the field
+;   to be output, and the number of characters to output.  Each output is
+;   followed by a CRLF.
+
+USAGE_MSG:
+  DB 'usage, e.g.: MARKREC ` 2 3 4 <in >out',0D,0A
+  DB '  outputs 4 bytes starting from 3 beyond the second',0D,0A
+  DB '  back-quote in each line',0D,0A,0
+
+        DATA SEGMENT
+COMMAND_PARMS:
+  MARK_CHAR   DB ?    ; marker character for marked fields
+  MARK_CT     DW ?    ; number of markers to look for
+  REC_OFFSET  DW ?    ; offset from the last marker
+  REC_COUNT   DW ?    ; length of output field
+        DATA ENDS
+
+E1:                   ; syntax error in command tail
+  JMP USAGE_EXIT      ; output usage message and exit the program
+
+SCAN_TAIL:
+  MOV DI,COMMAND_PARMS  ; we will output to our variables area
+  CALL TAIL_BLANKS      ; skip over leading blanks
+  CMP AL,0D             ; is there no command tail?
+  JE E1                 ; error exit if no command tail
+  MOVSB                 ; copy the marker character to our variable
+  CALL DECIMAL_PARM     ; fetch and store the marker count
+  CALL DECIMAL_PARM     ; fetch and store the offset from the last marker
+  CALL DECIMAL_PARM     ; fetch and store the output field count
+  JMP NO_MORE_ARGS      ; ensure no more command-tail arguments
+
+
+DECIMAL_PARM:           ; scan a decimal number and output its value to DI
+  CALL VERIFY_DEC       ; fetch the decimal value
+  STOSW                 ; output the decimal value
+  RET
+
+
+PROCESS_LINE:           ; filter CX bytes from SI--DI to BP
+  MOV AH,MARK_CHAR B    ; fetch the marker character
+  MOV CX,MARK_CT        ; fetch the count of markers we will find
+  JCXZ >L2              ; skip if the count is zero
+L1:                     ; loop here to find each marker character
+  LODSB                 ; fetch a character from the line
+  CMP AL,0D             ; have we reached the end of the line?
+  JE RET                ; return no output if we have
+  CMP AL,AH             ; is it the marker character?
+  JNE L1                ; loop if not, to continue scanning
+  LOOP L1               ; marker seen: count it down and loop
+L2:                     ; we have now scanned our markers
+  ADD SI,REC_OFFSET W   ; advance SI to the output field
+  CMP SI,DI             ; have we gone past the end of the line?
+  JAE RET               ; return without output if we have
+  MOV CX,REC_COUNT W    ; fetch the output field size
+  MOV DI,BP             ; copy the output pointer to DI
+L3:                     ; loop here to copy the field to output
+  LODSB                 ; fetch a character from the field
+  CMP AL,0D             ; have we reached the end of the line?
+  JE >L4                ; jump if we did
+  STOSB                 ; not the end of the line: output the character
+  LOOP L3               ; loop to output another character from the field
+L4:                     ; the field's output is complete
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output a CRLF
+  JMP PROCESS_LINE_EXIT ; restore BP output, and check for buffer overflow
+

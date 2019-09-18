@@ -1,0 +1,83 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    PRIMES                                      See EILIB.TXT for terms
+;---------------
+
+; PRIMES outputs a list of primes from 2 to 128K, using a Sieve of
+;   Eratosthenes (one of the oldest algorithms ever recorded).  We
+;   set up a 64K array representing odd numbers 3,5,7,...,131073.
+;   When then mark all numbers that are multiples of 3, then all
+;   that are multiples of 5, then 7, then 11, etc., until we have
+;   marked all multiples of all primes up to the square root of
+;   131073.  Then we output the number 2, followed by all the unmarked
+;   numbers in our array.
+
+PRIMES:
+  MOV AX,CS         ; fetch our program segment
+  ADD AX,01000      ; advance to the next 64K segment
+  MOV ES,AX         ; point ES to that segment
+  MOV DS,AX         ; also point DS to that segment
+  SUB AX,AX         ; load zero
+  MOV CX,32K        ; there are 32K words in the segment
+  SUB DI,DI         ; starting output offset is zero
+  REP STOSW         ; zero-fill the segment
+
+L1:                 ; loop here for each sieving prime
+  MOV CH,255        ; load full-segment search count
+  MOV AL,0          ; search for zero, marking the next unsieved prime
+  REPNE SCASB       ; advance DI beyond the marker for that prime
+  CMP DI,181        ; have we passed the square root of our 128K range?
+  JAE >L3           ; exit the loop if we have
+  PUSH DI           ; we have found another sieving prime: save its offset
+  MOV BX,DI         ; copy the prime's offset to BX
+  ADD BX,BX         ; double the offset, to get the value-1
+  INC BX            ; increment BX to the prime's value
+  DEC DI            ; retreat DI to prime's offset
+  ADD DI,BX         ; perform the first pre-marking add for the following loop
+L2:                 ; loop here to mark the slot for each multiple of our prime
+  MOV B[DI],1       ; mark the slot with a 1
+  ADD DI,BX         ; advance DI to the next slot
+  JNC L2            ; loop if we have not overflowed off the end
+  POP DI            ; slots are marked: restore the prime's offset
+  JMP L1            ; loop to look for another sieving prime
+
+L3:                 ; marking is complete
+  MOV BP,OBUFF      ; initialize our output pointer
+  MOV AX,2          ; load 2, the anomalous first prime
+  MOV DL,0          ; upper byte of the output number is zero
+  CALL OUT_PRIME    ; output 2
+  MOV DI,1          ; point DI beyond the first prime's offset
+L4:                 ; loop here to output each prime and look for another
+  CALL OUT_DI_PRIME ; output the prime corresponding to offset DI-1
+  SUB CX,CX         ; point beyond the sieve segment
+  SUB CX,DI         ; calculate the number of remaining bytes in the segment
+  MOV AL,0          ; we will look for unmarked bytes in the segment
+  REPNE SCASB       ; advance DI beyond the next unmarked byte
+  TEST DI           ; did the search exhaust the segment?
+  JNZ L4            ; loop if not, to output this offset's prime number
+  MOV ES,CS         ; output is complete: restore the output segment
+  MOV DI,BP         ; copy the output pointer to DI
+  CALL FLUSH_OBUFF  ; flush the output buffer
+  JMP GOOD_EXIT     ; exit the program
+
+
+OUT_DI_PRIME:       ; output the prime whose offset is DI-1
+  SUB DL,DL         ; start with high byte zero
+  LEA AX,[DI-1]     ; load the DI-1 offset
+  ADD AX,AX         ; double the offset, to reflect the odd-only scaling
+  ADC DL,DL         ; carry the double into the high byte
+  ADD AX,3          ; add 3 to reflect the fact that our array starts with 3
+  ADC DL,0          ; carry the addition into the high byte
+OUT_PRIME:
+  PUSH ES           ; save the sieve segment
+  MOV ES,CS         ; point ES to our output segment
+  XCHG BP,DI        ; swap the output pointer into DI
+  MOV BX,6 BY 10    ; 6-column output, decimal base
+  MOV DH,' '        ; we will blank-pad the leading bytes of output
+  CALL NUMOUT       ; output the prime number
+  CALL CRLF_OCHECK  ; output CRLF and check the output buffer
+  XCHG BP,DI        ; swap the output pointer back to BP and restore DI
+  POP ES            ; restore the sieve segment
+  RET
+
+
+

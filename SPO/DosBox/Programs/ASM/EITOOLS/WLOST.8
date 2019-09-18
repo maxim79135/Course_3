@@ -1,0 +1,104 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   WLOST                                        See EILIB.TXT for terms
+;---------------
+
+; WLOST reads a summary file of lost names, previously produced by LOSTNAMS
+;   and then edited, and writes the corresponding files to a floppy drive.
+
+; This program assumes the files are defragmented: i.e., that files spanning
+; multiple clusters are stored in consecutive clusters.
+
+; This program was written ten years ago, and will need to be revised if
+; you want it to work on today's multi-gigabyte hard drives.
+
+NO_DOSCHECK EQU 1   ; we will not trap errors in MSDOS.8
+
+WLOST:
+  CALL INIT_CLUS_X      ; initialize cluster scanning for user-given drive
+  MOV B_CLUS,AX         ; store the number of bytes in a cluster
+  CALL OPEN_I_ARG       ; scan the edited-LOST file name and open that file
+  MOV PLINES_HANDLE,AX  ; store the file handle
+  PUSH AX               ; save the input file handle
+  CALL TAIL_BLANKS      ; skip over intervening blanks
+  AND AL,0DF            ; coerce the drive letter to upper case
+  CMP AL,'A'            ; is it too low to be a letter?
+  JB >E1                ; error if it is
+  CMP AL,'Z'            ; is it too high to be a letter?
+  JA >E1                ; error if it is
+  MOV OPATH B,AL        ; store the drive letter
+  CALL PROCESS_LINES    ; process the file
+  POP BX                ; restore the input file handle
+  CALL MCLOSE           ; close the input file
+  JMP GOOD_EXIT         ; exit back to the operating system
+
+E1:                     ; error seen in invocation line
+  JMP USAGE_EXIT        ; put out usage message and exit
+
+
+; PROCESS_LINE processes the line of CX bytes pointed to by SI (and beyond by
+;   DI).
+
+OPATH:                ; buffer for the name of a recovered output file
+  DB 'A:xxxxxxxx.xxxx'
+
+  RET                 ; to satisfy Jcond RET below
+
+PROCESS_LINE:
+  CMP CX,60           ; is the line long enough to be a LOSTNAMS line?
+  JB RET              ; ignore it if it isn't
+  MOV DI,OPATH+2      ; point to the root part of the output file name
+  MOV CX,12           ; we will be scanning 12 bytes from the input line
+L1:                   ; loop here to copy each byte of the file name
+  LODSB               ; fetch a byte
+  CMP AL,' '          ; is it blank?
+  IF NE STOSB         ; if not then output the byte
+  LOOP L1             ; loop to copy the next byte
+  MOV AL,0            ; load terminating null
+  STOSB               ; terminate the file name with a null
+  CALL SCAN_FDT       ; fetch the date/time stamp
+  PUSH CX,DX          ; save the date/time stamp
+  ADD SI,14           ; advance SI to the cluster number for file contents
+  CALL VERIFY_DEC     ; set AX to the cluster number
+  XCHG DI,AX          ; swap the cluster number into DI
+  CALL TAIL_BLANKS    ; skip over intervening blanks
+  CALL SCAN_HDEC      ; set DXAX to the file size
+  MOV CX,0            ; load the number of bytes in one cluster
+B_CLUS EQU W[$-2]     ; cluster size is plugged into the above imm value
+  DIV CX              ; calculate the number of full clusters in the file
+  TEST DX             ; is the file an exact multiple of a cluster?
+  JNZ >L1             ; skip if not
+  MOV DX,CX           ; non-empty file: last cluster has a full count
+  DEC AX              ; cancel the following INC
+  JS RET              ; return if AX was zero: it's a null file
+L1:
+  INC AX              ; include the final, partial cluster in the count
+  XCHG BP,AX          ; swap the cluster count into BP
+  PUSH DX             ; save the last cluster size
+  MOV DX,OPATH        ; point to the output file
+  CALL MCREAT         ; create the output file
+  JMP >L3             ; jump into loop
+
+L2:                   ; loop here to output each full-sized cluster
+  CALL WRITE_CLUS     ; read and output the cluster
+L3:
+  DEC BP              ; count down clusters
+  JNZ L2              ; loop if there are more clusters
+  POP CX              ; last cluster reached: restore the partial byte count
+  CALL WRITE_CLUS     ; read the last cluster and write part of it
+  POP DX,CX           ; restore the date/time stamp
+  MOV AX,05701        ; MS-DOS function codes for SET_FDATE
+  INT 021             ; set the date and time to its original value
+  JMP MCLOSE          ; close the output file
+
+
+WRITE_CLUS:
+  MOV AX,DI           ; fetch the cluster number
+  INC DI              ; increment the number, for the next call
+  CALL CLUS_AX        ; read the cluster
+  JMP MWRITE          ; output the cluster contents to the file
+
+
+USAGE_MSG:
+  DB 'usage: WLOST C lostfile B',0D,0A
+  DB '  outputs lost files from damaged drive C to drive B',0D,0A
+  DB '  where lostfile was created by LOSTNAMS and edited',0D,0A,0

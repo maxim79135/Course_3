@@ -1,0 +1,27 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COPYENV                                      See EILIB.TXT for terms
+;---------------
+
+; COPYENV copies the environment segment to the named file in our
+;    invocation command tail.
+
+COPYENV:
+  MOV SI,081          ; point to our invocation command tail
+  CALL OPEN_O_ARG     ; open a file for writing
+  CALL NO_MORE_ARGS   ; ensure no more arguments
+  MOV AX,W[02C]       ; fetch our environment segment
+  DEC AX              ; retreat to the memory allocation record
+  MOV DS,AX           ; point DS to the memory allocation record
+  MOV AX,W[3]         ; fetch the segment size, in paras
+  SHL AX,CL,4         ; convert the size to bytes
+  XCHG CX,AX          ; swap the size into CX
+  MOV DX,16           ; point DX to the offset of the environment segment
+  CALL MWRITE         ; write the environment segment
+  CALL MCLOSE         ; close the output file
+  JMP GOOD_EXIT       ; return to the operating system
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: COPYENV fname',0D,0A
+  DB '   copies the environment segment to a file',0D,0A,0,01A
+

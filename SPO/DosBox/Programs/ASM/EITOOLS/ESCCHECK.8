@@ -1,0 +1,16 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ESCCHECK                                     See EILIB.TXT for terms
+;---------------
+
+; ESCCHECK returns an exit code of 1 if the Esc key was the last one
+;   physically pressed.  You can follow ESCCHECK with IF ERRORLEVEL 1 EXIT
+;   in a batch file, to allow escaping at a controlled time.
+
+ESCCHECK:
+  IN AL,060           ; fetch the scan code directly from the hardware
+  AND AL,07F          ; mask away the keyup/keydown bit
+  CMP AL,1            ; is it the code for the Esc key?
+  IF NE MOV AL,0      ; if not then return and exit code of zero
+  MOV AH,04C          ; DOS function code for EXIT_PROGRAM
+  INT 021             ; exit the program
+

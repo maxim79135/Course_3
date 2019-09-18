@@ -1,0 +1,33 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FTAIL                                        See EILIB.TXT for terms
+;---------------
+
+; FTAIL outputs the tail of its input file, starting with the line
+;   containing the first instance of the command-tail string.
+
+FTAIL:
+  MOV SI,081              ; point to our invocation command tail
+  MOV BP,DI,STRING_TARGET ; point to destination for the first (string) arg
+  CALL SCAN_STRING        ; scan the string-argument
+  MOV BX,CX               ; set BX to the string length, for PF_FIND
+  JMP PFILE_IOARG         ; scan file argument(s) and call PROCESS_FILE
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FTAIL string filename [>]outfile',0D,0A
+  DB '  outputs the tail of a file, starting with the',0D,0A
+  DB '  first line containing the found string.',0D,0A
+  DB 0,01A
+
+PF_FIND_PROC EQU FIND_NOCASE  ; string searching is non case-sensitive
+OWR_OPTIONAL EQU 1            ; output file command argument is optional
+
+PFILE_REC    DW PF_FIND       ; initial PROCESS_FILE action is to find a string
+
+PF_FOUND_ACT:
+  CALL SET_RECORD_P     ; point SI to the data record containing the string
+  CALL NEXT_PFILE_HERE  ; set subsequent PFILE_REC to the following code:
+  MOV CX,DX             ; point CX beyond the currently-buffered bytes
+  SUB CX,SI             ; calculate the number of buffered bytes
+  JMP OUT_BIG_CX        ; output all the buffered bytes

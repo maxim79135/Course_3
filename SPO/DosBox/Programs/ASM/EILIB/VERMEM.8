@@ -1,0 +1,22 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   VERMEM                                       See EILIB.TXT for terms
+;---------------
+
+; VERIFY_MEM should be called at the beginning of a program, to verify
+;   that there are enough free memory bytes to run the program.  For
+;   example, VERIFY_MEM 64K*2 verifies 128K bytes of free memory.
+
+VERIFY_MEM MACRO
+  MOV AX,CS               ; load our program's segment
+  SUB AX,W[2]             ; calculate the negative of the free paragraphs
+  DEC AX                  ; make room for an exact fit
+  ADD AX,(#1)/16          ; add back the required number of paragraphs
+  JNC >M1                 ; skip if we did not overflow the free paragraphs
+  MOV AX,NOT_ENOUGH_MEM   ; point to error message in case
+E1:                       ; convenient jump point for the main program
+  JMP ERROR_EXIT          ; jump to output an error message and exit program
+M1:
+#EM
+
+
+

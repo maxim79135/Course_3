@@ -1,0 +1,77 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FB_STR                                       See EILIB.TXT for terms
+;---------------
+
+; FB_STRINGS is called with SI pointing to one or more file names, possibly
+;   containing wildcard characters.  The PFOUND_WILD_HERE routine handles
+;   all the name parsing, wildcard expansion, file reading and buffering,
+;   and string searching for us.  It will call the code following its CALL
+;   instruction, for every string found within any file named.  The code is
+;   called with SI pointing to an instance of a found string within a file.
+;   We calculate the rating for this record, and, if it is the best yet,
+;   we output the containing record to the DI-pointed output buffer.
+
+; Our close-match rating code examines the BP-pointed strings buffer to see
+; how many pending found strings are within this record.  Each found string
+; adds a point to the rating, and, if only blanks separate it from a previous
+; found string, there is an extra rating point awarded.
+
+FB_STRINGS:
+  CALL PFOUND_WILD_HERE ; call following code when string found in any file
+  CMP SI,PFILE_LIM      ; are we near the end of the input buffer?
+  JAE RET               ; return if we are, to handle within the next buffer
+  ADD BX,SI             ; point BX beyond the found string
+  CALL SET_RECORD_P     ; point SI to the data record containing the string
+  PUSH DX,DI,BP         ; save register across call
+  CALL >C6              ; advance to the word following the triggering string
+  MOV DX,BX             ; point DX to word-after trigger
+  ADD CX,SI             ; point CX beyond this data record
+  MOV AX,1              ; initialize the rating for this data record
+L1:                     ; loop here to examine each string in the buffer
+  MOV BX,[BP]           ; fetch the found-pointer for this string
+  CMP BX,CX             ; is the pointer beyond our data record?
+  JAE >L2               ; skip if it was: the string is not in this record
+  INC AX                ; string is in this record: increment the rating
+  MOV W[BP],0FFFF       ; cancel this find, to trigger search beyond this rec
+  CMP BX,DX             ; does this string immediately follow the trigger str?
+  IF NE CMP BX,DI       ; if not does it immediately follow the prev string?
+  IF E INC AX           ; if it follows one of those, add a bonus rating point
+  ADD BX,W[BP+2]        ; advance BX beyond the string
+  CALL >C6              ; advance BX to the next nonblank following the string
+  MOV DI,BX             ; save the pointer as the word-after-prev
+L2:
+  MOV BX,W[BP+2]        ; fetch the length of this string
+  ADD BP,4              ; advance BP to the string
+  ADD BP,BX             ; advance BP beyond the string, to the next string rec
+  TEST W[BP+2]          ; is the next length the null terminator?
+  JNZ L1                ; loop if not, to process the next string record
+  SUB CX,SI             ; restore CX to the data record count
+  SS CMP AX,MAX_RATING  ; does it match the best rating so far?
+  POP BP,DI,DX          ; restore the other clobbered registers
+  JB >L4                ; return if not, advancing SI without outputting it
+  JE >L3                ; skip if we just matched the previous maximum
+  MOV DI,OBUFF          ; new maximum value: retract any previous output
+        #if ref DASH_PFNAME
+  SS MOV PREV_DASHES,AX ; ensure this file name will be output
+        #endif
+L3:
+  SS MOV MAX_RATING,AX  ; store the new maximum rating
+        #if ref OUT_FNAME_REC
+  CALL OUT_FNAME_REC    ; output file name if first output from this file
+        #endif
+        #if def OUT_FB_REC
+  CALL OUT_FB_REC       ; output the data record
+        #else
+  REP MOVSB             ; output the data record
+        #endif
+L4:                     ; rating not high enough: do not output this record
+  ADD SI,CX             ; if we did not output the record advance past it
+  RET
+
+L5:                     ; loop here to continue scanning BX
+  INC BX                ; advance the BX pointer
+C6:                     ; advance BX to the next non-blank
+  CMP B[BX],' '         ; is BX pointing to a blank or below?
+  JBE L5                ; loop if yes, to continue scanning
+  RET
+

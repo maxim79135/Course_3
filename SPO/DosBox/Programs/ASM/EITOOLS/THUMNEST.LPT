@@ -1,0 +1,4 @@
+%; template file used by THUMBS.BAT to recursively call itself in each subdir
+cd "%1"
+call thumbs
+cd ..

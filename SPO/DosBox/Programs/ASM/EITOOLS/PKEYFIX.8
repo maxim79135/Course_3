@@ -1,0 +1,80 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PKEYFIX                                      See EILIB.TXT for terms
+;---------------
+
+; PKEYFIX is a corrective keystrokes driver that enables my ZIPKEY program
+;   to work with another memory-resident program called PROKEY.  This program
+;   is made resident after PROKEY, to allow keystrokes output by ZIPKEY to
+;   be seen by other applications.
+
+PKEYFIX:
+  CALL INIT_PUT_KEY     ; check for a generalized BIOS key queue
+  MOV SI,081            ; point to our invocation command tail
+  JMP TINY_TSR          ; this is a simple I-or-U resident program
+
+DB 0A       ; to make a TYPE PKEYFIX.COM command more legible
+
+USAGE_MSG:
+  DB 0D,0A
+  DB 'PKEYFIX, V1.0  Copyright 1993 Eric Isaacson.  All rights reserved.',0D,0A
+  DB 0D,0A
+  DB 'usage: PKEYFIX I   installs corrective keystrokes driver',0D,0A
+  DB '       PKEYFIX U   uninstalls the driver',0D,0A,0D,0A
+  DB 'The driver corrects the fact that PROKEY does not allow keystrokes'
+  DB ' output by',0D,0A
+  DB 'programs like ZIPKEY to be seen by applications.  Install after PROKEY.'
+  DB 0D,0A,0,01A
+
+INSTALLING:
+  DB 'Installing corrective keystrokes driver.',0D,0A,0
+ALREADY:
+  DB 'Driver already installed.',0D,0A,0
+WASNT:
+  DB 'Driver wasn''t installed last.',0D,0A,0
+UNINSTALLING:
+  DB 'Uninstalling driver.',0D,0A,0
+
+PUT_KEY_REG EQU SI      ; needed for INIT_PUT_KEY to modify our code
+SINGLE_INT EQU 016      ; we are taking over the INT 016 key service routine
+
+SIG_SRC:                ; beginning of memory-resident code
+  DB 'PKEYFIX'          ; signature string to detect if we are installed
+SIG_SIZE EQU $-SIG_SRC  ; size of signature, for later comparison
+
+OLD3:                   ; old-handler entry with 3 registers pushed
+  POP SI,DS             ; restore clobbered registers
+OLD1:                   ; old-handler entry with 1 register pushed
+  POP AX                ; restore clobbered register
+  JMP 0:0               ; jump to old handler
+OLD_INT EQU $-4         ; address is placed directly into the above doubleword
+
+OUR_HANDLER EQU $+05E-SIG_SRC
+  STI                   ; reallow interrupts
+  PUSH AX               ; preserve register across call
+  AND AH,NOT 010        ; coerce 010--011 into 0--1
+  CMP AH,1              ; is it a call for a keystroke?
+  JA OLD1               ; jump if not, to let the old handler do it
+  PUSH DS,SI            ; caller wants keystroke: save more registers
+  MOV DS,SI,040         ; point DS to the BIOS data segment
+  MOV SI,W[01A]         ; point to the next keystroke to be fetched
+  CMP SI,W[01C]         ; are there any keystrokes to be fetched?
+  JE OLD3               ; jump if not, to let the old handler have effect
+  SAHF                  ; set Carry if we are just checking and not consuming
+  LODSW                 ; fetch the buffered keycodes
+  JC >L1                ; skip if we are just checking
+PUT_KEY_CMP:            ; following CMP and MOV can be modified by INIT_PUT_KEY
+  CMP SI,>L2            ; we are consuming: are we at the end of the queue?
+  L2 EQU 03E            ; INIT_PUT_KEY needs 4-byte form for above instruction
+  IF AE DS MOV SI,01E   ; if we are then reset to the start of the queue
+  MOV W[01A],SI         ; store the updated queue read-pointer
+L1:
+  POP SI,DS             ; restore clobbered registers
+  ADD SP,2              ; discard caller's AX in favor of our returned keycodes
+  IF Z CMP SP,1         ; ensure NZ is returned
+  RETF 2                ; IRET but discard caller's flags
+
+TSR_BYTES EQU $-SIG_SRC ; number of bytes of resident code
+SIG_DEST EQU 05E        ; we will copy our resident portion to 05E
+
+
+

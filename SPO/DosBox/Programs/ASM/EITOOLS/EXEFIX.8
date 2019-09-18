@@ -1,0 +1,72 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   EXEFIX                                       See EILIB.TXT for terms
+;---------------
+
+; EXEFIX fixes up the checksum of the EXE file named in its command tail.
+;   The checksum is the 16-bit word value at offset 018 that causes the sum
+;   of all of the 16-bit words in the file to be 0FFFF.  If the length
+;   of the file is odd, the last byte is null-extended for the checksum
+;   calculation.
+
+        DATA SEGMENT
+  FNAME_BUFF:               ; buffer for the EXE file name
+           DB 128 DUP ?     ; make plenty of room for a long path
+  FHEADER:                  ; EXE file header bytes
+           DB 012 DUP ?     ; allocate up to the checksum
+  CHECKSUM DW 0             ; the EXE checksum word
+  IBUFF:                    ; the remaining input buffer
+           DB 06000 DUP ?   ; make room for 06000 input bytes
+        DATA ENDS
+
+JMP EXEFIX          ; jump around the following message
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 'EXEFIX, V0.1  Copyright 1989 Eric Isaacson.  All rights reserved.',0D,0A
+  DB 'usage: EXEFIX fname',0D,0A
+  DB '  fixes checksum for fname.EXE',0D,0A,0
+  DB 01A
+
+EXEFIX:
+  CALL NONBLANK_TAIL    ; verify nonblank command tail
+  MOV DI,DX,FNAME_BUFF  ; point to our file name buffer for output and open
+  PUSH DX               ; save the file header pointer
+  MOV BX,EXE            ; point to .EXE extension
+  CALL NEWEXT_MAKE      ; create a file name with EXE
+  CALL MOPEN_READ       ; open the EXE file for reading
+  MOV DX,FHEADER        ; point to the file header and input buffer
+  MOV BP,0FFFF          ; load the target checksum
+L1:                     ; loop here to read each buffer-full of data
+  MOV CX,06000          ; load the size of the input buffer
+  CALL MREAD            ; read a buffer-full
+  MOV SI,DX             ; point SI to the buffer start
+  ADD SI,AX             ; advance SI beyond the actual bytes read
+  MOV B[SI],0           ; zero-terminate in case the length is odd
+  XCHG SI,DX            ; swap buffer end to DX, buffer start to SI for scan
+  CMP AX,CX             ; set Z if the buffer was filled
+  PUSHF                 ; save the Z setting until after the buffer is scanned
+  JMP >L3               ; jump into loop
+
+L2:                     ; loop here for each word in the input buffer
+  LODSW                 ; fetch the word
+  SUB BP,AX             ; deplete the checksum addend by the word's amount
+L3:
+  CMP SI,DX             ; have we reached the end of the input buffer?
+  JB L2                 ; loop if not, to continue scanning the buffer
+  MOV DX,IBUFF          ; point DX beyond the header, for the next bufferfull
+  POPF                  ; restore Z if the previous buffer was filled
+  JZ L1                 ; loop if buffer had been filled, to read another
+  ADD CHECKSUM,BP       ; file scanning is complete: make the new checksum
+  CALL MCLOSE           ; close the input file
+  POP DX                ; restore the pointer to the file name
+  MOV AL,2              ; MS-DOS open code for "read/write"
+  CALL MOPEN            ; re-open the file, this time for updating
+  MOV DX,FHEADER        ; point to the file header
+  MOV CX,014            ; load count running through the checksum
+  CALL MWRITE           ; output the revised header
+  CALL MCLOSE           ; close the file
+  JMP GOOD_EXIT         ; return to the operating system
+
+EXE:                    ; the extension we append to the file name
+  DB '.EXE'             ; we work with EXE files only
+

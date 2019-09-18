@@ -1,0 +1,382 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  WILDARGS                                      See EILIB.TXT for terms
+;---------------
+
+; WILD_ARGS expands all wild-card file names in the argument list at the
+;   DS:SI-pointed command tail invocation, and inserts the resulting data 
+;   structure into the stack.  We copy the stack bytes at SP up to CX 
+;   downwards, to make room for the data structures; then we copy the 
+;   structures into the space beyond the relocated bytes.  The structure 
+;   consists of a sequence of pointers to null-terminated path names, followed 
+;   by a terminating null pointer, then the names themselves.  We expand each 
+;   wildcard entry in alphabetical order (but we do not rearrange the entries 
+;   as given in the command tail). We return with SS:SI pointing to the first 
+;   pointer in the array, CX set to the number of pointers, and Z set according
+;   to the value of the CX count.  During expansion, we create temporary
+;   structures within the DS+01000 segment, which the caller must ensure
+;   is available for use.
+
+; The caller can provide a string WILD_EXT, that points to an alternate
+; file-name extension that is to be used instead of any extension that may
+; be given in the invocation.  The WILD_EXT string should begin with a
+; period and end with a null terminator byte.
+
+        #if !SUBDIR_CHAR
+  SUBDIR_CHAR = '\'
+        #endif
+
+WILD_ARGS:
+  PUSH BX,DI,BP,DS,ES ; save the caller's registers
+  MOV AX,DS           ; fetch the current segment
+  ADD AX,01000        ; advance the segment value to the next 64K
+  MOV ES,AX           ; point ES to the next segment, for temporary use
+  MOV DS,SS           ; point DS to the stack, for copying
+  SUB DI,DI           ; the temporary output starts at offset zero
+L1:                   ; loop here to output each byte of the command tail
+  LODSB               ; fetch a byte of the command tail
+        #if AMP_CONTINUE
+  CMP AL,'&'          ; have we reached an ampersand?
+  IF E CALL CHECK_AMP ; if yes then check for a terminating ampersand
+        #endif
+  STOSB               ; copy the byte to our buffer
+  CMP AL,0D           ; is it the terminating carriage return?
+  JNE L1              ; loop if not, to copy another byte
+  INC DI              ; insure that we do not retreat during even-coerce
+  AND DI,0FFFE        ; coerce the output pointer to an even value
+  MOV SI,SP           ; point to our stack
+  SUB CX,SI           ; calculate the number of bytes on the stack
+  SHR CX,1            ; convert the count into a number of words
+  PUSH DI             ; save the stack-image location
+  REP MOVSW           ; copy our stack to the temporary area
+  MOV BX,DI           ; save the pointers-pointer in BX
+  MOV DI,04000        ; point DI to the names area
+  PUSH BX,DI          ; save the pointers-pointer and names pointer
+  MOV DS,ES           ; we will henceforth scan from the temp segment
+  MOV SI,1            ; cancel DEC SI at the start of the first SKIP_TO_ARG
+L1:                   ; loop here for each argument seen
+  CALL SKIP_TO_ARG    ; advance to argument, parsing non-file names also
+  JZ >L4              ; jump if we have reached the end (0D seen)
+  CALL PUT_FILE_PTR   ; lay down the pointer to the file
+  XCHG CX,AX          ; we start out with no wild-card characters
+L8:                   ; jump here if \ or : seen, to reset last component
+  MOV DX,DI           ; the last-component pointer starts at the start
+L2:                   ; loop here for each character of the argument
+  LODSB               ; fetch the character
+  STOSB               ; store the character in our code segment
+  CMP AL,021          ; is it a control character?
+  JB >L3              ; jump if yes, argument is complete
+  CMP AL,07F          ; is it a non-ASCII character?
+  JAE >L3             ; jump if yes, argument is complete
+  CMP AL,SUBDIR_CHAR  ; is it a subdirectory char?
+  JE L8               ; jump if yes, to reset the last-component pointer
+  CMP AL,':'          ; is it a drive specification char?
+  JE L8               ; jump if yes, to reset the last-component pointer
+        #if WILD_EXT  ; has the caller supplied an overrding extension?
+  CMP AL,'.'          ; if yes then check for a period
+  JE >L9              ; jump if period, to substitute the override extension
+        #endif
+  CMP AL,'*'          ; is it a wild-card character?
+  JE >L7              ; jump if it is
+  CMP AL,'?'          ; is it a wild-card character?
+  JNE L2              ; jump if it isn't
+L7:                   ; it is a wildcard character
+  INC CX              ; bump the wildcard count to non-zero value
+  JMP L2              ; loop for another character
+
+        #if WILD_EXT
+L9:                   ; period is seen: loop here to skip extension
+  LODSB               ; fetch a character from the extension
+  CMP AL,020          ; is it a nonblank?
+  JA L9               ; loop if yes, to continue skipping extension
+L3:                   ; scanned argument is complete
+  DEC DI              ; retract the last character
+  PUSH SI             ; save the source pointer
+  MOV SI,WILD_EXT     ; point to our overriding extension
+  MOVSW 2             ; output 4 bytes of the extension
+  MOVSB               ; output the 5th byte of the extension
+  POP SI              ; restore the source pointer
+        #else
+L3:                   ; argument is complete
+  DEC DI              ; retreat to the last character
+  MOV AL,0            ; load null
+  STOSB               ; convert the last character into a null
+        #endif
+  JCXZ L1             ; loop if no wild-card, to look for the next argument
+  CALL EXPAND_WILD    ; wild-card character in argument: expand it
+  JMP L1              ; loop to look for the next argument
+
+L4:                   ; we have exhausted the arguments
+  INC DI              ; insure that we do not retreat during even-coerce
+  AND DI,0FFFE        ; coerce the output pointer to an even value
+  POP SI,DX,BP        ; pop the names pointer, pointers ptr, and stack image ptr
+  MOV CX,DI           ; point CX beyond the names
+  SUB CX,SI           ; calculate the number of bytes-worth of names
+  SUB SP,CX           ; make room on the stack for the bytes being copied
+  MOV DI,SP           ; the destination is our present stack pointer
+  MOV ES,SS           ; we are now copying back to the stack segment
+  REP MOVSB           ; copy the names bytes onto our stack
+  SUB DI,SI           ; calculate the offset for changing the pointers
+  NEG DI              ; negate the offset so we can subtract it
+  MOV [BX],DI         ; this first-fetch offset will become the null terminator
+  MOV SI,BX           ; point SI to the terminating pointer
+  LEA CX,[BX+2]       ; point CX beyond the pointers
+  SUB CX,DX           ; calculate the number of bytes-worth of pointers we have
+  SHR CX,1            ; convert the count into a number of words
+  MOV DX,CX           ; save the word count in DX
+  STD                 ; our source pointer decrements in this process
+L6:                   ; loop here to copy each pointer to its final location
+  LODSW               ; fetch the next pointer
+  SUB AX,DI           ; convert the pointer to the final names-buffer value
+  PUSH AX             ; output the pointer onto the stack
+  LOOP L6             ; loop to copy the next pointer
+  MOV BX,SP           ; save the starting pointers-pointer
+L5:                   ; loop here to copy the stack image
+  LODSW               ; fetch a word from the image
+  PUSH AX             ; push the word onto the new stack
+  CMP SI,BP           ; have we reached the bottom of the image yet?
+  JAE L5              ; loop if not, to copy another word
+  CLD                 ; restore forward scanning
+  MOV SI,BX           ; point SI to the pointers array
+  MOV CX,DX           ; restore the word count
+  DEC CX              ; adjust the count not to include the terminating null
+  POP ES,DS,BP,DI,BX  ; restore caller's registers
+  RET
+
+
+
+; SKIP_CTRLS advances SI to the next displayable character in the command
+;   tail.
+
+SKIP_TO_ARG:
+  DEC SI                  ; retreat back to the previously-rejected character
+        #if SWITCH
+SCAN_SWITCHES:
+L2:
+  CALL SKIP_CTRLS         ; skip any leading blanks
+  JZ RET                  ; return if we saw a terminating carriage return
+  PUSH BX,DX              ; preserve registers across call
+  INC SI                  ; we have not- advance beyond the character scanned
+  CMP AL,SWITCH_CHAR      ; was it a switch character?
+  JE >L5                  ; jump if yes, to set switches
+  DEC SI                  ; retreat back to the non-switch character
+  POP DX,BX               ; restore clobbered registers
+  RET
+
+L4:                       ; loop here for each switch-letter seen
+  MOV BL,AL               ; copy the letter's index to BL, for addressing
+  MOV BH,0                ; extend the index BL to BX
+  MOV AL,[SI]             ; fetch the character following the letter
+  SUB AL,'0'              ; reduce digit '0' to its binary value
+  CMP AL,9                ; is the byte in fact a digit?
+  JA >L9                  ; skip if not
+  MOV DL,AL               ; it is a digit: we will set the switch to the value
+  INC SI                  ; advance source pointer beyond the digit
+L9:
+  SS MOV SWITCH'A'[BX],DL ; set the appropriate switch
+L5:                       ; loop here for each letter that follows the sign
+  LODSB                   ; fetch the character
+  MOV DL,020              ; load proposed switch value with lower-case mask
+  AND DL,AL               ; DL is 020 if lower case, 0 if upper case
+  XOR AL,DL               ; coerce the letter to lower-case
+  INC DX                  ; DL is 021 if lower case, 1 if upper case
+  SUB AL,'A'              ; reduce the range A--Z to start at zero
+  CMP AL,26               ; was it in fact a letter?
+  JBE L4                  ; loop if yes, to set switch and scan another letter
+  DEC SI                  ; retreat back to the non-letter
+L3:
+  POP DX,BX               ; restore clobbered registers
+  JMP L2                  ; continue the main scanning loop
+
+        #endif
+;
+;
+  DEC SI            ; cancel the following INC SI
+L2:                 ; loop here to skip non-displayable characters
+  INC SI            ; advance beyond the character to be ignored
+SKIP_CTRLS:
+  MOV AL,[SI]       ; fetch a character
+  CMP AL,0D         ; have we reached the command line terminator?
+  JE RET            ; exit if we have
+  TEST AL           ; is the character a null?
+  JE >L3            ; jump if it is
+  SUB AL,021        ; reduce the displayable-characters range to start at 0
+  CMP AL,07F-021    ; was the character a displayable character?
+  JAE L2            ; loop if not, to look at the next character
+  ADD AL,021        ; restore original character
+  RET
+
+L3:                 ; null is seen in the command tail (weird special case)
+  INC SI            ; advance beyond the null
+  CALL PUT_FILE_PTR ; create a special date-time slot corresponding to the null
+  MOV AL,07E        ; load tilde
+  STOSW             ; output a tilde and a null
+  JMP SKIP_CTRLS    ; resume scanning
+
+
+PUT_FILE_PTR:
+  SUB AX,AX             ; load zero value for initial date-time stamp
+  STOSW                 ; output null time
+  STOSW                 ; output null date
+  MOV W[BX],DI          ; store the pointer to this argument
+  INC BX,2              ; advance the pointers-pointer
+  RET
+
+
+; EXPAND_WILD searches for file names matching the null-terminated wild-card
+;   argument that was just output to DI.  The pointer to the argument was
+;   output to [BX], so it is now at [BX-2].  We call MSDOS to see if there
+;   were any matches; if there were, we replace the single argument with all
+;   the matching names, doctoring DI and BX appropriately.  If there were not,
+;   we leave the argument as-is.
+
+EXPAND_WILD:
+  MOV CX,DX         ; fetch the last-component pointer
+  PUSH SI,BP        ; preserve register across call
+  MOV DX,[BX-2]     ; point DX to the argument that was just output
+  SUB CX,DX         ; calculate the number of prefix bytes in the pathname
+  MOV AH,04E        ; MSDOS function number for "find first wildcard"
+  CALL FIND_WILD    ; find the first name corresponding to the wildcard
+  JC >L3            ; jump if the call was unsuccessful
+  MOV DI,DX         ; wildcard found: retreat DI back to the wildcard name
+  SUB DI,4
+  DEC BX,2          ; retreat BX back to the pointer to the name
+  MOV BP,BX         ; BP marks the first pointer in this wildcard group
+L1:                 ; loop here for each name found for this wildcard
+  CALL INSERT_WILD  ; insert the pointer in sorted order
+  MOV AH,04F        ; MSDOS function number for "find next wildcard"
+  CALL FIND_WILD    ; find the next name corresponding to the wildcard
+  JNC L1            ; if there is another name then loop to process it
+L3:
+  POP BP,SI         ; restore clobbered register
+  RET
+
+FIND_WILD:
+  PUSH CX             ; preserve register across call
+  SUB CX,CX           ; normal attributes are in effect
+  INT 021             ; find the next instance of this wildcard
+  POP CX              ; restore clobbered register
+  RET
+
+
+; INSERT_WILD inserts the pointer to the latest wildcard path name into the
+;   alphabetized list of path names for this wildcard.  Input BP points to
+;   the pointers list, and BX points beyond it.  DI points to the destination
+;   for the wildcard name.  CX contains the number of prefix-bytes in the full
+;   path name, which are not included in the component returned to us at 09E.
+;   We also copy the name from its MSDOS return location 09E to its place in
+;   our names area at DI.  We return with DI incremented beyond the copied
+;   name, and with BX incremented to reflect the insertion of the new pointer.
+
+INSERT_WILD:
+  PUSH DS           ; save caller's DS
+  MOV DS,SS         ; point DS to main segment, for DTA scanning
+  PUSH BX,DI        ; preserve register across the insertion part of the call
+L1:                 ; loop here to compare against each previous pointer
+  CMP BX,BP         ; have we reached the bottom pointer on the list?
+  JBE >L2           ; skip if yes, our pointer will insert at the bottom
+  DEC BX,2          ; retreat BX back to the previous pointer
+  ES MOV DI,[BX]    ; fetch the previous pointer
+  ES MOV [BX+2],DI  ; move the pointer up one slot, to make room for insertion
+  MOV SI,09E        ; point to the new path name
+  ADD DI,CX         ; advance beyond the prefix bytes
+        #if WILD_DATESORT
+  MOV AX,[SI-6]     ; fetch the date stamp from the new path name
+  ES CMP AX,[DI-2]  ; compare to the previous date stamp
+  JNE >L3           ; skip if not equal: this comapre suffices
+  MOV AX,[SI-8]     ; fetch the time stamp from the new path name
+  ES CMP AX,[DI-4]  ; compare to the previous time stamp
+L3:
+        #else
+  PUSH CX           ; save the prefix count
+  MOV CX,128        ; path names are never more than 128 bytes long
+  REPE CMPSB        ; compare the new path to the previous one
+  POP CX            ; restore the prefix count
+        #endif
+  JB L1             ; loop if the new path comes before the previous one
+  INC BX,2          ; new path comes after: advance BX back beyond previous path
+L2:
+  POP DI            ; restore the pointer to the new path
+  MOV SI,096        ; point to the time and date stamps
+  MOVSW             ; output the time stamp
+  MOVSW             ; output the date stamp
+  ES MOV [BX],DI    ; plug the pointer into the cleared-slot
+  POP BX            ; restore the beyond-pointers pointer
+  INC BX,2          ; increment BX beyond the pointers so far accumulated
+  MOV DS,ES         ; point DS to the temporary segment, to copy the prefix
+  PUSH CX           ; preserve register across prefix copy
+  MOV SI,DX         ; point to the prefix
+  REP MOVSB         ; output the prefix characters
+  POP CX            ; restore clobbered register
+  MOV DS,SS         ; point DS to the PSP segment, to copy the wildcard root
+  MOV SI,09E        ; point SI to the latest path name
+  CALL COPYZ        ; copy the path to our buffer
+  POP DS            ; restore DS to the temporary segment
+  RET
+
+
+        #if AMP_CONTINUE
+; CHECK_AMP processes an ampersand seen in a command tail.  If the ampersand
+;   is at the end of the command tail, we read a continuation from standard
+;   input, convert any embedded line breaks into blanks, and return AL=0D for
+;   the caller to output.  Otherwise, we return and let our caller pass the
+;   ampersand unaltered.
+
+L0:
+  DB 'Awaiting input..'
+L1:
+  DB 0D,0A,0
+
+CHECK_AMP:
+  PUSH SI           ; save source in case we return unaltered
+  JMP >L4           ; jump into scanning loop
+
+L2:                 ; jump here if ampersand was not the last item on the line
+  POP SI            ; restore the source pointer
+  RET               ; let the caller pass the ampersand
+
+L3:                 ; loop here to scan blanks following the ampersand
+  CMP AL,020        ; is the character a control or blank?
+  JA L2             ; jump if not, we will ignore the ampersand
+L4:
+  LODSB             ; fetch another trailing character
+  CMP AL,0D         ; is it the terminating carriage return?
+  JNE L3            ; loop if not, to check for blank
+  POP AX            ; ampersand is in fact the final nonblank: discard old SI
+  MOV DS,SS         ; point DS to the same segment as ES and SS
+  PUSH CX           ; preserve register across call
+  MOV AX,L0         ; point to "Awaiting input.." message
+  CALL EMESSAGE     ; prompt for continuation input
+  SUB BX,BX         ; open-file handle for console input is zero
+  MOV DX,DI         ; we will read beyond what we have already output
+L5:                 ; loop here if the continuation wants a further continue
+  MOV CX,SP         ; point CX beyond free stack area
+  SUB CH,8          ; leave room for our stack
+  SUB CX,DX         ; calculate the number of bytes we have room to read
+  CALL MREAD        ; read a command line from standard input
+  XCHG BX,AX        ; swap the actual count into BX
+  MOV SI,DX         ; point SI to the bytes read, for scanning
+  MOV DI,SI         ; we will also output here, to compactify blanks
+  ADD BX,SI         ; point BX beyond the bytes
+  MOV AH,0FF        ; previous character starts out non-blank
+L2:                 ; loop here to scan each byte of the continuation
+  LODSB             ; fetch the byte
+  CMP AL,' '        ; is it a control character?
+  JA >L3            ; skip if not, to simply output it
+  MOV AL,' '        ; convert all control characters to blank
+  CMP AL,AH         ; did we just output a blank?
+  JNE >L6           ; skip if we did-- no need for consecutive blanks
+L3:
+  STOSB             ; output the character
+L6:
+  MOV AH,AL         ; copy the character to AH, the next "previous character"
+  CMP SI,BX         ; are we at the end of the bytes read?
+  JB L2             ; loop if not, to look at more
+  LEA DX,[DI-1]     ; point DX to the last character, in case it is &
+  CMP B[DI-1],'&'   ; is the last character &?
+  JE L5             ; loop if it is, to fetch another continuation
+  MOV AX,L1         ; point to CRLF message
+  CALL EMESSAGE     ; output CRLF to console in case echoing is off
+  MOV AL,0D         ; all continuations complete: load a terminating CR
+  POP CX            ; restore clobbered register
+  RET
+        #endif

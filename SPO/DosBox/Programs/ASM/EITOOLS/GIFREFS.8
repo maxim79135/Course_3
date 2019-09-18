@@ -1,0 +1,205 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   GIFREFS                                      See EILIB.TXT for terms
+;---------------
+
+; GIFREFS makes a bare-bones HTML file, containing a reference line, including
+;   height and width, for each GIF and JPG file in the current directory.  We
+;   output the HTML file to standard output.
+
+NO_DOSCHECK EQU 1       ; we handle our own error checking
+WILD_DATESORT EQU 1     ; sort files by date-time stamp
+
+GIFREFS:
+  MOV AH,02A            ; MS-DOS function code for GET_DATE
+  INT 021               ; set CX to the current year
+  XCHG AX,CX            ; swap the year into AX, for output
+  MOV DI,YYYY           ; point to the year slot in our header string
+  CALL OUT_DEC_AX       ; insert the current year into the header string
+  MOV DI,OBUFF          ; point to the output buffer
+  MOV SI,HTML_HEAD      ; point to the file header
+  CALL OUTZ             ; output the file header
+  MOV SI,WILD_GIFS      ; point to *.GIF specification
+  MOV BP,MAKE_GIFREF    ; point to the action routine for each GIF file
+  CALL WILD_BP_ACT      ; call MAKE_GIFREF for each GIF file
+  MOV SI,WILD_JPGS      ; point to *.JPG specification
+  MOV BP,MAKE_JPGREF    ; point to the action routine for each JPG file
+  CALL WILD_BP_ACT      ; call MAKE_JPGREF for each JPG file
+  MOV SI,HTML_TAIL      ; point to file tail
+  CALL OUTZ             ; output the tail of the file
+  CALL FLUSH_OBUFF      ; flush the output buffer
+  JMP GOOD_EXIT         ; exit the program
+
+        DATA SEGMENT
+GIF_BUFF:               ; buffer holding the header bytes of a GIF file
+        DW ?,?,?        ; we will ignore the first 6 bytes
+GWIDTH  DW ?            ; width of the picture, in pixels
+GHEIGHT DW ?            ; height of the picture, in pixels
+        DB 1K DUP ?     ; pad out the buffer with enough for JPG scanning
+        DATA ENDS
+
+JHEIGHT DW 0            ; height of a JPG picture, in pixels (high byte first)
+JWIDTH  DW 0            ; width of a JPG picture, in pixels (high byte first)
+
+MAKE_GIFREF:            ; make a reference line for the AX-pointed file
+  CALL MOPEN_READ       ; open the GIF file for reading
+  JC RET                ; return if the file could not be opened
+  CALL READ_GIF_BUFF    ; read the first part of the file
+  MOV AX,GWIDTH         ; fetch the width
+  CALL DEC_OUTZ         ; output the width, and "height="
+  MOV AX,GHEIGHT        ; fetch the height
+DEC_OUTZ:               ; output decimal AX followed by the SI-pointed string
+  CALL OUT_DEC_AX       ; output decimal AX
+  SKIP1                 ; skip over STOSB, to OUTZ
+L1:                     ; loop here to output each byte of the string
+  STOSB                 ; output the byte
+OUTZ:                   ; output SI-string, not including null terminator
+  LODSB                 ; fetch a byte from the string
+  TEST AL               ; is it the null terminator?
+  JNZ L1                ; loop if not, to output the byte
+  RET
+
+
+
+MAKE_JPGREF:            ; make a reference line for the DX-pointed file
+  CALL MOPEN_READ       ; open the JPG file for reading
+  JC RET                ; return if the file could not be opened
+  CALL READ_GIF_BUFF    ; read the first part of the file
+  CALL GET_JSIZE        ; scan the JPG header and set JWIDTH and JHEIGHT
+  MOV AX,JWIDTH         ; fetch the width word
+  LEA BX,[DI-7]         ; load retraction pointer for " width="
+  CALL XCHG_OUTZ        ; swap the bytes and output the width value
+  MOV AX,JHEIGHT        ; fetch the height word
+  LEA BX,[DI-8]         ; load retraction pointer for " height="
+XCHG_OUTZ:              ; swap bytes to Intel format, and output decimal AX
+  XCHG AL,AH            ; swap the bytes so the low byte is first
+  TEST AX               ; is the output value nonzero?
+  JNZ DEC_OUTZ          ; jump if it is, to complete the output
+  MOV DI,BX             ; zero value: retract the "width=" or "height="
+  JMP OUTZ              ; output the following string
+
+
+
+READ_GIF_BUFF:
+  MOV SI,IMG_SRC        ; point to the first part of the reference string
+  CALL OUTZ             ; output the first part of the reference string
+  MOV SI,DX             ; point to the GIF/JPG file name
+  CALL OUTZ_LOWER       ; output the GIF/JPG file name
+  MOV CX,1K             ; we will read enough header for both GIF and JPG
+  MOV DX,GIF_BUFF       ; point to the buffer where the header will be stored
+  CALL MREAD            ; read the header from the GIF/JPG file
+  CALL MCLOSE           ; close the GIF/JPG file
+  MOV SI,REF_TAIL       ; point to the remainder of the reference template
+  JMP OUTZ              ; output "width="
+
+
+
+L1:                     ; loop here to output each byte of the string
+  STOSB                 ; output the byte
+OUTZ_LOWER:             ; output SI-string, coerced to lower case
+  LODSB                 ; fetch a byte from the string
+  CMP AL,'A'            ; is it too low to be an upper-case letter?
+  JB >L2                ; skip if it is too low
+  CMP AL,'Z'            ; is it an upper-case letter?
+  IF BE ADD AL,020      ; if yes then coerce to lower-case 
+L2:
+  TEST AL               ; is it the null terminator?
+  JNZ L1                ; loop if not, to output the byte
+  RET
+
+
+HTML_HEAD:
+  DB '<TITLE></TITLE>',0D,0A
+  DB '<BODY text="#000000"  link="#FF0000"   vlink="#008000"',0D,0A
+  DB '      alink="#FF0080" bgcolor="#FFFFFF">',0D,0A
+  DB '<HTML>'
+  DB '<h1></h1>',0D,0A
+  DB 'updated <A HREF="../common/copyr.htm">&copy;'
+YYYY:
+  DB '1998</A> ---',0D,0A
+  DB '<A HREF="../common/email.htm">E-mail Eric</A>',0D,0A
+  DB '<P>',0D,0A
+  DB 0D,0A
+  DB 0
+
+HTML_TAIL:
+  DB '</BODY>',0D,0A,'</HTML>',0D,0A
+  DB 0
+
+
+IMG_SRC:                ; fixed parts of the output reference string
+  DB '<HR>',0D,0A
+  DB '<BR clear=left>',0D,0A
+  DB '<img src="',0
+REF_TAIL:
+  DB '" width=',0
+  DB ' height=',0
+  DB ' align=left>',0D,0A
+  DB '<BR CLEAR=left>',0D,0A
+  DB 0D,0A,0
+
+WILD_GIFS:              ; fixed file specification for input files
+  DB '*.GIF',0D
+WILD_JPGS:              ; fixed file specification for input files
+  DB '*.JPG',0D
+
+
+; GET_JSIZE scans the start of a JPG file, as buffered in GIF_BUFF, and
+;   sets the picture's width JWIDTH and height JHEIGHT if it finds them.
+;
+; This present implemetation handles only an Exif format of the Intel II
+;   type.  The code could be expanded to accomodate other formats.
+
+GET_JSIZE:
+  PUSH SI               ; save the templare pointer
+  MOV SI,GIF_BUFF+2     ; point to the JPG header buffer, beyond the FF D8
+L1:                     ; loop here to scan over JPG records
+  LODSB                 ; fetch a byte
+  CMP AL,0FF            ; is it an FF header-starter byte?
+  JE L1                 ; loop if yes, to skip over it
+  CMP AL,0E1            ; AL is a header type: is it 0E1?
+  JE >L2                ; jump if it is, to scan the TIFF record
+  MOV AX,[SI]           ; not 0E1: fetch the length word
+  XCHG AL,AH            ; swap bytes, to adjust for high-first format
+  ADD SI,AX             ; advance SI beyond this record's contents
+  JC >L3                ; exit if we overflowed the segment
+  CMP SI,GIF_BUFF+1K    ; did we overflow the 1K buffer?
+  JB L1                 ; loop if not, to scan the next record
+L3:                     ; this JPG file is not of a format we can recognize
+  POP SI                ; restore clobbered register
+  RET                   ; return without setting JWIDTH and JHEIGHT
+
+L2:                     ; 0E1 record seen
+  INC SI,2              ; advance beyond the length word
+  LODSW                 ; fetch the following two bytes
+  CMP AX,'xE'           ; are they the start of "Exif"?
+  JNE L3                ; exit if they are not
+  ADD SI,4              ; they are: advance to the start of the embedded TIFF
+  MOV BP,SI             ; mark the address of the TIFF base
+  LODSW                 ; fetch the first two bytes of the TIFF record
+  CMP AX,'II'           ; are they Intel format?
+  JNE L3                ; exit if not
+  ADD SI,6              ; advance to the first IFD
+  LODSW                 ; fetch the number of IFD records
+  XCHG CX,AX            ; swap the record count into CX, for looping
+L4:                     ; loop here to examine each record in the IFD
+  LODSW                 ; fetch the type word of this record
+  ADD SI,10             ; advance SI to the next 12-byte record
+  CMP AX,08769          ; is it the special pointer to the sub-IFD?
+  LOOPNE L4             ; loop if not, to scan another record
+  JNE L3                ; exit if the pointer record was not found
+  MOV SI,[SI-4]         ; pointer record found: set SI to the offset
+  ADD SI,BP             ; convert SI to a memory pointer to the sub-IFD
+  LODSW                 ; fetch the records count for the sub-IFD
+  XCHG CX,AX            ; swap the count into CX, for looping
+L5:                     ; loop here to examine each record of the sub-IFD
+  LODSW                 ; fetch the record type
+  ADD SI,10             ; advance SI to the next 12-byte record
+  MOV BX,[SI-4]         ; fetch the potential width-or-height
+  XCHG BL,BH            ; swap bytes for compatibility with caller's GIF code
+  CMP AX,0100           ; is it a WIDTH record?
+  IF E MOV JWIDTH,BX    ; if yes then store the value
+  CMP AX,0101           ; is it a HEIGHT record?
+  IF E MOV JHEIGHT,BX   ; if yes then store the value
+  LOOP L5               ; loop to scan the next record
+  POP SI                ; scanning complete: restore clobbered register
+  RET

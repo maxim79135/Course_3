@@ -1,0 +1,24 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   VREGS                                        See EILIB.TXT for terms
+;---------------
+
+; VREGS resets the VGA color registers to preferred values, according to
+;   a hard-coded table within this source file.
+
+VREGS:
+  MOV SI,>L2            ; point to the table of values we want
+  LODSW                 ; fetch the first value from the table
+L1:                     ; loop here to act on each table value
+  XCHG BX,AX            ; swap the register and color numbers into BX
+  MOV AX,01000          ; load BIOS function codes for SET_COLOR_REGISTER
+  INT 010               ; set VGA color register BL to new color BH
+  LODSW                 ; fetch the next register and color numbers
+  TEST AH               ; is it the terminating word?
+  JNS L1                ; loop if not, to set the next register
+  RET
+
+L2:                     ; table of register and color numbers
+  DB 2,16               ; set register 2 to color 16
+  DB 5,40               ; set register 5 to color 40
+  DB 8,63               ; set register 8 to color 63
+  DW 0FFFF              ; terminating word

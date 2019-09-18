@@ -1,0 +1,39 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    FB                                          See EILIB.TXT for terms
+;---------------
+
+; FB is a string-searching program that tries to find the best match of
+;   a multiple-word search string.  We score each line by the number of
+;   matching words it has, with an extra point if each word follows the
+;   last one in the search string.  We output each line that gets the
+;   highest score.
+
+EXTRN FB_STRINGS:NEAR
+PF_FIND_PROC EQU FIND_ANY       ; our FIND routine looks for multiple strings
+PLUSNUM_VAR EQU MAX_RATING      ; enables +n switch
+OUT_FNAME_REC EQU DASHES_PFNAME ; enables cancellation via the ! switch
+LONG_FNAMES EQU 1               ; we will recognize long file names
+
+FB:
+  MOV SI,081              ; point to our invocation command tail
+  MOV BX,SETREC_SWITCHES  ; point to switch table
+  CALL BX_SWITCHES        ; scan any record-definition switches
+  CALL SCAN_FANY_STRINGS  ; scan strings, and point BP to the strings buffer
+  XCHG AX,DX              ; swap the number of strings into AX
+  CMP AL,1                ; was there only one string?
+  IF E MOV MAX_RATING,AX  ; if yes then reduce the required rating to one
+  MOV DI,OBUFF            ; initialize our output pointer
+  CALL FB_STRINGS         ; scan wildcard file args and find the strings there
+  CALL FLUSH_OBUFF        ; flush any pending output content
+  JMP GOOD_EXIT           ; exit the program
+
+  DB 0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FB [+n] [!] [-c | +cX] words [@] filenames >out',0D,0A
+  DB '   finds the records in the files, that match the most number of',0D,0A
+  DB '   words.  If +n is given, at least n words must match.',0D,0A
+  DB 0,01A
+
+MAX_RATING DW 2     ; best rating seen so far for a line (must have 2 matches)
+

@@ -1,0 +1,65 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SPLIT                                        See EILIB.TXT for terms
+;---------------
+
+; SPLIT splits a text file into managable chunks.  Invocation consists of
+;   the command SPLIT followed by the number of bytes each chunk should
+;   fit into, followed by the name of the file.  We output files A.SPL..
+;   Z.SPL; however many that we need.  Each file contains the limit,
+;   truncated to the last line.
+
+; Because of the simple logic of this program, the size-per-chunk is limited
+; to about 60000, and the number of output files is limited to 26.
+
+SPLIT:
+  MOV SI,081          ; point to our invocation command tail
+  CALL VERIFY_DEC     ; fetch the file-size argument
+  XCHG BP,AX          ; swap the argument into BP, where it will reside
+  CALL FILE_ARG       ; scan the input file name
+  CALL NO_MORE_ARGS   ; ensure no more command-tail arguments
+  CALL PROCESS_FILE   ; process the input
+  JMP GOOD_EXIT       ; exit the program
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage, e.g.: SPLIT 30000 filename',0D,0A
+  DB '  splits "filename" into 30000-byte files A.SPL, B.SPL...',0D,0A
+  DB 0A,0,01A
+
+ONAME:                    ; output file name
+FIRST_OLETTER DB 'A'-1    ; the first letter will increment to A, then B,C,D...
+  DB '.SPL',0
+
+        DATA SEGMENT
+OWRITE_H   DW ?           ; file handle for the output file
+        DATA ENDS
+
+PFILE_REC:              ; process input bytes buffered at SI--DX
+  PUSH DX,DS            ; preserve registers across call
+  LEA DI,[SI+BP]        ; point beyond the latest output chunk
+  CMP DI,DX             ; does the output chunk exceed the buffered bytes?
+  JAE >L2               ; jump if it does, to write the whole buffer
+  MOV DX,DI             ; copy the beyond-pointer to AX
+  INC DI                ; cancel out the first INC DI in the following loop
+L1:                     ; loop here to retreat to the start of the last line
+  DEC DI                ; retreat the end-pointer
+  CMP B[DI-1],0A        ; are we at the beginning of a line?
+  JNE L1                ; loop if not, to continue retreating
+  CMP DI,SI             ; have we retracted the entire buffer?
+  JNE >L3               ; skip if we have not, to use the retracted value
+L2:                     ; we will output up to DX
+  MOV DI,DX             ; copy DX to DI, to trigger that output
+L3:
+  MOV DS,CS             ; point DS to our program segment, to open the output
+  INC FIRST_OLETTER     ; increment the first letter of the output file name
+  MOV DX,ONAME          ; point DX to the output file name
+  CALL MCREAT           ; create and open the output file
+  MOV OWRITE_H,AX       ; store the handle, for MCLOSE_DI to use
+  MOV DX,SI             ; point DX to the buffered bytes
+  POP DS                ; restore the data segment, for writing the contents
+  CALL MCLOSE_DI        ; write DX--DI and close this output file
+  ADD SI,CX             ; advance SI beyond the bytes written
+  POP DX                ; restore the beyond-pointer
+  RET
+
+PFILE_LIM EQU 2         ; this will force a buffer refill on every call

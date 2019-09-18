@@ -1,0 +1,65 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HEXDATES                                     See EILIB.TXT for terms
+;---------------
+
+; HEXDATES outputs the name of each file given in its invocation command
+;   tail (wildcards are OK), together with the internal hexadecimal encoding
+;   for the date and time.  Each valid file is a separate line, output
+;   to standard output.
+
+NO_DOSCHECK EQU 1
+
+HEXDATES:
+  MOV SI,081        ; point to our command tail
+  MOV CX,SP         ; there is nothing on the stack for WILD_ARGS to save
+  CALL WILD_ARGS    ; expand our command tail
+  JCXZ >L5          ; skip if there were no arguments
+  MOV DI,01000      ; point to our output buffer
+  PUSH DI           ; save the output pointer
+L2:                 ; loop here for each file in the command tail
+  LODSW             ; fetch the pointer to the file name
+  PUSH CX,SI        ; preserve registers
+  XCHG DX,AX        ; swap the file name pointer into DX
+  CALL MOPEN_READ   ; open the file
+  JC >L3            ; skip if the file couldn't be opened
+  MOV SI,DX         ; point SI to the file name
+  CALL ZCOPY        ; output the file name
+  MOV AL,' '        ; load blank
+  STOSB             ; output an intervening blank
+  MOV AX,05700      ; MS-DOS function codes for GET_DATE_TIME
+  INT 021           ; get the date and time for the file
+  MOV AX,DX         ; fetch the date
+  CALL HEX_AX       ; output the date
+  MOV AL,'-'        ; load dash
+  STOSB             ; output an intervening dash
+  MOV AX,CX         ; fetch the time
+  CALL HEX_AX       ; output the time
+  MOV AX,0A0D       ; load CRLF
+  STOSW             ; output a CRLF
+  CALL MCLOSE       ; close the file
+L3:                 ; common loop exit
+  POP SI,CX         ; restore clobbered registers
+  LOOP L2           ; loop to read the next file
+  POP DX            ; files complete: restore pointer to start of output
+  CALL OWRITE_DI    ; output the list to the console
+L1:
+  JMP GOOD_EXIT     ; return to the operating system
+
+L5:                 ; no arguments seen
+  JMP USAGE_EXIT    ; output USAGE_MSG and exit the program
+
+
+L4:                 ; loop here to output each byte
+  STOSB             ; output the byte
+ZCOPY:              ; output the SI-pointed, null-terminated string
+  LODSB             ; fetch a byte
+  TEST AL           ; is it the terminating null?
+  JNZ L4            ; loop if not, to output another byte
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: HEXDATES file_names >out',0D,0A
+  DB '    outputs a list of files, with internal hex codes for date/time'
+  DB 0D,0A,'    --wildcards are accepted',0D,0A,0
+

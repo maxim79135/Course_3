@@ -1,0 +1,91 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SCRAMBLE                                     See EILIB.TXT for terms
+;---------------
+
+; SCRAMBLE permutes the lines of a file into a random order.
+
+        DATA SEGMENT
+OBUFF:
+  DB 16K DUP ?        ; output buffer
+OBUFF_LIM:
+  DB 0400 DUP ?       ; overrun for output buffer
+LINE_PTRS:
+  DW 2000 DUP ?       ; array of pointers to lines in the file
+LP_LIMIT:
+        DATA ENDS
+
+  JMP SCRAMBLE        ; jump around the following message
+
+  DB 0D,0A,0D,0A      ; spacing so TYPE SCRAMBLE.COM looks decent
+USAGE_MSG:
+  DB 'usage: SCRAMBLE fnames',0D,0A
+  DB '   scrambles the lines of each file given',0D,0A
+  DB 0
+  DB 01A              ; terminator for TYPE SCRAMBLE.COM
+
+
+SCRAMBLE:
+  CALL TIME_SEED        ; initialize the random-number seed
+  CALL NONBLANK_TAIL    ; verify nonblank command tail
+  CALL WILD_MODBAK      ; process the file names given
+  JMP GOOD_EXIT         ; exit the program
+
+
+; MODBAK_REC processes the line pointed to by SI (and beyond by DX), and
+;    copies the line to DI.  In this case, we make a table of pointers
+;    to each line in the file, then output the lines in a random order.
+
+TOO_BIG:
+  MOV AX,TOO_BIG_MSG    ; point to "file is too big" message (in GATHERLP.8)
+L0:
+  CALL EMESSAGE         ; output error message
+  JMP MODBAK_ABORT      ; abort the program
+
+MODBAK_REC:
+  CMP DX,-2             ; did the file size exceed a single segment?
+  JE TOO_BIG            ; error if it did
+  MOV BP,LINE_PTRS      ; point BP to the pointers buffer
+  MOV BX,LP_LIMIT       ; point BX to the limit for the buffer
+  CALL GATHER_LINE_PTRS ; gather the pointers to each line
+  JC L0                 ; jump if there was an error
+  CALL SCRAMBLE_PTRS    ; scramble the pointers within the array
+L1:                     ; loop here to output each line
+  MOV SI,[BP]           ; fetch the pointer to a line
+  INC BP,2              ; advance the pointers-pointer
+L2:                     ; loop here to copy each byte of the line
+  LODSB                 ; fetch a byte
+  STOSB                 ; output the byte
+  CMP AL,0A             ; is it the terminating linefeed?
+  JNE L2                ; loop if not, to output another byte
+  CALL CHECK_OBUFF      ; check for output overflow
+  CMP BP,BX             ; have we reached the end of the pointers?
+  JB L1                 ; loop if not, to output another line
+  MOV SI,DX             ; output complete: signal caller we are done processing
+  RET
+
+
+; SCRAMBLE_PTRS is called with BP pointing to an array of pointers, and
+;   BX pointing beyond the array.  We scramble the pointers into a random
+;   order.  We do so by repeatedly swapping each pointer in the array with
+;   a randomly-selected pointer further into the array, until we have
+;   moved entirely through the array.
+
+SCRAMBLE_PTRS:
+  PUSH BP               ; save the starting pointers-pointer
+L5:                     ; loop here to scramble each pointer
+  MOV CX,BX             ; point CX beyond the array
+  SUB CX,BP             ; calculate the number of remaining pointers
+  SHR CX,1              ; convert the byte count into a word count
+  CALL RANDOM_CX        ; set AX to a random index within the count
+  ADD AX,AX             ; convert the index back to a byte offset
+  XCHG SI,AX            ; swap the offset into SI, for addressing
+  ADD SI,BP             ; point SI to the pointer represented by the offset
+  SS MOV AX,[SI]        ; fetch the random pointer
+  XCHG AX,[BP]          ; swap the pointer into the [BP] slot
+  SS MOV [SI],AX        ; store the old [BP] pointer into the vacated slot
+  INC BP,2              ; advance the BP pointers-pointer for the next call
+  CMP BP,BX             ; have we reached the end of the pointers?
+  JB L5                 ; loop if not, to continue scrambled output
+  POP BP                ; return BP pointing to the first scrambled pointer
+  RET
+

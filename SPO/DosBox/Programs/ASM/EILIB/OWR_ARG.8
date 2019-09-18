@@ -1,0 +1,37 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OWR_ARG                                      See EILIB.TXT for terms
+;---------------
+
+; OWRITE_ARG expects SI to point to some part of the command tail.  We
+;   skip leading blanks, and create and open for writing the file named by the
+;   following argument.  We plug the resulting file handle into the OWRITE
+;   code, so that OWRITE calls will go to this output file.  If anything went
+;   wrong we jump to USAGE_EXIT.
+
+OWRITE_ARG:
+        #if OWR_OPTIONAL
+  CALL TAIL_BLANKS      ; skip any leading blanks
+  CMP AL,0D             ; are we at the end of the command tail?
+  JE RET                ; return, with no action, if we are
+        #endif
+  PUSH DX               ; preserve register across call
+  CALL FILE_ARG         ; scan the name of the output file
+        #if def OWR_NAME
+  MOV OWR_NAME,DX       ; store the pointer to the output file name
+        #endif
+        #if NO_DOSCHECK
+  JC >E1                ; error if there was no output file name
+        #endif
+  CALL MCREAT           ; create and open the output file for writing
+        #if NO_DOSCHECK
+  JC >E1                ; error if we could not open the file
+        #endif
+  MOV OWRITE_H W,AX     ; store so that OWRITE writes to the file
+  POP DX                ; restore clobbered register
+  RET
+
+        #if NO_DOSCHECK
+E1:                 ; something went wrong
+  JMP USAGE_EXIT    ; abort the program
+        #endif
+

@@ -1,0 +1,97 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   RANDOM                                       See EILIB.TXT for terms
+;---------------
+
+; RANDOM_CX sets AX to a random integer in the range 0 through CX-1.
+;   We use a linear congruential method, as recommended by Knuth, Vol.2,
+;   second edition, p. 170; with the values A=0A729_3905H, C=1, and
+;   M=2**32.  The seed cycles through all possible 2**32 values before
+;   repeating.
+
+;   I take on faith Knuth's assertion that I'll probably get good results
+;   from my arbitrary (within his recommended constraints) choice of A,
+;   and I have not subjected A to the tests that Knuth recommends.
+;   If anybody out there has access to tests that would bless A or come up
+;   with a better value of A, I would appreciate hearing about it.
+
+;   Unless the caller first calls TIME_SEED or SET_SEED, the results
+;   will be the same every time the program is run.
+
+; TIME_SEED sets the first seed value for the random number generator
+;   according to the current date (within the year) and time (to a
+;   hundreth of a second).  Calling TIME_SEED once, before the first
+;   call to RANDOM_CX, will cause RANDOM_CX to deliver different results
+;   each time the program is run.
+
+; SET_SEED sets the first seed to DXAX.  If the caller records FIRST_SEED
+;   from a previous session and calls SET_SEED with that value, then the
+;   caller can duplicate a previous program run.
+
+FIRST_SEED   DW 04567,089AB
+THIS_SEED    DW 04567,089AB
+
+RANDOM_CX:
+  PUSH BX,DX            ; preserve register across call
+  MOV AX,03905          ; load low word of constant A
+  CS MUL THIS_SEED      ; multiply in the low word of the seed
+  MOV BX,DX             ; save the high word of the new seed
+  CS XCHG THIS_SEED,AX  ; store new low word, swap in old low word
+  MOV DX,0A729          ; load high word of constant A
+  MUL DX                ; multiply high of A by the old low word
+  ADD BX,AX             ; add into the new high word
+  MOV AX,03905          ; re-load low of A
+  CS MUL THIS_SEED+2    ; mutliply low of A by old high word
+  ADD AX,BX             ; add into the new high word
+  CS MOV THIS_SEED+2,AX ; store the new high word
+  JCXZ >L1              ; skip if the caller's modulus is 65536-- we have AX
+  MOV BX,AX             ; save new high word
+  CS MOV AX,THIS_SEED   ; fetch the new low word
+  MUL CX                ; multiply by the modulus
+  MOV AX,BX             ; fetch the new high word
+  MOV BX,DX             ; move the answer word into BX
+  MUL CX                ; multiply the modulus into the new high
+  ADD AX,BX             ; add in the previous component of the answer
+  ADC DX,0              ; extend the addition into the high word
+  MOV AX,DX             ; the high word contains the answer
+L1:
+  POP DX,BX             ; restore clobbered registers
+  RET
+
+
+  
+TIME_SEED:
+  MOV AH,02A        ; MS-DOS function number for GET_DATE
+  INT 021           ; set CX to year, DH to month, DL to day
+  PUSH DX           ; ignore the year, set the month and day
+  MOV AH,02C        ; MS-DOS function number for GET_TIME
+  INT 021           ; set CH=hour CL=minute DH=second DL=hundreths
+  POP BX            ; restore BH month, BL day
+  XCHG DH,CH        ; CL=min CH=sec BL=day   DL=hund DH=hour BH=month
+  MOV AL,DH         ; fetch hour
+  MOV AH,100        ; load hundred-multiplier
+  MUL AH            ; make room for hundreds count
+  MOV DH,0          ; extend hundreds count DL to DX
+  ADD AX,DX         ; add hundreds count into AX
+  MOV DL,13         ; load months multiplier
+  MUL DX            ; make room for months 
+  MOV DL,BH         ; fetch months count
+  ADD AX,DX         ; add the months count into the total
+  SHR BL,1          ; set Carry to bottom bit of day
+  ADC AX,AX         ; shift bottom bit of day into total
+  XCHG DX,AX        ; swap the first seed word into DX
+  MOV AL,CH         ; fetch second count
+  MOV AH,60         ; load minutes multiplier
+  MUL AH            ; make room for minutes
+  MOV CH,0          ; extend minutes count CL to CX
+  ADD AX,CX         ; add minutes into total
+  MOV CL,4          ; load shift count for 16-multiplier
+  SHL AX,CL         ; make room for top 4 bits of the day
+  OR AL,BL          ; place the top 4 bits of the day into our total
+SET_SEED:
+  CS MOV FIRST_SEED,AX    ; store for permanent reference
+  CS MOV THIS_SEED,AX     ; store for first random number
+  XCHG AX,DX              ; swap in the other word
+  CS MOV FIRST_SEED[2],AX ; store for permanent reference
+  CS MOV THIS_SEED[2],AX  ; store for first random number
+  RET
+

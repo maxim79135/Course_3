@@ -1,0 +1,49 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DELZ                                         See EILIB.TXT for terms
+;---------------
+
+; DELZ deletes the named file(s) if they are of zero length.  Wildcards are
+;   accepted.  We exit with the error code set to the number of files deleted,
+;   or specified but non-existent.
+
+NO_DOSCHECK EQU 1       ; our DOS library routines will not trap errors
+LONG_FNAMES EQU 1       ; we will recognize Win95-or-later long filenames
+
+DELZ:
+  CALL NONBLANK_TAIL    ; verify nonblank command tail
+  MOV CX,SP             ; our stack is empty
+  CALL WILD_ARGS        ; expand the command tail into name strings
+  SUB BP,BP             ; initialize the deleted-files count
+  JMP MAIN_LOOP         ; jump into loop
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: DELZ fnames',0D,0A
+  DB '  deletes files with zero length',0D,0A
+  DB 0D,0A,0,01A
+
+L1:                 ; loop here to check each file for content
+  CALL MOPEN_READ   ; open the file for reading
+  JC >L2            ; jump if the file could not be opened, counting it
+  PUSH DX           ; save the file-name pointer
+  MOV DX,00FF       ; point just below our program, to a trashable byte
+  MOV CX,1          ; we need read only a single byte
+  CALL MREAD        ; try reading the byte
+  PUSH AX           ; save the read count
+  CALL MCLOSE       ; close the file
+  POP AX,DX         ; restore the read count and file name pointer
+  TEST AX           ; was the byte successfully read?
+  JNZ MAIN_LOOP     ; jump if it was, to check the next file
+  MOV AH,041        ; empty file: load MS-DOS function code for DELETE
+  INT 021           ; delete the empty file
+L2:
+  INC BP            ; count the file as deleted or non-existent
+MAIN_LOOP:          ; loop here for each file in the list
+  POP DX            ; pop the pointer to the file name
+  TEST DX           ; have we reached the null terminator?
+  JNZ L1            ; loop if not, to process the file
+  XCHG AX,BP        ; swap the deleted file count into AX
+  TEST AH           ; was the count bigger than 255?
+  IF NZ MOV AL,0FF  ; if yes then set it to 255
+  JMP EXIT          ; return the delete count as our error code
+

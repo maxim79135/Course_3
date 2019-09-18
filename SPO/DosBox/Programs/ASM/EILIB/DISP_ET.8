@@ -1,0 +1,62 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DISP_ET                                      See EILIB.TXT for terms
+;---------------
+
+; DISPLAY_ETIME fetches the 32-bit time encoded by ENCODE_TIME, and outputs
+;   to DI a human-readable, lexicographically-sortable equivalent.  The
+;   output is of format "mm/dd pm hh:mm:ss.t ".
+
+DISPLAY_ETIME:
+  MOV AL,[SI]       ; fetch the first byte of the encoded time
+  SHR AL,CL,4       ; shift the months field to the bottom
+  CALL >D2          ; output the month number
+  MOV AL,'/'        ; load intervening slash
+  STOSB             ; output the slash
+  LODSW             ; fetch the first two bytes of the encoded time
+  ROL AX,1          ; shift the days field to the bottom of AL
+  AND AL,01F        ; mask away the unneeded bits
+  CALL >D2          ; output the day
+  MOV AL,' '        ; load blank
+  STOSB             ; output the trailing blank
+  DEC SI            ; retreat to the second byte
+  MOV BL,[SI]       ; fetch the second byte
+  SHR BL,CL,2       ; shift the hour-plus-one field to the bottom of BL
+  AND BL,01F        ; mask away the unneeded bits
+  CMP BL,13         ; is it a pm hour?
+  MOV AX,'ma'       ; load "am" in case it isn't
+  IF AE MOV AL,'p'  ; substitute "pm" if it is
+  STOSW             ; output "am" or "pm"
+  MOV AL,' '        ; load blank
+  STOSB             ; output intervening blank
+  XCHG AX,BX        ; swap the hour-plus-one into AL
+  ADD AL,10         ; subtract 2 mod 12, to make hour-minus-one
+  AAM 12            ; set AL to the hour-minus-one mod 12
+  INC AX            ; increment to the hour, with range 1 to 12
+  CALL >D2          ; output the hour
+  STOSB             ; output the intervening colon
+  LODSW             ; fetch the second and third bytes
+  ROL AX,CL,4       ; shift the minutes field to the bottom of AX
+  CALL >D1          ; mask and output the minutes field
+  STOSB             ; output the intervening colon
+  MOV AX,[SI-1]     ; fetch the third and fourth bytes
+  DEC CX            ; decrement shift count to 3
+  ROL AX,CL         ; shift the seconds field to the bottom
+  CALL >D1          ; mask and output the seconds field
+  MOV AL,'.'        ; load decimal point for seconds
+  STOSB             ; output the decimal point
+  LODSB             ; fetch the fourth byte
+  AND AL,0F         ; mask away the unneeded bits
+  ADD AL,'0'        ; convert the value to an ASCII digit
+  MOV AH,' '        ; load trailing blank
+  STOSW             ; output the tenths-digit and a blank
+  RET
+
+D1:                 ; mask AL to 6 bits and output it as a 2-digit decimal
+  AND AL,03F        ; mask to 6 bits
+D2:                 ; output AL as a 2-digit decimal with a leading zero
+  AAM               ; unpack the digits to AH and AL
+  ADD AX,'00'       ; convert the digits to ASCII
+  XCHG AH,AL        ; swap so the most significant digit is output first
+  STOSW             ; output the digits
+  MOV AL,':'        ; load trailing colon, in case caller wants to output it
+  RET

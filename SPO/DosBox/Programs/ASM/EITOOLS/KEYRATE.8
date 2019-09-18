@@ -1,0 +1,13 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   KEYRATE                                      See EILIB.TXT for terms
+;---------------
+
+; KEYRATE sets the delay time and the repeat rate for the keyboard's
+;   key-repeat function.
+
+KEYRATE:
+  MOV AX,0305       ; BIOS function codes for SET_KEY_REPEAT
+  MOV BX,020A       ; 2/4 second delay, repeat rate of 10
+  INT 016           ; set the delay and the repeat rate
+  RET
+

@@ -1,0 +1,175 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   LOSTNAMS                                     See EILIB.TXT for terms
+;---------------
+
+; LOSTNAMS examines every cluster of a disk drive, looking for directory
+;   entries.  We output a summary of all entries, containing the name
+;   of the file, the cluster and slot number of the directory entry,
+;   the date/time stamp, and the size of the file.
+
+; This program was written ten years ago.  It will need to be reworked,
+; in order to function with today's multi-gigabyte hard drives.
+
+        DATA SEGMENT
+OBUFF:                  ; buffer for our display output
+  DB 16K DUP ?
+OBUFF_LIM:              ; overflow for the buffer
+  DB 1K DUP ?
+        DATA ENDS
+
+LOSTNAMS:
+  MOV AH,02A            ; DOS function code for GET_DATE_TIME
+  INT 021               ; set CX to the current year
+  XCHG AX,CX            ; swap the year into AX
+  SUB AX,1980           ; calculate the offset of this year from 1980
+  MOV CL,9              ; load shift count for FDT year format
+  SHL AX,CL             ; shift the year offset into its FDT field
+  MOV YEAR_LIM W,AX     ; store the year base for plausible-FDT determination
+  CALL INIT_CLUS_X      ; initialize cluster scanning for user-given drive
+  JC >E1                ; error if the initialization failed
+  CALL NO_MORE_ARGS     ; ensure no more command-tail arguments
+  MOV N_CLUS,BP         ; store the total cluster count of the drive
+  SHR AX,CL,5           ; divide byte count by 32, to compute slots per cluster
+  MOV N_SLOTS,AX        ; store the slot count, for directory scanning
+  CALL CLUS_REPORT      ; check all clusters and generate the report
+  JMP GOOD_EXIT         ; return to the operating system
+
+E1:
+  JMP USAGE_EXIT
+
+
+L0:                   ; comparison template for top of a subdirectory
+  DB '..',10 DUP ' '
+
+CHECK_CLUS:
+  PUSH DI             ; preserve the output pointer
+  MOV DI,DX           ; point DI to the cluster buffer
+  MOV SI,L0+1         ; point SI to the single-dot name
+  MOV CX,11           ; there are 11 bytes in a name entry
+  REPE CMPSB          ; does the cluster begin with a single-dot name?
+  JNE >L8             ; return if it doesn't
+  ADD DI,21           ; name is seen: advance to the next slot
+  MOV SI,L0           ; point to the double-dot name
+  MOV CL,11           ; there are 11 bytes in a name entry
+  REPE CMPSB          ; is the next name the double-dot name?
+  LEA SI,[DI+21]      ; point to the third slot, in case it is
+L8:                   ; jump here to POP DI in the single-dot failure case
+  POP DI              ; restore the output pointer
+  JNE RET             ; return if the directory names did not match
+  MOV CX,0            ; we have a subdir: load the number of slots
+N_SLOTS EQU W[$-2]    ; slot count is plugged into the above imm value
+  MOV AX,2            ; the first slot index is 2
+
+L1:                   ; loop here to examine each slot 
+  CMP B[SI],0         ; is the slot the end-of-directory marker?
+  JE RET              ; return if it is
+  PUSH AX,CX,SI       ; save our counting and scanning registers
+  CALL CHECK_ENTRY    ; check for and output this slot's entry
+  POP SI,CX,AX        ; restore scanning and counting registers
+  ADD SI,32           ; advance SI to the next slot
+  INC AX              ; advance the slot index
+  CMP AX,CX           ; have we reached the last slot?
+  JB L1               ; loop if not, to scan another entry
+  RET
+
+
+CHECK_FNAME:          ; check the file-name validity of the CX bytes at SI
+  LODSB               ; fetch a byte
+  CMP AL,' '          ; is it a control character?
+  JB RET              ; return if it is
+  JE >L2              ; jump if it is a blank
+  CMP AL,'a'          ; is it too high to be a file-name character?
+  CMC                 ; set Carry if it is
+  JC RET              ; return if it is too high
+  LOOP CHECK_FNAME    ; valid character: loop to check the next character
+  RET
+
+L1:                   ; loop here to verify trailing blanks
+  LODSB               ; fetch a character
+  CMP AL,' '          ; was it a blank?
+L2:                   ; jump here to disallow non-blanks after any blank
+  LOOPE L1            ; loop to verify subsequent characters are blank
+  IF NE STC           ; Carry failure if any non-blanks follow a blank
+  RET
+
+
+CHECK_ENTRY:
+  MOV THIS_SLOT,AX    ; store this slot number  
+  CMP B[SI],0E5       ; was the file marked as deleted?
+  IF E MOV B[SI],'%'  ; if yes then change the mark to a percent-sign
+  MOV CX,8            ; load count of 8 bytes for the file root
+  CALL CHECK_FNAME    ; check for a legal file root name
+  JC RET              ; return if a legal name was not seen
+  MOV CL,3            ; load count of 3 for the file extension
+  CALL CHECK_FNAME    ; check for a legal file entension
+  JC RET              ; return if a legal extension was not seen
+  LODSB               ; fetch the attribute byte
+  TEST AL,0DF         ; check all bits except Archive
+  JNZ RET             ; all except Archive should be zero
+  ADD SI,10           ; skip the bytes reserved by DOS
+  LODSW               ; fetch the time stamp
+  CMP AX,24*2048      ; does the hours field exceed 23?
+  JAE RET             ; return if it does
+  AND AX,07FF         ; mask down to the minutes field
+  CMP AX,60*32        ; does the minutes field exceed 60?
+  JAE RET             ; return if it does
+  AND AL,01F          ; mask down to the 2-seconds field
+  CMP AL,30           ; do the 2-seconds exceed 30?
+  JAE RET             ; return if they do
+  LODSW               ; fetch the date stamp
+  AND AX,0FE00
+  CMP AX,24*512       ; does the year exceed this year?
+YEAR_LIM EQU W[$-2]   ; limit value for this year is plugged in above
+  JA RET              ; return if it does
+  LODSW               ; fetch the starting cluster number
+  CMP AX,01234        ; does it exceed the cluster count on this drive?
+N_CLUS EQU W[$-2]     ; cluster count is plugged into the above imm value
+  JAE RET             ; return if it does
+  LODSW               ; fetch the low word of the file size
+  LODSW               ; fetch the high word of the file size
+  TEST AH             ; is the size excessively big?
+  JNZ RET             ; return if it is
+  SUB SI,32           ; entry is valid: retreat to its start
+  MOV CX,4            ; there are 4 words in the file name root
+  REP MOVSW           ; output the file name root
+  MOV AL,'.'          ; load period
+  STOSB               ; output an intervening period
+  MOVSW               ; output the first two characters of the extension
+  MOVSB               ; output the third character of the extension
+  MOV AX,[SI+13]      ; fetch the date stamp
+  CALL OUT_FDATE      ; output the date
+  ADD SI,11           ; skip over the attribute byte and reserved bytes
+  LODSW               ; fetch the time stamp
+  CALL OUT_FTIME      ; output the time
+  LODSW               ; skip over the date: already output
+  MOV AX,0            ; fetch this cluster number
+THIS_CLUS EQU W[$-2]  ; cluster number is plugged into the above imm value
+  CALL OUT_AX_10      ; output the cluster number
+  MOV AX,0            ; fetch this slot within the directory
+THIS_SLOT EQU W[$-2]  ; slot number is plugged into the above imm value
+  CALL OUT_AX_10      ; output the slot number
+  LODSW               ; fetch the starting cluster number
+  CALL OUT_AX_10      ; output the starting cluster number
+  LODSW               ; fetch the low word of the file size
+  XCHG DX,AX          ; save the low word in DX
+  LODSW               ; fetch the high word of the file size
+  XCHG DX,AX          ; swap so DXAX is the file size
+  MOV BH,9            ; file size occupies 9 display bytes
+  CALL OUT_10         ; output the file size
+  MOV AX,0A0D         ; load terminating CRLF
+  STOSW               ; output the terminating CRLF
+  JMP CHECK_OBUFF     ; check for output buffer overflow
+
+
+OUT_AX_10:          ; output decimal AX, 7 chars wide, right-justified
+  MOV DL,0          ; high byte of output is zero
+  MOV BH,7          ; field width is 7 chars
+OUT_10:
+  MOV BL,10         ; numeric display base is decimal
+  MOV DH,' '        ; output will be left-padded with blanks
+  JMP NUMOUT        ; output DLAX as a decimal number
+
+
+USAGE_MSG:
+  DB 'usage: LOSTNAMS driveletter >a:out',0D,0A
+  DB '    outputs a summary of all file names from a drive',0D,0A,0

@@ -1,0 +1,43 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    REG7000                                     See EILIB.TXT for terms
+;---------------
+
+; REG7000 stores the CPU's register values at the time the program is
+;   started, to memory location 07000:0.  The user can examine the
+;   values with a debugger.
+
+MAIN:
+  CS MOV ES_REG,ES      ; store the starting ES value for later output
+  CS MOV DI_REG,DI      ; store the starting DI value for later output
+  CS LES DI,UP_PTR D    ; point ES:DI to 07000:0
+  STOSW                 ; output the starting AX value
+  XCHG AX,BX            ; swap in the BX value
+  STOSW                 ; output the BX value
+  XCHG AX,CX            ; swap in the CX value
+  STOSW                 ; output the CX value
+  XCHG AX,DX            ; swap in the DX value
+  STOSW                 ; output the DX value
+  XCHG AX,SI            ; swap in the SI value
+  STOSW                 ; output the SI value
+  MOV AX,0              ; fetch the DI value
+DI_REG EQU W[$-2]       ; DI value is stored in the above immediate operand
+  STOSW                 ; output the DI value
+  XCHG AX,BP            ; swap in the BP value
+  STOSW                 ; output the BP value
+  MOV AX,SP             ; fetch the SP value
+  STOSW                 ; output the SP value
+  MOV AX,DS             ; fetch the DS value
+  STOSW                 ; output the DS value
+  MOV AX,0              ; fetch the ES value
+ES_REG EQU W[$-2]       ; ES value is stored in the above immediate operand
+  STOSW                 ; output the ES value
+  MOV AX,SS             ; fetch the SS value
+  STOSW                 ; output the SS value
+  MOV AX,CS             ; fetch the CS value
+  STOSW                 ; output the CS value
+  MOV AX,04C00          ; DOS function numbers for GOOD_EXIT
+  INT 021               ; exit back to the operating system
+
+UP_PTR DD               ; memory location containing our output pointer
+  DW 0,07000
+

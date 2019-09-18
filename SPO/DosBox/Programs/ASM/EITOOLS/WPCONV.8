@@ -1,0 +1,135 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   WPCONV                                       See EILIB.TXT for terms
+;---------------
+
+; WPCONV converts a list of files from an ancient DOS-based Word Perfect
+;    format to plain ASCII.
+
+; This program was written many years ago, and is probably no longer useful.
+; I did not deem it worthwhile to bring it up-to-date and to comment it.
+; I am including it because it was in an earlier version of EITOOLS.
+
+NO_DOSCHECK EQU 1
+
+        DATA SEGMENT
+  OPATH:
+    DB 128 DUP ?
+  DIRP DW ?
+  OBUFF:
+    DB 8K DUP ?
+  IBUFF:
+    DB 32K DUP ?
+        DATA ENDS
+
+WPCONV:
+  MOV SI,081        ; point to our invocation command tail
+  CALL FILE_ARG
+  XCHG SI,DX
+  MOV DI,OPATH
+  CALL COPYZ
+  XCHG SI,DX
+  DEC DI
+  MOV AL,'\'
+  CMP B[DI],AL
+  IF NE STOSB
+  MOV DIRP,DI
+  MOV CX,SP         ; our stack is empty
+  CALL WILD_ARGS    ; expand the remaining arguments into name strings
+  JMP >L2
+
+L1:
+  MOV DI,DIRP
+  MOV SI,DX
+  CALL COPYZ
+  CALL MOPEN_READ
+  JC >L2
+  MOV CX,32K
+  MOV DX,IBUFF
+  CALL MREAD
+  MOV SI,DX
+  ADD DX,AX
+  CALL MCLOSE
+  CALL PROCESS
+  MOV BX,OPATH
+  CALL MCREAT
+  MOV DX,OBUFF
+  CALL MCLOSE_DI
+L2:                 ; loop here for each file in the list
+  POP DX            ; pop the pointer to the file name
+  TEST DX           ; have we reached the null terminator?
+  JNZ L1            ; loop if not, to process the file
+  JMP GOOD_EXIT     ; all done: return to the operating system
+
+
+L0:
+  LODSB
+  TEST AL
+  JZ L0
+PROCESS:
+  MOV DI,OBUFF
+L5:
+  MOV BX,DI
+  SUB BP,BP
+L3:
+  CMP SI,DX
+  JAE RET
+  CMP W[SI],0
+  JE L0
+L1:
+  LODSB
+  CMP AL,0A
+  JE >L8
+  CMP AL,' '
+  JA >L7
+  MOV AL,' '
+  STOSB
+  JMP L5
+
+  RET
+
+L7:
+  STOSB
+  INC BP
+  CMP BP,79
+  JBE L1
+  LEA BP,[DI+1]
+  MOV CX,BP
+L8:
+  DEC DI
+  MOV AL,[DI]
+  MOV [BP],AL
+  DEC BP
+  CMP DI,BX
+  JA L8
+L9:
+  DEC DI
+  CMP B[DI],' '
+  JE L9
+  INC DI
+  MOV AX,0A0D
+  STOSW
+  MOV BX,DI
+L4:
+  MOV AL,[BP]
+  INC BP
+  STOSB
+  CMP BP,CX
+  JB L4
+  MOV BP,DI
+  SUB BP,BX
+  MOV BX,DI
+  JMP L3
+
+L8:
+  MOV AX,0A0D
+  STOSW
+  JMP L5
+
+
+
+
+USAGE_MSG:
+  DB 'usage: WPCONV outdir fnames',0D,0A
+  DB '         converts fnames from WordPerfect to ASCII',0D,0A,0
+
+

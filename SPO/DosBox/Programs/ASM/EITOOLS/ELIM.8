@@ -1,0 +1,56 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER   ELIM     ,SCAN_STRINGS           ; See EILIB.TXT for terms
+        ;---------------
+
+; ELIM is a filter that eliminates all lines that contain any of a set of
+;   strings.  The strings are given as arguments to the command invocation.
+
+; ELIM is similar to FEX in functionality.  Its implementation is more
+;   primitive, but it allows the specification of more than one elimination
+;   string.
+
+        DATA SEGMENT
+STRINGS_END  DW ?         ; pointer to the end of the scanned strings
+S1_LEN       DW ?         ; length of the first string
+STRING1:                  ; initial output pointer for first SCAN_STRING
+  DB 64 DUP (?)           ; buffer for the first string
+  DB (66 * 20) DUP (?)    ; buffers for each subsequent string
+        DATA ENDS
+
+
+SCAN_STRINGS:
+  MOV DI,STRING1      ; destination for the first string scanned
+L1:
+  CALL SCAN_STRING    ; scan the first substitution-string
+  ADD DI,66           ; advance output pointer to the next string's buffer
+  CALL TAIL_BLANKS    ; advance the input pointer to the next nonblank
+  CMP AL,0D           ; have we reached the end of the command tail?
+  JNE L1              ; loop if not, to scan the next string
+  DEC DI,2            ; retreat the output pointer beyond the last used buffer
+  MOV STRINGS_END,DI  ; store the pointer as our string-processing delimiter
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: ELIM strings <in >out',0D,0A,0
+
+
+; PROCESS_LINE processes the line of CX bytes pointed to by SI (and beyond by
+;   DI), and copies the line to the output buffer.
+
+PROCESS_LINE:
+  MOV DI,SI             ; point DI to the input line, for FIND_STRING
+  MOV SI,STRING1-2      ; point SI to the first string's buffer
+L1:                     ; loop here to look for each specified string
+  PUSH CX,DI            ; save the line count and line pointer
+  LODSW                 ; fetch the target string's length
+  XCHG BX,AX            ; swap the target length into BX, for FIND_STRING
+  CALL FIND_STRING      ; look for the target string within the line
+  POP DI,CX             ; restore the line pointer and count
+  JZ RET                ; return, without output, if the string was found
+  ADD SI,64             ; string not found: advance to the next string buffer
+  CMP SI,STRINGS_END    ; have we reached the end of the target strings?
+  JB L1                 ; loop if not, to search for the next target string
+  MOV SI,DI             ; no strings found: restore the line pointer
+  JMP OUT_PROCESS_LINE  ; output the line
+

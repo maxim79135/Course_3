@@ -1,0 +1,129 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  PUT_KEY                                       See EILIB.TXT for terms
+;---------------
+
+; PUT_KEY puts key-code AX into the BIOS key input queue.  To insure
+;   compatibility with programs expecting correct IBM keycodes in
+;   the AH register, we provide those codes for all letters, digits,
+;   and characters in the 020--02F range.  We also coerce lower-case
+;   letters to upper-case if the CapsLock key is on.  We return Z, with
+;   the key not inserted, if the queue was full.
+
+        #if !SIMPLE_PUT_KEY
+L3 EQU B[$-020] ; table of codes for special characters
+   DB 039,02,028,04,05,06,08,028,0A,0B,09,0D,033,0C,034,035,0B
+;     020 !   "  #  $  %  &   '  (  )  *  +   ,  -   .   /  0
+   DB 01C   ; carriage return
+
+L5 EQU W[$]         ; table of action routines for characters
+     DW RET         ; do-nothing characters
+     DW >L2         ; special-code characters
+     DW >L4         ; digits 1--9
+     DW >L6         ; upper-case letters
+     DW >L8         ; lower-case letters
+     DW >L10        ; carriage return
+
+L1:                 ; table of delimiters and action-case numbers
+  DB       0        ; case number for the lowest range is zero
+  DB 00D-1,10       ; case 10 for carriage return
+  DB 00E-1,0        ; case 0 for intervening control characters
+  DB 020-1,2        ; case 2 for punctuation marks in the 020--030 range
+  DB 031-1,4        ; case 4 for digits 1--9
+  DB 03A-1,0        ; case 0 for these intervening punctuation marks
+  DB 041-1,6        ; case 6 for upper-case letters
+  DB 05B-1,0        ; case 0 for these intervening punctuation marks
+  DB 061-1,8        ; case 8 for lower-case letters
+  DB 07B-1,0        ; case 0 for all high characters
+  DB 0FF            ; terminating delimiter
+
+L9 EQU $-'A'          ; table of letter codes
+;
+  DB 01E,030,02E,020,012,021,022,023,017,024,025,026,032
+;     A   B   C   D   E   F   G   H   I   J   K   L   M
+
+  DB 031,018,019,010,013,01F,014,016,02F,011,02D,015,02C
+;     N   O   P   Q   R   S   T   U   V   W   X   Y   Z
+
+L10:                  ; action routine for carriage-return
+  MOV BL,'1'          ; fake value to fetch the 01C keycode
+  DB 03D              ; skip over the following MOV
+L2:                   ; action routine for special-code characters
+  MOV BL,AL           ; copy the character to BL, for indexing
+  CMP AH,2            ; is there already a keycode in AH?
+  JNS RET             ; return if there is
+  CS MOV AH,L3[BX]    ; fetch the proper keycode from the table
+  RET
+
+L4:                   ; action routine for digits 1--9
+  MOV AH,2-'1'        ; load the offset for keycode calculation
+  ADD AH,AL           ; calculate the keycode for this digit
+  RET
+
+L8:                   ; action routine for lower-case letters
+  TEST B[017],040     ; is CapsLock active?
+  IF NZ AND AL,0DF    ; if yes then coerce the letter to upper-case
+L6:                   ; action routine for upper-case letters
+  MOV BL,0DF          ; load coercion factor
+  AND BX,AX           ; make the letter into an index, always upper-case
+  CS MOV AH,L9[BX]    ; fetch the keycode from the table
+  RET
+        #endif
+
+
+PUT_KEY:
+  PUSH BX,DS          ; preserve registers across call
+  MOV DS,BX,040       ; point DS to the BIOS's data segment
+        #if !SIMPLE_PUT_KEY
+  MOV BX,L1-1         ; point to the table of delimiters and action numbers
+L7:                   ; loop here to find the action range for this character
+  INC BX,2            ; advance to the next delimiter
+  CS CMP AL,[BX]      ; is our character still above the delimiter?
+  JA L7               ; loop if it is, to look at another delimeter
+  CS MOV BL,[BX-1]    ; fetch the action code for this character's range
+  MOV BH,0            ; high byte of action code is always zero
+  CS CALL L5[BX]      ; perform the translation action for this character
+        #endif
+  CLI                 ; we cannot tolerate interrupts during this look
+  MOV BX,[01C]        ; fetch the pointer beyond the last word queued
+        #if !SIMPLE_PUT_KEY
+  TEST AX             ; is it the special NULL_WAIT code?
+  JZ >L6              ; jump if it is, to handle the code
+        #endif
+  MOV [BX],AX         ; place our keycodes into the next slot
+  CALL INC_BX_KEY     ; advance BX to the next key slot
+  CMP BX,[01A]        ; have we bumped up against the read-pointer?
+  IF NE MOV [01C],BX  ; if not then reset the beyond-queue pointer
+L4:
+  STI                 ; manipulation complete: we can tolerate interrupts again
+  POP DS,BX           ; restore clobbered registers
+  RET                 ; Z is set from the above CMP BX,[01A]
+
+        #if !SIMPLE_PUT_KEY
+L6:                   ; special NULL_WAIT code was seen
+  CMP BX,[01A]        ; is the queue empty?
+  JNZ >L8             ; reject the code if the queue is not-empty
+L0 DB                 ; following JMP is disabled when wait code is seen
+  JMP >L7             ; queue is empty: jump to modify code
+;
+; after wait-code is seen drop through to the following code
+;
+  CS MOV L0,0EB       ; re-enable the above JMP instruction
+  INC AX              ; set NZ flag for return
+  JMP L4              ; return NZ
+
+L7:
+  CS MOV L0,03C       ; disable the JMP >L7 above
+L8:
+  CMP AL,AL           ; set Z for return
+  JMP L4              ; return Z
+        #endif
+
+
+INC_BX_KEY:
+  INC BX,2            ; advance to the slot after that
+PUT_KEY_CMP:          ; following CMP and MOV can be modified by INIT_PUT_KEY
+  CMP BX,>L2          ; has the buffer pointer reached the end?
+  L2 EQU 03E          ; INIT_PUT_KEY needs a 4-byte form for above instruction
+  IF AE DS MOV BX,01E ; if yes then cycle back to the start (also a 4-byte MOV)
+  RET
+

@@ -1,0 +1,52 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  OPTFILES                                      See EILIB.TXT for terms
+;---------------
+
+; This module handles file-name scanning for a program that will accept
+;   optional input and output file names.  If no file names are given,
+;   the program acts as a filter, using standard input and output.
+;   If one file name is given, the program uses it for input, and outputs
+;   to standard output.  If two file names are given, the first is the
+;   input file and the second is the output file.  Errors will jump to
+;   USAGE_EXIT, so the main program must supply USAGE_MSG.
+
+; OPEN_OPT_IFILE is called with SI pointing to the program's command tail. We
+;   COPY_TAIL to a local buffer, then we scan for an input file name.  If
+;   there is one, we open the file and return BX set to the handle.  If there
+;   is no name, we return BX=0 for standard input.  We also return SI pointing
+;   in the local buffer, beyond any file name that we scanned.
+
+; OPEN_OPT_OFILE should be called with SI set to the value returned by
+;   OPEN_OPT_IFILE.  If there is an output file name given, we output the
+;   output file and set BX to the handle.  If not, we return BX=1 for
+;   standard output.
+
+; CLOSE_OPT closes the optional file whose handle is BX.  If BX is less than
+;   2, meaning we were using standard I/O, then we do nothing.
+
+OPEN_OPT_IFILE:
+  CALL COPY_TAIL    ; copy the command tail to our local buffer
+  SUB BX,BX         ; load zero handle, in case there's no name
+  CALL FILE_ARG     ; is there a file name in the command tail?
+  JC RET            ; return if not, to use standard input
+  CALL MOPEN_READ   ; there is a file name: open the file
+  JNC RET           ; return if there was no error in opening the file
+L9:                 ; an erroneous file name was given
+  JMP USAGE_EXIT    ; give a usage message
+
+
+OPEN_OPT_OFILE:
+  MOV BX,1          ; load standard-output handle 1, in case there's no name
+  CALL FILE_ARG     ; is there another file name in the command tail?
+  JC RET            ; return if not, to use standard output
+  CALL MCREAT       ; there is a name: create the file
+  JC L9             ; jump if there was an error
+  RET
+
+
+CLOSE_OPT:
+  CMP BX,2          ; was it a file or standard I/O?
+  JBE RET           ; return if it was standard I/O
+  JMP MCLOSE        ; it was a file: close the file
+
+IFILE_OPTIONAL EQU 1    ; FILE_ARG should not call USAGE_EXIT on no file name

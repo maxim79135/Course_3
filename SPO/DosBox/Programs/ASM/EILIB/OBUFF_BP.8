@@ -1,0 +1,63 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OBUFF_BP                                     See EILIB.TXT for terms
+;---------------
+
+; The OBUFF_BP module handles line-oriented standard input and buffered
+;   standard output for filter programs.  The calling program must do the
+;   following:
+
+;   1. Declare a buffer OBUFF with flush-limit OBUFF_LIMIT.
+;
+;   2. Provide the intialization code, scanning the invocation command tail
+;      and setting up any data structures needed.  The code may store data
+;      obtained from initialization in AH, BX, and/or DX -- these registers
+;      will be preserved when PROCESS_LINE is called.
+;
+;   3. Make a JMP PROCESS_OBUFF_BP after the initialization code.  This
+;      module will handle the exiting of the program.
+;
+;   4. Provide a subroutine PROCESS_LINE, which will be called for every line
+;      of standard input.  It will be called with SI pointing to the input
+;      line, CX set to the number of bytes in the line (including CRLF), DI
+;      = SI+CX pointing beyond the line, and BP pointing to the place where
+;      output bytes should go.  If the call to PROCESS_LINE results in output,
+;      then the code should either JMP OUT_PROCESS_LINE to make the output
+;      of CX bytes at SI, or make the output itself and JMP PROCESS_LINE_EXIT
+;      with DI pointing beyond the output.  If there is no output, PROCESS_LINE
+;      can simply RET with BP preserved.
+;
+; PROCESS_OBUFF_BP performs PROCESS_LINES filtering, in which the output is
+;   buffered in OBUFF with an output pointer of BP.  We are jumped to when
+;   program initialization is complete, and we complete and exit the program
+;   ourselves.
+
+; OUT_PROCESS_LINE outputs the CX bytes from SI to BP, and drops into
+;   PROCESS_LINE_EXIT.
+
+; PROCESS_LINE_EXIT should be jumped to by the main program's PROCESS_LINE
+;   routine, if an output to the OBUFF buffer has been made.  We are called
+;   with DI pointing beyond the output bytes.  We move the pointed back to
+;   BP where is belongs, and we check to see if it is time to flush the buffer.
+
+PROCESS_OBUFF_BP:
+  MOV BP,OBUFF         ; initialize the output buffer to empty
+  CALL PROCESS_LINES   ; filter all lines of standard input
+  CALL FLUSH_OBUFF_BP  ; flush the output buffer
+  JMP GOOD_EXIT        ; success-- exit back to the operating system
+
+
+OUT_PROCESS_LINE:
+  MOV DI,BP            ; point DI to our output buffer
+  REP MOVSB            ; move the input line to the output buffer
+PROCESS_LINE_EXIT:
+  MOV BP,DI            ; store the updated output buffer pointer
+  CMP BP,OBUFF_LIMIT   ; is the output buffer almost full?
+  JB RET               ; return if not
+FLUSH_OBUFF_BP:
+  PUSH AX,CX,DX        ; preserve registers across call
+  MOV DX,OBUFF         ; point to the start of the output buffer
+  MOV CX,BP            ; point CX beyond the bytes we have placed in buffer
+  MOV BP,DX            ; reset the output pointer back to the buffer start
+  CALL OWRITE_CX       ; write the buffered bytes to standard output
+  POP DX,CX,AX         ; restore clobbered registers
+  RET
