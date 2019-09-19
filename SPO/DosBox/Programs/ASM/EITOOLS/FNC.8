@@ -1,0 +1,25 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FNC                                          See EILIB.TXT for terms
+;---------------
+
+; FNC is a variant of the F string-searching program, in which the search
+;   is case-insensitive.
+
+PF_FIND_PROC EQU FIND_NOCASE
+
+  JMP F_      ; jump around USAGE_MSG to the F.8 code
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FNC [!] [-c | +cX] string filenames',0D,0A
+  DB '  finds all lines containing string, ignoring case',0D,0A
+  DB '  ! suppresses the output of the containing file names',0D,0A
+  DB '  -c causes display of a whole record containing the string',0D,0A
+  DB '     where indented lines continue a record.  For +cX, non-X lines',0D,0A
+  DB '     continue a record.',0D,0A
+  DB 0
+  DB 0,01A
+
+INCLUDE F.8   ; the remainder of the program code is identical to F.8
+

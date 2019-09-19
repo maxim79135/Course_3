@@ -1,0 +1,25 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   BIOS_KEY                                     See EILIB.TXT for terms
+;--------------
+
+; BIOS_KEY_AL sets AL to a single code from the keyboard, as returned by the
+;   IBM-compatible BIOS.
+
+BIOS_KEY_AX:
+        #if LABEL_WAIT_SKIP
+  CS MOV LABEL_WAIT,LABEL_WAIT_SKIP
+        #endif
+  MOV AH,0          ; function code for GET KEY
+  INT 016           ; get the keystroke from the IBM BIOS
+  RET
+
+
+BIOS_KEY_AL:
+  CALL BIOS_KEY_AX  ; fetch a 16-bit keycode from the BIOS
+  TEST AL           ; is the return AL nonzero?
+  JNZ RET           ; if yes then AL is our return code
+  MOV AL,AH         ; AL is zero, so AH determines the return code
+  ADD AL,080-16     ; shift the values into a range not seen directly in AL
+  RET
+
+

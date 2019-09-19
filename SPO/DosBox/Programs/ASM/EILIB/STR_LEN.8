@@ -1,0 +1,18 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  STR_LEN                                       See EILIB.TXT for terms
+;---------------
+
+; STR_LENGTH sets CX to the length of the null-terminated string at DS:SI.
+;   The count does not include the terminating null.
+
+STR_LENGTH:
+  MOV CX,BX         ; preserve caller's BX
+  MOV BX,-1         ; count-index starts out pre-decremented
+L1:                 ; loop here to find the terminating null
+  INC BX            ; increment the count
+  TEST B[SI+BX]     ; is there a null that many bytes beyond message?
+  JNZ L1            ; loop if not
+  XCHG CX,BX        ; load the count into CX and restore caller's BX
+  RET
+
+

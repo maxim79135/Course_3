@@ -1,0 +1,29 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    LOW                                         See EILIB.TXT for terms
+;---------------
+
+; LOW is a line filter that converts all letters in a file to lower-case.
+
+; Minor note: since the word LOW is an A86 built-in keyword, it cannot
+;   be used as the label for the start of the program.  Hence, we invoke
+;   the LINE_FILTER macro with the operand LOW_ having a trailing
+;   underscore.
+
+LINE_FILTER LOW_        ; this program is a line filter
+
+PROCESS_LINE:           ; process each line: CX bytes at SI
+  PUSH CX,SI            ; save the line count and pointer
+  JCXZ >L3              ; skip if the line has no contents
+L1:                     ; loop here to look at each byte of the line
+  LODSB                 ; fetch a byte
+  CMP AL,'A'            ; is it too low to be a letter?
+  JB >L2                ; skip if it is
+  CMP AL,'Z'            ; is it an upper-case letter?
+  JA >L2                ; skip if it is not
+  OR B[SI-1],020        ; convert the letter to lower-case
+L2:
+  LOOP L1               ; loop to look at the next character in the line
+L3:
+  POP SI,CX             ; restore line pointer and count
+  JMP OUT_PROCESS_LINE  ; output the resulting line
+

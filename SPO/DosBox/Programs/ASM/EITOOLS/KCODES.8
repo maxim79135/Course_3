@@ -1,0 +1,27 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    KCODES                                      See EILIB.TXT for terms
+;---------------
+
+; KCODES displays the hex value of the keyboard input port, every time
+;   it changes.  The hex words are output directly to the start of
+;   text-mode VGA/EGA/CGA video memory.
+
+; The program continues indefinitely, until the user holds down the Esc
+; key and presses the q key.
+
+KCODES:
+  MOV ES,AX,0B800     ; point ES to the video screen
+  MOV DS,AX,040       ; point DS to the BIOS keyboard buffer area
+  SUB DI,DI           ; point to the start of video memory
+L1:                   ; loop here to continuously monitor the key port
+  MOV [01A],AX,[01C]  ; empty the BIOS keyboard buffer
+  IN AL,060           ; fetch a value from the keyboard input port
+  MOV BH,AL           ; save the value in BH
+  CMP BX,01001        ; do we have Esc and q both held down?
+  JE RET              ; return to the operating system if we have
+  CMP AL,BL           ; has the port value changed?
+  JE L1               ; loop if it hasn't, to continue monitoring
+  MOV BL,AL           ; value has changed: store the new value
+  CALL VIDEO_HEXOUT   ; output the AL value to video memory
+  JMP L1              ; loop to continue monitoring the port
+

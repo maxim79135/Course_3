@@ -1,0 +1,49 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   REGCHECK                                     See EILIB.TXT for terms
+;---------------
+
+; REGCHECK is run in the foreground under a debugger, to check the register
+;   saving activities of a TSR running in the background.  We set a different
+;   value for every machine register, then we enter an endless loop to
+;   verify that the register values have not changed.  If they ever do change,
+;   we exit to the debugger via an INT 0 instruction.
+
+REGCHECK:
+  MOV DS,AX,0D7D8     ; load a sample value for DS
+  MOV ES,AX,0E7E8     ; load a sample value for ES
+  MOV SP,0FFFE        ; load a sample value for SP
+  MOV AX,0AAAB        ; load a sample value for AX
+  MOV BX,0BBBC        ; load a sample value for BX
+  MOV CX,0CCCD        ; load a sample value for CX
+  MOV DX,0DDDE        ; load a sample value for DX
+  MOV SI,07778        ; load a sample value for SI
+  MOV DI,08889        ; load a sample value for DI
+  MOV BP,0999A        ; load a sample value for BP
+L1:                   ; loop here endlessly, to verify values have not changed
+  CMP AX,0AAAB        ; has the AX value changed?
+  JNE >L8             ; jump if it has, to trap to the debugger
+  CMP BX,0BBBC        ; has the BX value changed?
+  JNE >L8             ; jump if it has, to trap to the debugger
+  CMP CX,0CCCD        ; has the CX value changed?
+  JNE >L8             ; jump if it has, to trap to the debugger
+  CMP DX,0DDDE        ; has the DX value changed?
+  JNE >L8             ; jump if it has, to trap to the debugger
+  CMP SI,07778        ; has the SI value changed?
+  JNE >L8             ; jump if it has, to trap to the debugger
+  CMP DI,08889        ; has the DI value changed?
+  JNE >L8             ; jump if it has, to trap to the debugger
+  CMP BP,0999A        ; has the BP value changed?
+  JNE >L8             ; jump if it has, to trap to the debugger
+  PUSH AX             ; save the AX value for the DS and ES compares
+  MOV AX,DS           ; fetch the DS value
+  CMP AX,0D7D8        ; has the DS value changed?
+  JNE >L8             ; jump if it has, to trap to the debugger
+  MOV AX,ES           ; fetch the ES value
+  CMP AX,0E7E8        ; has the ES value changed?
+  JNE >L8             ; jump if it has, to trap to the debugger
+  POP AX              ; restore the AX value
+  JMP L1              ; loop to make another round of compares
+
+L8:                   ; a register value has changed
+  INT 0               ; trap to the debugger
+

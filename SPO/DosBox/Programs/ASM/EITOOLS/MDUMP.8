@@ -1,0 +1,75 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MDUMP                                        See EILIB.TXT for terms
+;---------------
+
+; MDUMP performs a hexadecimal dump of memory contents to standard output.
+;   We accept in the command tail three hex numbers: the segment, offset,
+;   and byte count.
+
+MDUMP:
+  MOV SI,081          ; point to our invocation command tail
+  CALL VERIFY_HEX     ; fetch the segment value
+  XCHG BX,AX          ; swap the segment value into BX
+  CALL VERIFY_HEX     ; fetch the offset value
+  PUSH AX             ; save the offset on the stack
+  CALL VERIFY_HEX     ; fetch the byte count
+  XCHG CX,AX          ; swap the byte count into CX
+  CALL NO_MORE_ARGS   ; ensure no more command-tail arguments
+  POP SI              ; restore the offset to SI
+L1:                   ; loop here to output each line of the hex dump
+  JCXZ >L2            ; exit if there are no more bytes to output
+  CALL MDUMP_LINE     ; output a line
+  JMP L1              ; loop to output the next line
+
+L2:                   ; output is complete
+  JMP GOOD_EXIT       ; exit the program
+
+USAGE_MSG:
+  DB 'usage: MDUMP hex_seg hex_offset hex_count',0D,0A,0
+
+
+; MDUMP_LINE outputs a display line of bytes at BX:SI up to the next offset
+;   which is a multiple of 10 hex, with a remaining count of CX.  We advance
+;   SI and reduce CX.
+
+MDUMP_LINE:
+  MOV DX,DI,02000     ; point to free memory within our program segment
+  MOV AX,0FFF0        ; load the mod-16 masking constant
+  AND AX,SI           ; set AX to the current offset, modulo 16
+  PUSH CX             ; save the remaining byte count
+  MOV CX,SI           ; point CX to the current offset
+  SUB CX,AX           ; calculate the number of leading skipped bytes
+  CALL HEX_AX         ; output the starting offset
+  MOV AL,13           ; load the number of display chars for 4 hex bytes
+  MUL CL              ; 13*skipped
+  SHR AL,1            ; 13/2 * skipped
+  SHR AL,1            ; 13/4 * skipped = number of skipped display bytes
+  CBW                 ; extend the skip count from AL to AX
+  XCHG CX,AX          ; swap the skip count into CX
+  MOV AL,' '          ; load blank
+  REP STOSB           ; indent the line by the skip count
+  POP CX              ; restore the hex-byte count
+  PUSH DS             ; save our program's segment value
+  MOV DS,BX           ; point DS to the memory to be displayed
+L2:                   ; loop here to output each block of 4 hex bytes
+  STOSB               ; blocks of 4 have an extra leading blank
+L3:                   ; loop here to output hex bytes within a block of 4
+  STOSB               ; output a leading blank
+  LODSB               ; fetch the display byte
+  CALL HEX_AL         ; output the hex display for the byte
+  MOV AL,' '          ; reload blank
+  DEC CX              ; count down bytes
+  JZ >L4              ; jump if the overall count is exhausted
+  TEST SI,3           ; is this the end of a block of 4?
+  JNZ L3              ; loop if not, to output another hex byte
+  TEST SI,15          ; is this the end of a block of 16?
+  JNZ L2              ; loop if not, to output the next block of 4
+L4:                   ; hex bytes for this line are complete
+  POP DS              ; restore our program segment
+  MOV AX,0A0D         ; load CRLF
+  STOSW               ; output CRLF, to terminate the line
+  PUSH CX             ; save the remaining hex byte count
+  CALL OWRITE_DI      ; output the display line
+  POP CX              ; restore the remaining hex byte count
+  RET
+

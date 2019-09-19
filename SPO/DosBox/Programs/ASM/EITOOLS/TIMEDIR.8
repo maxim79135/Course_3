@@ -1,0 +1,51 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   TIMEDIR                                      See EILIB.TXT for terms
+;---------------
+
+; TIMEDIR outputs to the console a listing of all the files in the current
+;   directory, with a date and time specified to within two seconds.
+
+  JMP TIMEDIR           ; jump to the start of our code
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: TIMEDIR filespec',0D,0A
+  DB '   outputs file names with detailed timestamps',0D,0A
+  DB 0D,0A,0,01A
+
+TIMEDIR:
+  MOV SI,081            ; point to our invocation command tail
+  CALL FILE_ARG         ; null-terminate the file spec, and point DX to it
+  CALL NO_MORE_ARGS     ; error if there were more args on the line
+  MOV DI,OBUFF          ; initialize the output pointer
+  MOV AH,04E            ; MS-DOS function code for FIND_FIRST_FILE
+  JMP >L2               ; jump into loop to find and output the first file name
+
+L1:                     ; loop here when another file has been found
+  CALL OUT_DIRSPEC      ; output the file name and date-time stamp
+  MOV AH,04F            ; MS-DOS function code for FIND_NEXT_FILE
+L2:
+  SUB CX,CX             ; we are finding files with normal attributes
+  INT 021               ; find the next file and put its info into DTA area
+  JNC L1                ; loop if another file was indeed found
+  CALL FLUSH_OBUFF      ; files exhausted: flush our output buffer
+  JMP GOOD_EXIT         ; exit the program
+
+
+OUT_DIRSPEC:            ; output the found file name and its date-time stamp
+  LEA CX,[DI+14]        ; point CX to the next output column
+  MOV AX,09E            ; point to the file name
+  CALL COPYZ_AX         ; output the file name
+  SUB CX,DI             ; calculate padding count to the next column
+  MOV AL,' '            ; load blank
+  REP STOSB             ; blank-pad to the next column
+  MOV AX,W[098]         ; fetch the file's encoded date
+  CALL OUT_FDATE        ; output the date
+  MOV AL,' '            ; load blank
+  STOSB                 ; output intervening blank
+  MOV AX,W[096]         ; fetch the file's encoded time
+  CALL OUT_FTIME        ; output the time
+  JMP CRLF_OCHECK       ; output CRLF and check for buffer overflow
+
+OUT_2SEC EQU 1          ; OUT_FTIME should output seconds as well
+

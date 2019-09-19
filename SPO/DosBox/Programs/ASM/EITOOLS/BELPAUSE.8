@@ -1,0 +1,18 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   BELPAUSE                                     See EILIB.TXT for terms
+;---------------
+
+; BELPAUSE outputs a bell code (causing the computer to beep), and pauses
+;   for a BIOS keystroke.
+
+BELPAUSE:
+  MOV DS,AX,040       ; point DS to the BIOS keyboard buffer area
+  MOV [01A],AX,[01C]  ; empty the BIOS keyboard buffer
+  MOV AX,0E07         ; BIOS function codes for OUTPUT BELL CODE
+  MOV BH,0            ; display page is zero
+  INT 010             ; output a bell code
+  MOV AH,0            ; BIOS function code for GET KEY
+  INT 016             ; get the keystroke from the IBM BIOS
+  MOV AX,04C00        ; DOS function codes for GOOD_EXIT
+  INT 021             ; exit the program
+

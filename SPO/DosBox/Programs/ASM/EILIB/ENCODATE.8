@@ -1,0 +1,75 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  ENCODATE                                      See EILIB.TXT for terms
+;---------------
+
+; ENCODE_DATE translates the month DH, day DL, and year CX into an encoded
+;    date BXCX.
+
+; Dates are encoded starting from the ideal date March 1, 0000 in the
+; Gregorian calendar (the date is ideal since Gregory didn't exist then).
+
+ENCODE_DATE:
+  PUSH SI               ; preserve register across call
+  MOV AL,DH             ; fetch the month number
+  SUB AL,3              ; reduce March to zero
+  JAE >L1               ; skip if the month wasn't Jan or Feb
+  ADD AL,12             ; it was Jan or Feb: advance back to 10 or 11
+  DEC CX                ; reduce the year
+L1:
+  MOV AH,1              ; high byte of this month's days count starts out 1
+  CMP AL,9              ; is the month number 9 or above?
+  SBB AH,0              ; if not then reduce the high byte to 0
+  MOV BX,>L2            ; point to the table of low bytes
+  CS XLATB              ; fetch the low byte of this month's days count
+  DEC DX                ; reduce the day so that the 1st of the month is 0
+  MOV DH,0              ; extend the day-of-month DL to DX
+  ADD AX,DX             ; add the day-of-month into the days total
+  XCHG CX,AX            ; swap total into CX, year into AX
+  MOV SI,AX             ; copy the year to SI
+  AND SI,3              ; set SI to the year-mod-4
+  ADD SI,SI             ; convert the year-mod-4 into a word-index
+  CS ADD CX,[BX+SI+>L3] ; add in the days-in-4-years count
+  SHR AX,1              ; year / 2
+  SHR AX,1              ; year / 4
+  CWD                   ; extend the year/4 from AX to DXAX
+  MOV SI,25             ; load divisor
+  DIV SI                ; set AX=century, DX=4-year-within-century
+  XCHG SI,AX            ; swap the century into SI 
+  MOV AX,1461           ; load the number of days per 4 years
+  MUL DX                ; calculate the number of days to this 4-year block
+  ADD CX,AX             ; add into the total number of days
+  MOV AX,SI             ; fetch the century
+  SHR AX,1              ; AX = 2 * (400-block) + (200-block) = high word!
+  AND SI,3              ; set SI to the century mod 4
+  ADD SI,SI             ; convert the century mod 4 into a word index
+  CS ADD CX,[BX+SI+>L4] ; add the century days total into total words
+  MOV BX,AX             ; copy the high word into BX
+  ADC BX,0              ; carry the century addition into the high word
+  SHR AX,1              ; AX = (400-block)
+  MOV DX,15025          ; fetch low word of 146097
+  MUL DX                ; multiply low word
+  ADD CX,AX             ; add into total days
+  ADC BX,DX             ; carry the addition into the high words
+  POP SI                ; restore clobbered register
+  RET
+
+
+; Days mod 256 from March 1 to the 1st of each month (Mar=0 ... Feb=11)
+;   For the last 3 (9,10,11) we hand-code the addition of 256.
+
+L2:
+  DB 0,31,61,92,122,153,184,214,245,19,50,81
+
+; Days from the beginning of a 4-year period to the beginning of this year.
+
+L3 EQU $-L2             ; this relative address saves a byte of program code
+  DW 0,365,730,1095
+
+; Days mod 65536 from the beginning of a 400-year period to the beginning of
+;   this century.  We effect the addition of 65536 to the last two entries,
+;   by keeping the 1-bit when shifting the centuries-count down to a
+;   (2 * (400-block)) count.
+
+L4 EQU $-L2             ; this relative address saves a byte of program code
+  DW 0,36524,7512,44036
+

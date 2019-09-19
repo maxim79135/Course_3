@@ -1,0 +1,57 @@
+NOT_USED.TXT listing of uncalled library files      July 26, 2000
+
+Some library files are not called by any EITOOLS programs -- they are
+called either in proprietary source files of mine, or in outdated
+source files.  I have included these unused library files because I
+thought they might still be of interest to you.  
+
+Here are the uncalled files:
+
+COMPAT.8
+COPY_EXT.8
+COPY_STR.8
+DEC5.8
+DIREXT.8
+DIRNAME.8
+DISP_ET.8
+ED_LWIN.8
+ELAPSE.8
+EMS_ALOC.8
+EMS_PAGE.8
+EMS_SIZE.8
+ENCOTIME.8
+FIND_ENV.8
+FINFILE.8
+FULLPATH.8
+F_ANYSTR.8
+GETPATH.8
+HEXDUMP.8
+HUGE_NUM.8
+ISEG.8
+I_LOCOUT.8
+KEYTIME.8
+LSTRING.8
+MEMSORT.8
+MENU.8
+NETOPEN.8
+NOMEM.8
+NUMOUT32.8
+OPATH.8
+PAGEHEAD.8
+PAGE_CAP.8
+PFILES.8
+POINTVID.8
+PROGDIR.8
+PUT_KEYS.8
+P_COPIES.8
+RMERGE.8
+ROUT_ARG.8
+RTRAP.8
+SAVE_SCR.8
+SCAND32.8
+SPAWN.8
+TEMPLATE.8
+TIMEDLAX.8
+VERMEM.8
+VIDOUT.8
+V_ZIPKEY.8

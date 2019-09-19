@@ -1,0 +1,151 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COLSPRAY                                     See EILIB.TXT for terms
+;---------------
+
+; COLSPRAY splits up an input file according to the value of a given
+;   field within each line.  The invocation command tail should
+;   contain the column number of the key field, the input file name,
+;   and the output file template-name.  The template should contain
+;   one or more consecutive question marks at the point at which the
+;   field will be substituted.  The width of the key field is determined
+;   by the number of question marks.  Each line is appended to the file
+;   whose name consists of the template name with the field contents
+;   substituted for the question marks.  If there any non-alphanumeric
+;   characters in the field, we substitute an at-sign @ in that position.
+;
+;   If there is only one input file, the user should delete all files
+;   with the template-name before calling COLSPRAY; otherwise, consecutive
+;   calls to COLSPRAY will produce increasing-sized output files with
+;   repeated data.  Also, to improve performance the input file should
+;   be sorted (or close to being sorted) on the key field.
+
+NO_DOSCHECK EQU 1
+
+        DATA SEGMENT
+OTHER_FIELD:          ; holding buffer for the filtered key field
+  DB 256 DUP ?
+        DATA ENDS
+
+  JMP COLSPRAY   ; jump around the USAGE_MSG
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB '  usage, e.g.: COLSPRAY 10 infile OUT??.TXT',0D,0A
+  DB '      distributes lines from INFILE according to the 2 bytes',0D,0A
+  DB '      that are 10 bytes in on each line; e.g. 0123456789AB appends',0D,0A
+  DB '      to OUTAB.TXT',0D,0A,0D,0A,0,01A
+
+COLSPRAY:
+  MOV SI,081          ; point to our command tail
+  CALL VERIFY_DEC     ; fetch the column number
+  MOV COLNUM,AX       ; store the column number
+  CALL FILE_ARG       ; scan over the input file name
+  PUSH DX             ; save the input path pointer
+  CALL FILE_ARG       ; scan over the output template name
+  MOV FPTR,DX         ; store the output pointer
+  LEA CX,[SI-1]       ; point CX to the terminating null
+  SUB CX,DX           ; calculate the number of bytes in the template
+  CALL NO_MORE_ARGS   ; ensure there are no more command-tail arguments
+  MOV DI,DX           ; point DI to the template, for scanning
+  MOV AL,'?'          ; load question mark, for the search
+  REPNE SCASB         ; find the question-marks string
+  JNE >E1             ; error if no question marks
+  MOV BX,DI           ; point BX beyond the first question mark
+  REPE SCASB          ; scan past the question marks
+  SUB DI,BX           ; calculate the number of question marks
+  MOV COLCT,DI        ; store the field size
+  DEC BX              ; retreat BX to the first question mark
+  MOV QPTR,BX         ; store the question-mark pointer
+  POP DX              ; restore the input path pointer
+  CALL PROCESS_FILE   ; process the input file
+  JMP GOOD_EXIT       ; exit the program
+
+E1:                   ; command tail wasn't correct
+  JMP USAGE_EXIT      ; output the usage message
+
+
+
+; PFILE_REC is called repeatedly by PROCESS_FILE, with SI pointing to, and
+;   DX beyond, the buffered bytes.  We gather all consecutive lines with
+;   matching key fields, and output the entire collection to the correct
+;   file.
+
+PFILE_REC:
+  PUSH DX,SI          ; save beyond-buffer pointer and buffer start
+  MOV DI,0            ; point to the variable part of the output 
+QPTR EQU W[$-2]       ; question-marks pointer is plugged into above imm value
+  CALL OUT_FIELD      ; scan the first line and copy the key field
+  JC >L3              ; skip if end-of-file and incomplete line
+L1:                   ; loop here to check subsequent lines for key match
+  MOV DI,OTHER_FIELD  ; point to our holding buffer
+  CALL OUT_FIELD      ; scan line and output key to the holding buffer
+  JC >L3              ; automatic failure if the line was incomplete
+  PUSH DS,SI          ; line is complete: save the beyond-pointer
+  MOV DS,CS           ; point DS to our segment, for compare
+  MOV SI,QPTR         ; point to filtered first-line key
+  MOV DI,OTHER_FIELD  ; point to filtered subsequent-line key
+  MOV CX,COLCT W      ; load the key-field count
+  REPE CMPSB          ; do the key fields match?
+  POP SI,DS           ; restore the pointer beyond the line
+  JE L1               ; loop if the fields do match
+L3:                   ; the last line did not match
+  MOV SI,BX           ; retreat SI back to the non-matching line
+  PUSH DS             ; save input buffer segment
+  MOV DS,CS           ; point DS to our program segment, to open the file
+  MOV DX,0            ; point to the output-file path
+FPTR EQU W[$-2]       ; path pointer is plugged into the above imm value
+  CALL MOPEN_APPEND   ; open the output file and seek to the end
+  POP DS,DX           ; point DS:DX to the buffer start
+  MOV CX,SI           ; point CX beyond this collection of lines
+  CALL MWRITE_CX      ; output the lines
+  CALL MCLOSE         ; close the file
+  POP DX              ; restore the beyond-buffer pointer
+  RET
+
+
+
+; OUT_FIELD scans the SI-pointed line, filters the key field within that
+;   line, and outputs the filtered field to DI.  We advance SI beyond the
+;   line, and return BX set to the starting SI value.
+
+OUT_FIELD:
+  MOV CX,0            ; load the field size
+COLCT EQU W[$-2]      ; field size is plugged into the above imm value
+  MOV BX,SI           ; save the starting SI pointer for return in BX
+L1:                   ; loop here to find the end of the line
+  LODSB               ; fetch a byte of the line
+  CMP AL,0A           ; is it the terminating linefeed?
+  JE >L2              ; jump if yes, to filter the field
+  CMP SI,DX           ; not a linefeed: is it the end of the buffer?
+  JB L1               ; loop if not, to scan another byte
+  MOV AL,'@'          ; end of buffer: load bogus-field marker
+  REP STOSB           ; fill the output field with at-signs
+  STC                 ; Carry signals end-of-buffer
+  RET
+
+L2:                   ; linefeed has been scanned
+  MOV BP,SI           ; point BP beyond the line
+  LEA SI,[BX+01234]   ; point SI to the key field within this line
+COLNUM EQU W[$-2]     ; field offset is plugged into the above imm value
+L3:                   ; loop here to scan each byte of the key field
+  CMP SI,BP           ; have we passed the end of the line?
+  JAE >L4             ; substitute an at-sign if we are
+  LODSB               ; fetch a byte from the field
+  CMP AL,'a'          ; is it a lower-case letter?
+  IF AE AND AL,0DF    ; coerce to upper-case if it is
+  CMP AL,'0'          ; is it too low to be a digit?
+  JB >L4              ; substitute an at-sign if it is
+  CMP AL,'9'          ; is it a digit?
+  JBE >L5             ; output as-is if it is a digit
+  CMP AL,'A'          ; is it too low to be a letter?
+  JB >L4              ; substitute an at-sign if it is
+  CMP AL,'Z'          ; is it a letter?
+  JBE >L5             ; output as-is if it is a letter
+L4:                   ; field character is not an alphanumeric
+  MOV AL,'@'          ; substitute an at-sign
+L5:
+  STOSB               ; output the filtered field character
+  LOOP L3             ; loop to scan the next field character
+  MOV SI,BP           ; field filtering is complete: restore beyond-line ptr
+  CLC                 ; NoCarry signals that a complete line was scanned
+  RET  

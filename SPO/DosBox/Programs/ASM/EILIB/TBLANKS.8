@@ -1,0 +1,18 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   TBLANKS                                      See EILIB.TXT for terms
+;---------------
+
+; TAIL_BLANKS advances SI to the next non-blank. "Blanks" include control
+;  characters other than 0D.  We return with AL set to the terminating
+;  non-blank character SI is now pointing to.
+
+TAIL_BLANKS:
+  LODSB             ; fetch a character
+  CMP AL,0D         ; is it a terminating carriage return?
+  JE >L1            ; skip if yes
+  CMP AL,' '        ; is it a blank?
+  JBE TAIL_BLANKS   ; loop if it is
+L1:
+  DEC SI            ; retreat SI back to the terminating non-blank
+  RET
+

@@ -1,0 +1,18 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  M_APPEND                                      See EILIB.TXT for terms
+;---------------
+
+; MOPEN_APPEND opens for writing the file whose path name is pointed to by
+;   DS:DX, and seeks to the end of that file.  We return with BX set to the
+;   open-file handle of the file, and DXAX set to the current size of the file.
+
+MOPEN_APPEND:
+  MOV AX,03D01      ; MS-DOS function code for OPEN FOR WRITE
+  INT 021           ; open the file for writing
+  XCHG BX,AX        ; swap the handle into BX
+  IF C CALL MCREAT  ; if it wasn't open then create it
+  SUB CX,CX         ; high word of seek offset is zero
+  SUB DX,DX         ; low word of seek offset is zero
+  MOV AX,04202      ; MS-DOS function codes for "SEEK FROM END OF FILE"
+  INT 021           ; move to the end of the file, and set DXAX to the size
+  RET

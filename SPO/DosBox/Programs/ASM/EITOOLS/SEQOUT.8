@@ -1,0 +1,72 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    SEQOUT                                      See EILIB.TXT for terms
+;---------------
+
+; SEQOUT generates a sequence of lines containing incrementing numeric
+;   values, and outputs the sequence to standard output.  The numeric
+;   values have a constant width, starting at value 0000 and incrementing for
+;   each repetition of the line.  The invocation tail consists of the number
+;   of repetitions, followed by the string to precede the incrementing
+;   numeric values, followed by the string to follow the values.  The strings
+;   follow the input conventions of SCAN_STRING, and the second string should
+;   end with a hash sign # if the output is to be lines.  For example:
+;
+;   SEQOUT 2000 TENLAB :# >j1
+;
+;   causes a file J1 to be created, with 2000 lines:
+;
+;   TENLAB0000:
+;   TENLAB0001:
+;   ...and so forth, up to
+;   TENLAB1999:
+
+        DATA SEGMENT
+  DW ?                 ; room for the first count returned by SCAN_STRING
+SEQUENCE:
+        DATA ENDS
+
+SEQOUT:
+  MOV SI,081        ; point to the invocation command tail
+  CALL TAIL_BLANKS  ; skip leading blanks in the command tail
+  CALL SCAN_DECIMAL ; fetch the count of sequences to be output
+  XCHG BX,AX        ; swap the count into BX
+  MOV DI,SEQUENCE   ; point to where our sequence string will be constructed
+  CALL SCAN_STRING  ; scan and save the string preceding the number
+  ADD DI,CX         ; advance DI beyond the string just saved
+  MOV BP,DI         ; point BP to where the number will be
+  ADD DI,4          ; advance DI beyond the number
+  CALL SCAN_STRING  ; scan and save the string following the number
+  ADD DI,CX         ; advance DI beyond the string just saved
+  MOV DX,DI         ; point DX beyond the sequence string
+  SUB DX,SEQUENCE   ; calculate the number of bytes in the sequence string
+  PUSH DI           ; save the pointer to our output
+  MOV W[BP],'00'    ; set the first two bytes of the numeric part
+  MOV W[BP+2],'00'  ; set the last two bytes-- numeric part initialized to 0000
+L1:                 ; loop here for each repetition of output
+  MOV SI,SEQUENCE   ; point to the start of the sequence
+  MOV CX,DX         ; load the size of the sequence
+  REP MOVSB         ; output the sequence string to the buffer
+  MOV SI,3          ; point BP+SI to the last digit of the numeric part
+L2:                 ; loop here to carry each increment into higher digit
+  INC B[BP+SI]      ; increment the digit
+  CMP B[BP+SI],'9'  ; have a gone past 9?
+  JBE >L3           ; skip if not
+  MOV B[BP+SI],'0'  ; we have gone past 9: retreat to 0
+  DEC SI            ; retreat BP+SI to the more significant digit
+  JMP L2            ; loop to increment the next higher digit
+
+L3:                 ; we have incremented the sequence number
+  DEC BX            ; count down repetitions of the sequence
+  JNZ L1            ; loop to output another sequence
+  POP DX            ; output complete: restore starting buffer pointer
+  MOV CX,DI         ; point beyond the bytes output
+  SUB CX,DX         ; calculate the number of bytes output
+  CALL OWRITE       ; output the bytes to standard output
+  JMP GOOD_EXIT     ; exit back to the operating system
+
+  DB 0D,0A,0A  
+USAGE_MSG:
+ DB 'usage: SEQOUT decimal_count precede_str follow_str >out',0D,0A
+ DB '   outputs a sequence of strings containing an incrementing value',0D,0A,0
+ DB 01A
+

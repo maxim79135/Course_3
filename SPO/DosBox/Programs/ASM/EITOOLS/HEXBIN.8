@@ -1,0 +1,58 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  HEXBIN     ,VERIFY_NO_ARGS        ; See EILIB.TXT for terms
+        ;---------------
+
+; HEXBIN is a program that accepts a sequence of hexadecimal numbers
+;   from standard input, and outputs the associated binary values to standard
+;   output.  We ignore any line content that follows a semicolon "comment"
+;   character.
+
+; This program and BINHEX allow you to do hex editing of a file.  You can
+; convert the file to hex text with BINHEX, edit the hex text with your
+; favorite text editor, and then convert the modified text back to a
+; binary file with with HEXBIN.
+
+USAGE_MSG:
+  DB 'usage: HEXBIN <hex_in >binary_out',0D,0A
+  DB '  converts a hexadecimal display back to raw binary',0D,0A,0
+
+PROCESS_LINE:
+  MOV DI,BP               ; copy the output pointer to DI
+  DB 03C                  ; skip over the following STOSB instruction
+L1:                       ; loop here to output each scanned hex byte
+  STOSB                   ; output the binary value
+  CALL GET_HEX            ; fetch the next value
+  JNC L1                  ; loop if there was in fact another value
+  JMP PROCESS_LINE_EXIT   ; line complete: check output and return
+
+
+
+; GET_HEX advances SI to the next hex number, and reads that number.  If we
+;   reach a semicolon, or the terminating carriage-return, before the next 
+;   hex digit, we return Carry.  Otherwise, we return NoCarry, with AL set
+;   to the value of the hex number, and SI advanced beyond the number.
+
+GET_HEX:
+  LODSB             ; fetch the next byte
+  CMP AL,';'        ; is it the beginning of a comment?
+  JE >L0            ; return Carry if it is
+  CMP AL,0D         ; is it the terminator?
+L0:
+  STC               ; set Carry in case it is
+  JE RET            ; return Carry if it is
+  CALL HEX_DIGIT    ; is the byte a hex digit?
+  JC GET_HEX        ; loop if not, to find the first hex digit
+  MOV AH,AL         ; it is a digit: save the value in AH
+  CALL SI_HEX_DIGIT ; is the next byte also a hex digit?
+  JC >L1            ; jump if not: 1-digit value
+  AAD 16            ; two hex digits: pack the values into AL
+  CLC               ; NoCarry signals success
+  RET
+
+L1:                 ; the number has a single digit
+  DEC SI            ; retreat input pointer back to the following non-digit
+  MOV AL,AH         ; fetch the single digit's value
+  CLC               ; NoCarry signals success
+  RET
+
+

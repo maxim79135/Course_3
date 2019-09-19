@@ -1,0 +1,71 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FANY                                         See EILIB.TXT for terms
+;---------------
+
+; FANY finds all instances of any number of strings, within a set of files.
+;   We output to standard output the name of every file containing any string,
+;   on a line by itself marked with dashes, followed by each line within the
+;   file containing any string.  The search is non-case-sensitive.  FANY is
+;   invoked by typing
+;
+;     FANY [switches] strings @ filelist
+;
+;   where "switches" can include !, which suppresses the output of the names
+;   of containing files, and -c or +cX, which cause the output of whole records
+;   instead of single lines.  For -c, a record consists of an non-indented
+;   line (first character is nonblank) followed by a sequence of indented
+;   lines.  For +cX, a record consists of a line beginning with X (which can
+;   be any single character), followed by a sequence of lines not beginning
+;   with X.
+;
+;   The definition of "string" is given by SCAN_STRING; briefly, it can be
+;   a single word or number, or a string enclosed in single or double quotes.
+;
+;   The list of file names can contain wildcard characters; and it can be
+;   just a single name.
+
+FANY:
+  MOV SI,081              ; point to our invocation command tail
+  MOV BX,SETREC_SWITCHES  ; point to switch table
+  CALL BX_SWITCHES        ; scan any record-definition switches
+  CALL SCAN_FANY_STRINGS  ; scan strings, and point BP to the strings buffer
+  MOV DI,OBUFF            ; initialize our output pointer
+  CALL FIND_STRINGS       ; scan wildcard file args and find the strings there
+  CALL FLUSH_OBUFF        ; flush any pending output content
+  JMP GOOD_EXIT           ; exit the program
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FANY [!] [-c | +cX] strings @ filenames',0D,0A
+  DB '  finds all lines containing any of the strings',0D,0A
+  DB '  ! suppresses the output of the containing file names',0D,0A
+  DB '  -c causes display of a whole record containing the string',0D,0A
+  DB '     where indented lines continue a record.  For +cX, non-X lines',0D,0A
+  DB '     continue a record.',0D,0A
+  DB 0,01A
+
+OUT_FNAME_REC EQU DASHES_PFNAME   ; enables cancellation via the ! switch
+
+; FIND_STRINGS is called with SI pointing to one or more file names, possibly
+;   containing wildcard characters.  The PFOUND_WILD_HERE routine handles
+;   all the name parsing, wildcard expansion, file reading and buffering,
+;   and string searching for us.  It will call the code following its CALL
+;   instruction, for every string found within any file named.  The code is
+;   called with SI pointing to an instance of a found string within a file.
+;   We output the containing record to the DI-pointed output buffer.
+
+FIND_STRINGS:
+  CALL PFOUND_WILD_HERE   ; call following code when string found in any file
+  CALL OUT_FNAME_REC      ; string is found: output file name if first call
+  CALL SET_RECORD_P       ; point SI to the data record containing the string
+  REP MOVSB               ; output the data record
+  RET
+
+PF_FIND_PROC EQU FIND_ANY   ; our FIND routine looks for multiple strings
+
+
+
+
+
+

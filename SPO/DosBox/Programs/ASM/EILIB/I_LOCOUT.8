@@ -1,0 +1,18 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   I_LOCOUT                                     See EILIB.TXT for terms
+;---------------
+
+; ISEG_LOCOUT outputs to DI the file location of pointer AX, given that
+;   the last file read ended at ISEG_LOCEND, and the total number of file
+;   bytes read are given by the 32-bit quantity at ISEG_LOC.  The output
+;   is formatted as an 8-digit hex number, with leading zeroes.
+
+ISEG_LOCOUT:
+  SS SUB AX,ISEG_LOCEND W   ; compute the negative adjustment-offset
+  SS MOV DX,ISEG_LOC W      ; load the low word of the file byte count
+  ADD AX,DX                 ; calculate the adjusted offset
+  SS MOV DX,ISEG_LOC+2 W    ; fetch the high word of the file byte count
+  ADC DX,-1                 ; carry the negative addition into the high word
+  CALL HEX_DXAX             ; output the 8-digit hex value
+  MOV AL,' '                ; load blank, for caller's convenience
+  RET

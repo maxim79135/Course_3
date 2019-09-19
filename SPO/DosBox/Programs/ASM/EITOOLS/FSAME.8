@@ -1,0 +1,127 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FSAME                                        See EILIB.DOC for terms
+;---------------
+
+; FSAME determines if the specified fields of two database files are the
+;   same.  Any record pairs containing differences are sent to a single
+;   output file.
+
+FSAME:
+  CALL READ_TAIL      ; scan and parse our invocation command tail
+  CALL MERGE_21       ; scan and process the 2 input and 1 output files
+  JMP GOOD_EXIT       ; exit back to the operating system
+
+  DB 0D,0A,0A 
+USAGE_MSG:
+  DB 'usage: FSAME skipct recsize [... f_offset f_size] fname1 fname2 fdiffs'
+  DB 0D,0A
+  DB 0,01A
+
+
+        DATA SEGMENT
+DTABLE:
+  RSKIP   DW ?          ; number of initial records to skip
+  RSIZE   DW ?          ; size of each record
+RPAIRS:
+          DW 100 DUP ?  ; offset and size of each field within a record
+
+        DATA ENDS
+
+READ_TAIL:            ; scan and parse our invocation command tail
+  MOV SI,081          ; point SI to our command tail
+  MOV DI,DTABLE       ; point to our data variables, for output
+  CALL VERIFY_DEC     ; fetch the next decimal number
+  STOSW               ; output to our parameters array
+  CALL VERIFY_DEC     ; fetch the next decimal number
+  STOSW               ; output to our parameters array
+  SUB BP,BP           ; our initial record offset is zero
+  JMP >L3             ; jump into loop, to gather record offsets and sizes
+
+L2:                   ; loop here to gather each offset-and size pair
+  CALL VERIFY_DEC     ; fetch the record offset
+  MOV DX,AX           ; copy the record offset to DX
+  SUB AX,BP           ; convert to an offset from the end of the last record
+  JC >E1              ; error if the offset was before the running total
+  STOSW               ; output the offset from the end of the last record
+  ADD BP,AX           ; update BP to the current record's offset
+  CALL VERIFY_DEC     ; fetch the record size
+  STOSW               ; output the record size
+  ADD BP,AX           ; advance BP to the offset of the end of the record
+L3:
+  CALL DEC?           ; is there another offset-and-size pair?
+  JBE L2              ; loop if there is
+  MOV AX,0FFFF        ; command tail is complete: load end-marker
+  STOSW               ; output the end-marker
+  RET
+
+E1:                   ; this record came before a previous one
+  JMP USAGE_EXIT      ; exit the program with a usage message
+
+
+
+; DEC? returns BE if the next SI-pointed nonblank is a decimal digit.
+
+DEC?:
+  CALL TAIL_BLANKS  ; skip to the non-blank
+  SUB AL,'0'        ; reduce digits range to zero
+  CMP AL,9          ; set BE if we had a digit
+  RET
+
+
+; PROCESS_MERGE processes the input files from SI up to DX, and from BX up
+;    to BP, outputting the records as differences to DI.
+
+L0:                           ; jump here on the first PROCESS_MERGE
+  MOV PROCESS_MERGE W,09090   ; disable the jump to this code
+  MOV AX,RSKIP                ; load the skip size
+  ADD SI,AX                   ; skip the first bytes of the first file
+  ADD BX,AX                   ; skip the first bytes of the second file
+  RET
+
+L1:                 ; a short record was seen (no elegant way to handle this)
+  ADD SI,DX         ; flush out the first file's buffered contents
+  ADD BX,BP         ; flush out the second file's buffered contents
+  RET
+
+PROCESS_MERGE:
+  JMP L0            ; jump to initial-skipping code
+;
+; after the first call, code drops through to the following:
+;
+  MOV AX,RSIZE      ; load the size of a record
+  SUB DX,SI         ; calculate the number of first-file bytes
+  SUB BP,BX         ; calculate the number of second-file bytes
+  CMP DX,AX         ; is there a full first-file record?
+  JB L1             ; jump if not, to flush the inputs
+  CMP BP,AX         ; is there a full second-file record?
+  JB L1             ; jump if not, to flush the inputs
+  XCHG DX,AX        ; swap the record size into DX
+  MOV BP,RPAIRS     ; point BX to the offset-and-size pairs
+  PUSH BX,SI,DI     ; save the input and output pointers, during compare
+  MOV DI,BX         ; copy the second file's pointer to DI
+L4:                 ; loop here to compare each field
+  XCHG SI,BP        ; swap the offset-and-size pointer into SI
+  LODSW             ; fetch the addend to the next offset
+  ADD DI,AX         ; advance DI to the next field in the second file
+  ADD BP,AX         ; advance BP to the next field in the first file
+  LODSW             ; fetch the field size
+  XCHG CX,AX        ; swap the field size into CX
+  XCHG SI,BP        ; restore the first file's pointer to SI
+  JC >L5            ; jump if the terminator addend 0FFFF had been seen
+  REPE CMPSB        ; compare the fields within the two files
+  JE L4             ; loop if the fields matched
+  POP DI,SI,BX      ; non-match was seen: restore output and input pointers
+  CALL SWAP_MOVE    ; swap to copy BX buffer, then swap again to copy SI
+SWAP_MOVE:
+  XCHG SI,BX        ; swap BX pointer into SI
+  MOV CX,DX         ; copy the record length into CX, for output
+  REP MOVSB         ; output the record from the file
+  RET
+
+L5:                 ; all fields matched
+  POP DI,SI,BX      ; restore output and input pointers
+  ADD SI,DX         ; advance the first file's input without outputting it
+  ADD BX,DX         ; advance the second file's input without outputting it
+  RET
+
+

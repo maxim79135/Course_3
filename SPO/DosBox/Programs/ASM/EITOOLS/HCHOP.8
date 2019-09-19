@@ -1,0 +1,151 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HCHOP                                        See EILIB.TXT for terms
+;---------------
+
+; HCHOP chops off the head of standard input, and outputs the remainder
+;   to standard output.  The command tail consists of a sequence of
+;   strings to be found in the file, in order.  The input format for strings
+;   is that given by the SCAN_STRING module.  The strings delimit the
+;   text to be chopped: we chop through the last string found.  If a
+;   decimal number is given it is a repeat count if followed by a string;
+;   otherwise it is a number of bytes to be skipped.
+;
+;   In this implementation material to be chopped must fit entirely within
+;   the first buffer read -- about 54K in systems that give us a full 64K.
+
+        DATA SEGMENT
+STRINGS:                ; buffer containing the strings we will look for
+  DB 01000 DUP ?
+        DATA ENDS
+
+  JMP HCHOP             ; jump around the following USAGE message
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 'usage: HCHOP [n] str1 [...[n] strn]  <in >out',0D,0A
+  DB '     chops the head, through the last string',0D,0A
+  DB '     n is a repeat count (or byte count if no following string)',0D,0A
+  DB 01A,0
+
+HCHOP:
+  CALL READ_STRINGS   ; read the substitution strings
+  CALL READ_BUFFER    ; read a buffer-full of input
+  JZ >L8              ; error if there is no input whatever
+  MOV DI,DX           ; copy the buffer pointer to DI, for string-finding
+  MOV SI,STRINGS      ; point SI to the finding-specifications
+  CALL FIND_STRINGS   ; skip up to the last string found
+  MOV DX,DI           ; processing complete: copy the pointer back to DX
+L2:                   ; loop here to output the remainder of standard input
+  CALL OWRITE         ; output the bytes
+  CALL READ_BUFFER    ; read another buffer-full
+  JNZ L2              ; loop if more was read
+  JMP GOOD_EXIT       ; exit the program
+
+
+READ_STRINGS:
+  MOV DI,STRINGS      ; point DI to the final strings buffer
+  PUSH DI             ; save the strings pointer
+  CALL FILE_TAIL      ; scan the command tail
+  POP SI              ; restore the strings pointer
+  CMP DI,SI           ; were there any strings scanned?
+  JBE >L8             ; abort if there were no strings
+  SUB AX,AX           ; load terminating zero-word
+  STOSW               ; output the terminating zero-word
+  RET
+
+
+; PROCESS_REC is called by FIND_STRINGS to act upon a string record.
+;   We have scanned the repeat/byte count in AX, but we have not yet
+;   scanned the string length.
+
+PROCESS_REC:
+  XCHG DX,AX          ; swap the repeat/byte count into DX
+  LODSW               ; fetch the string length
+  XCHG BX,AX          ; swap the string length into BX
+  TEST BX             ; is it a byte-count flag instead?
+  JNS >L1             ; skip if not-- it is indeed a string
+  ADD DI,DX           ; it is a byte count: advance DI by the count
+  JC >L8              ; error if we blasted past the whole 64K
+  SUB CX,DX           ; reduce the remaining-bytes count
+  JNC RET             ; error if the bytes were exhausted
+L8:
+  JMP USAGE_EXIT      ; abort the program
+
+L1:                   ; we are processing a string record
+  CALL FIND_NOCASE    ; find the string within the file buffer
+  JNZ L8              ; error if the string was not found
+  INC DI              ; advance beyond the first byte of the string
+  DEC CX              ; reduce the remaining count by the advance
+  DEC DX              ; count down the repeats
+  JNZ L1              ; loop to repeat the find
+  LEA DI,[DI+BX-1]    ; advance beyond the found string
+  INC CX              ; cancel the last single-byte reduction
+  SUB CX,BX           ; reduce the remaining count by the string size
+  ADD SI,BX           ; advance SI beyond the string contents
+  RET
+
+
+; FIND_STRINGS is called with a buffer-full of input already read into DI
+;   up to CX, and the string-finding specifications placed into the
+;   STRINGS buffer.  We find the strings, advancing DI beyond the last
+;   string according to the specifications given.
+
+L2:                   ; loop here to process each record of the STRINGS buffer
+  CALL PROCESS_REC    ; process one record in the buffer
+FIND_STRINGS:
+  LODSW               ; fetch the repeat/byte count from the record
+  TEST AX             ; is it the zero terminator?
+  JNZ L2              ; loop if not, to process the record
+  RET
+
+
+; READ_BUFFER reads an entire buffer-full of memory, from 02000 up to
+;   0400 below the current stack position.
+
+READ_BUFFER:
+  MOV DX,02000        ; point to the input buffer
+  MOV CX,-02000-0400  ; load negative count, leaving room on the stack
+  ADD CX,SP           ; point CX beyond the available input buffer
+  SUB BX,BX           ; open-file handle for standard input is zero
+  CALL MREAD          ; read standard input into the buffer
+  XCHG CX,AX          ; swap the actual-bytes count into CX
+  TEST CX             ; set Z flag according to whether bytes were read
+  RET
+
+
+; TAIL_AL is called by FILE_TAIL to process the SI-pointed command tail
+;   element.  We output to the DI-pointer STRINGS buffer.  If the SI-pointed
+;   element is a string operand, we output a string record with a repeat
+;   count of 1.  If it is a decimal count, we output either a byte-count
+;   record or a repeated-string record, depending on whether the following
+;   element is a string.
+
+TAIL_AL:
+  SUB AL,'0'          ; reduce the first character's digit range to zero
+  CMP AL,9            ; was the first character a digit?
+  JA >L6              ; jump if it is a string, not a decimal number
+  CALL SCAN_DECIMAL   ; it is a decimal number: scan it into AX
+  TEST AX             ; was the count zero?
+  JZ L8               ; abort if it was: that count is illegal
+  STOSW               ; it is a nonzero count: output the count
+  CALL TAIL_BLANKS    ; skip over intervening blanks
+  CMP AL,0D           ; was it the last operand?
+  JE >L3              ; jump if it was-- this is a byte count
+  SUB AL,'0'          ; reduce the next character digit-range to zero
+  CMP AL,9            ; is the next element a decimal digit?
+  JA >L7              ; jump if not-- there is a following string
+L3:                   ; no following string: we have a byte count
+  MOV AH,0FF          ; load a negative AX value, to signal byte count
+  STOSW               ; output the byte-count signal
+  RET
+
+L6:                   ; no decimal number-- we have a simple string
+  MOV AX,1            ; load a repeat-count of 1
+  STOSW               ; output the repeat count
+L7:
+  STOSW               ; output garbage to the string-length-slot
+  CALL SCAN_STRING    ; scan the string specification
+  ADD DI,CX           ; advance the output pointer beyond the string
+  RET
+
+

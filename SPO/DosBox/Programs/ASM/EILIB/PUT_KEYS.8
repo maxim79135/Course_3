@@ -1,0 +1,74 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PUT_KEYS                                     See EILIB.TXT for terms
+;---------------
+
+; PUT_KEYS places the 0FF-terminated, SI-pointed string into the BIOS's
+;    keyboard input queue.  The string consists of words, except that
+;    portions bracketed by a 0FE byte are single-byte characters, that
+;    will be inserted with high-byte zero.  If there isn't enough room in
+;    the 15-code memory queue, we attach ourselves to the timer interrupt,
+;    and insert the remaining codes when the queue clears out. NOTE that
+;    this means that the program containing this module must continue to
+;    be loaded until all the keys are taken, or else the machine will crash!
+
+PUT_KEYS:
+  CALL TRY_PUT_KEYS     ; try to put the keys into the memory queue
+  JNC RET               ; return if we succeeded
+  JMP ATTACH_TO_TIMER   ; attach OUR_TIMER to execute on each clock tick
+
+
+
+; OUR_TIMER is executed on each tick of the system clock, whenever there are
+;   still keycodes to be inserted into the BIOS's queue.  When the queue is
+;   empty, we unattach ourselves.
+
+L0  DW ?,?                  ; far pointer to uninserted key codes for OUR_TIMER
+
+OUR_TIMER:
+  CLD                       ; string scanning is forward
+  PUSH AX,SI,DS             ; preserve registers across call
+  CS LDS SI,L0 D            ; load the pointer to the remaining keycodes
+  CALL TRY_PUT_KEYS         ; try to insert the codes into the queue
+  IF NC CALL UNATTACH_TIMER ; unattach ourselves if we succeeded
+  POP DS,SI,AX              ; restore clobbered registers
+  RET
+
+
+
+; TRY_PUT_KEYS attempts to place the SI-pointed string into the BIOS's keyboard
+;   input queue.  We return NC if we succeeded.  We return C if we failed,
+;   with the pointer to the remaining bytes stored in L2 where OUT_TIMER can
+;   find them.
+
+L1:                 ; loop here for each character in the string
+  INC SI
+  NOP
+  CALL PUT_KEY      ; place AX into the BIOS's queue
+  JNZ >L3           ; jump if the queue was not full
+  MOV SI,BX         ; the BIOS's queue was full: retreat back to failed byte
+  CS MOV L0,SI      ; store the pointer to the remaining string
+  CS MOV [L0+2],DS  ; also store the segment
+  STC               ; Carry signals failure
+L9:                 ; common exit
+  POP BX            ; restore clobbered register
+  RET
+
+
+TRY_PUT_KEYS:
+  PUSH BX           ; preserve register across call
+L3:
+  MOV BX,SI         ; save the input pointer
+  LODSW             ; fetch a word-code from the string
+  DEC SI            ; retreat back to the second byte
+  CMP AL,0FE        ; was it the bracket 0FE or terminating 0FF?
+  JB L1             ; loop if not, to try to put the character in the queue
+  JA L9             ; return NoCarry if it is the terminating 0FF
+  MOV AX,09046      ; it is switching 0FE: load INC SI, NOP codes
+  CS CMP AX,L1 W    ; are those codes already there?
+  IF E MOV AX,00B4  ; if yes then substitute MOV AH,0 codes
+  CS MOV L1 W,AX    ; switch the instructions for byte vs. word scanning
+  JMP L3            ; loop to continue processing the string
+
+
+
+

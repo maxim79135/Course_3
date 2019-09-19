@@ -1,0 +1,39 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  SAVE_SCR                                      See EILIB.TXT for terms
+;---------------
+
+; SAVE_SCREEN saves the contents, cursor block size, and cursor position
+;   for the video screen as it existed when this program was invoked.
+
+; RESTORE_SCREEN restores the video screen previously saved by SAVE_SCREEN.
+
+        #if !N_SAVE_SCREEN
+N_SAVE_SCREEN = 29*80
+        #endif
+
+        DATA SEGMENT
+OLD_SCREEN: DW N_SAVE_SCREEN DUP (?)
+        DATA ENDS
+
+SAVE_SCREEN:
+  PUSH DS,CX,SI,DI        ; preserve registers across call
+  CALL POINT_VIDEO        ; locate the video segment and set VIDEO_SEG to it
+  MOV DS,VIDEO_SEG W      ; point DS to the video segment
+  SUB SI,SI               ; video contents starts at offset zero
+  MOV CX,N_SAVE_SCREEN    ; load the number of words of screen memory
+  MOV DI,OLD_SCREEN       ; point to our save-image of the old screen
+  REP MOVSW               ; copy the screen contents to our buffer
+  POP DI,SI,CX,DS         ; restore clobbered registers
+  RET
+
+
+RESTORE_SCREEN:           ; restore the screen previously saved by SAVE_SCREEN
+  PUSH ES,CX,SI,DI        ; preserve registers across call
+  MOV ES,VIDEO_SEG W      ; point ES to video memory
+  SUB DI,DI               ; video contents starts at offset zero
+  MOV SI,OLD_SCREEN       ; point to the buffered old-screen contents
+  MOV CX,N_SAVE_SCREEN    ; load the number of words in screen memory
+  REP MOVSW               ; copy our buffer back to video memory
+  POP DI,SI,CX,ES         ; restore clobbered registers
+  JMP RESTORE_CURSOR      ; restore the previous cursor location
+

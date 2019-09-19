@@ -1,0 +1,82 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;      C                                         See EILIB.TXT for terms
+;---------------
+
+; C changes the directory to the first subdirectory within the current 
+;   directory, having a name beginning with that given in our invocation
+;   command tail.
+
+  MOV SI,081            ; point to our invocation command tail
+  JMP C_                ; jump to the start of the code
+
+  DB 0D,0A,0D,0A
+USAGE_MSG:
+  DB 'usage: C dirstart',0D,0A
+  DB '    or C @filename',0D,0A
+  DB '  changes dir to name beginning with dirstart',0D,0A
+  DB '  or to directory name contained in the file',0D,0A
+  DB 0D,0A,0,01A
+
+NO_DOSCHECK EQU 1       ; we do not need our library error-trapping
+
+L0:                     ; jump here if a @ was seen
+  INC SI                ; advance the input pointer beyond the @
+  CALL OPEN_I_ARG       ; open the file
+  JC >E1                ; jump if error
+  MOV DX,SI,END         ; point beyond our program
+  MOV CX,0200           ; we need read only a short amount
+  CALL MREAD            ; read the file
+  CALL MCLOSE           ; close the file
+  SUB BP,BP             ; we no longer need a wildcard terminator
+  JMP >L1               ; jump into scanning code again
+
+C_:                     ; the program starts here
+  MOV BP,'*'            ; if no filename marker then we use a wildcard spec
+L1:
+  CALL TAIL_BLANKS      ; advance the pointer to the first nonblank
+  CMP AL,0D             ; is there no command tail?
+  JE >E1                ; exit if no command tail
+  CMP AL,'@'            ; is it the filename marker?
+  JE L0                 ; jump if it is, to read the file
+  CMP B[SI+1],':'       ; does the dirspec begin with a drive letter?
+  JNE >L2               ; skip if not
+  LODSW                 ; load the letter and advance beyond the colon
+  AND AL,0DF            ; coerce the letter to upper case
+  SUB AL,'A'            ; reduce the letters range to 0=A 1=B 2=C etc.
+  XCHG DX,AX            ; swap the letter into DL
+  MOV AH,0E             ; MS-DOS function code for CHANGE_DRIVE
+  INT 021               ; change the drive
+  JC >E1                ; error if the change call failed
+L2:
+  MOV DX,SI             ; point DX to the directory name
+L3:                     ; loop here to scan over the directory name
+  LODSB                 ; fetch a character from the name
+  CMP AL,'\'            ; is it a subdir character?
+  JE >L4                ; jump if yes, to go into the subdir
+  CMP AL,' '            ; is it a terminating blank or below?
+  JA L3                 ; loop if not, to continue scanning
+  DEC SI                ; blank seen: retreat to it
+  CMP DX,SI             ; are there any letters at all?
+  JE >L9                ; exit, doing nothing, if there are no letters
+  MOV W[SI],BP          ; terminator is seen: append * and null (or just null)
+  MOV AH,04E            ; MS-DOS function code for FIND_FIRST_MATCH
+  MOV CX,010            ; load "directory" attribute
+  INT 021               ; find the first subdirectory matching our name
+  JC >E1                ; exit if no subdirectory was found
+  MOV DX,09E            ; point to the name that was found
+  MOV AH,03B            ; MS-DOS function code for CHANGE_CURRENT_DIR
+  INT 021               ; change the current directory to the name found
+L9:
+  JMP GOOD_EXIT         ; exit the program
+
+E1:                     ; error was seen
+  JMP USAGE_EXIT        ; output usage message and exit the program
+
+L4:                     ; subdir character \ was seen
+  PUSH W[SI]            ; save the following character
+  MOV B[SI],0           ; null-terminate the filespec through the \
+  MOV AH,03B            ; MS-DOS function code for CHANGE_CURRENT_DIR
+  INT 021               ; change the current directory to this subdir
+  POP W[SI]             ; restore the following character
+  JMP L2                ; jump to reset DX to the new subdir
+

@@ -1,0 +1,60 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   AGE                                          See EILIB.TXT for terms
+;---------------
+
+; AGE deducts a given number of months from the date-time stamp for the named
+;   file(s) in the command tail.  The decimal number of months is given
+;   as the first command-tail argument (default is 1 if the first non-blank
+;   is not a decimal digit).  Wildcard specifications are accepted in file
+;   names.
+
+  JMP AGE           ; jump around message, to program start
+
+USAGE_MSG:
+  DB 'usage: AGE [n] fnames',0D,0A
+  DB '   deducts n months (default 1) from the date/time stamps of files'
+  DB 0D,0A,0D,0A,0,01A
+
+NO_DOSCHECK EQU 1       ; do not trap errors to DOS calls
+
+AGE:
+  CALL NONBLANK_TAIL    ; verify non-blank command tail
+  SUB AL,'0'            ; reduce decimal-digits range to zero
+  CMP AL,10             ; is the first nonblank a decimal digit?
+  JAE >L0               ; skip if it isn't
+  CALL SCAN_DECIMAL     ; it is a decimal digit: scan the number
+  MOV N_MONTHS,AX       ; plug the number into its place
+  DEC AX                ; reduce the legal range 1--256 to 0--255
+  TEST AH               ; was the months count in a plausible range?
+  JNZ >E1               ; error if not
+L0:
+  MOV CX,SP             ; our stack is empty
+  CALL WILD_ARGS        ; expand the remaining arguments into name strings
+  JMP >L3               ; jump into loop
+
+L1:                     ; loop here to process each file
+  MOV AX,03D02          ; MS-DOS function codes for OPEN_UPDATE
+  INT 021               ; open the file for updating
+  JC >L3                ; skip if the file could not be opened
+  XCHG BX,AX            ; swap the open-file handle into BX
+  MOV AX,05700          ; MS_DOS function codes for GET_DATE_TIME
+  INT 021               ; set DX=Y-1980,M,D = 7,4,5 bits
+  MOV BP,1              ; load the number of months we are deducting
+N_MONTHS EQU W[$-2]     ; months-count is plugged into the above imm value
+L2:                     ; loop here to decuct each month
+  SUB DX,32             ; subtract 1 from the months field
+  TEST DX,01E0          ; is the months field zero?
+  IF Z ADD DX,0FF80     ; if yes then add 12 to months, and -1 to years
+  DEC BP                ; count down months
+  JNZ L2                ; loop to deduct the next month
+  MOV AX,05701          ; MS-DOS function codes for SET_DATE_TIME
+  INT 021               ; reset the date and time for the file
+  CALL MCLOSE           ; close the file
+L3:                     ; jump here to fetch each file name
+  POP DX                ; pop the pointer to the file name
+  TEST DX               ; have we reached the null terminator?
+  JNZ L1                ; loop if not, to process the file
+  JMP GOOD_EXIT         ; all done: return to the operating system
+
+E1:                     ; invalid command tail was seen
+  JMP USAGE_EXIT        ; exit with our usage message

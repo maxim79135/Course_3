@@ -1,0 +1,22 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   CREG                                         See EILIB.TXT for terms
+;---------------
+
+; CREG sets the VGA color register numbered by the first argument
+;   (0--15 or 18) to the color given by the second argument (0--63).
+
+CREG:
+  MOV SI,081          ; point to our invocation command tail
+  CALL VERIFY_DEC     ; fetch the VGA register number
+  MOV BL,AL           ; store the number in BL
+  CALL VERIFY_DEC     ; fetch the new color value
+  MOV BH,AL           ; store the number in BH
+  CALL NO_MORE_ARGS   ; verify no more command-tail arguments
+  MOV AX,01000        ; BIOS function codes for SET_COLOR_REGISTER
+  INT 010             ; reset the VGA color register
+  MOV ES,BX,0B800     ; we will output directly to the color screen
+  JMP ATTR_PALETTE    ; output a palette of the new color settings
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: CREG vga_register new_color',0D,0A,0,01A

@@ -1,0 +1,22 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  LINESL     ,ONE_DEC               ; See EILIB.TXT for terms
+        ;---------------
+
+; LINESL outputs all lines whose length is less than a specified number.
+;    The length is given as the only command-tail argument.
+
+USAGE_MSG:
+  DB 'usage, e.g.: LINESL 20 <in >out',0D,0A
+  DB '  outputs lines with less than 20 characters',0D,0A,0
+
+ONE_DEC:
+  CALL VERIFY_1_DEC   ; verify that there is a decimal argument in command tail
+  XCHG DX,AX          ; swap the argument value into DX
+  INC DX,2            ; advance count to include CRLF terminators of lines
+  RET
+
+PROCESS_LINE:           ; filter CX bytes from SI--DI to BP
+  CMP CX,DX             ; does the line exceed the proscribed length?
+  JAE RET               ; return if it does: the line is not passed on
+  JMP OUT_PROCESS_LINE  ; the line is long enough: output it
+

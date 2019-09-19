@@ -1,0 +1,147 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PAGESORT                                     See EILIB.TXT for terms
+;---------------
+
+; PAGESORT finds the entry lines of an index, sorts them according to the
+;   page numbers given, and outputs the sorted lines.  If the file names are
+;   not given, standard I/O is used.
+
+; We assume the page number follows a comma at the end of each line, and that
+; it consists of a chapter number, a hyphen, and a page number.
+
+        DATA SEGMENT
+BUFFER:                   ; input buffer
+  DB 08000 DUP ?
+BUFFER_SIZE EQU $-BUFFER
+OBUFF:                    ; output buffer
+  DB 4096 DUP ?
+OBUFF_LIM:                ; overflow spills here
+  DB 128 DUP ?
+PTRS:                     ; array of pointers to be sorted
+  DW 1000 DUP ?
+        DATA ENDS
+
+PAGESORT:
+  MOV SI,081            ; point to our command tail
+  CALL OPEN_OPT_IFILE   ; open the input file
+  PUSH SI               ; save the output-file tail pointer
+  MOV DX,BUFFER         ; point to our buffer
+  MOV DI,DX             ; also point DI to the buffer, for later scanning
+  MOV CX,BUFFER_SIZE    ; load the largest number of bytes we'll take
+  CALL MREAD            ; read the file
+  JC >L9                ; jump if there was an error
+  CMP AX,CX             ; was the entire buffer filled?
+  JE >L8                ; error if it was
+  XCHG CX,AX            ; swap the actual count into CX
+  CALL CLOSE_OPT        ; close the input file
+  CALL MAKE_PTRS        ; create the pointers to the page numbers
+  PUSH SI,DI            ; save the pointers to the pointers
+  CALL SIDI_SORT        ; sort the pointers
+  POP CX,BP             ; restore last-ptr-ptr to CX, first ptr-ptr to BP
+  POP SI                ; restore command tail pointer to output file name
+  CALL OUT_FILE         ; write the output
+  JMP GOOD_EXIT         ; return to the operating system
+
+L9:                     ; we couldn't read
+  JMP USAGE_EXIT        ; abort the program
+
+L8:                     ; the buffer was filled
+  MOV AX,TOO_BIG_MSG    ; point to message to that effect
+  JMP ERROR_EXIT        ; tell the user and abort
+
+
+; MAKE_PTRS creates a pointers array out of the input file, which has been
+;   read in as CX bytes at DI.  The pointers point to the page number within
+;   each index line.  We return with SI pointing to the first pointer, and
+;   DI pointing to the last pointer.
+
+MAKE_PTRS:
+  JCXZ L9               ; error if there was no input
+  MOV SI,PTRS-2         ; point just before the pointers buffer
+  MOV BP,CX             ; BP will be our limit pointer
+  ADD BP,DI             ; calculate the limit of the input bytes
+  CLD                   ; scanning will start out forward
+L1:                     ; loop here for each line of the input file
+  MOV CX,255            ; a line's length limit is 255
+  MOV AL,0A             ; we'll be looking for the terminating linefeed
+  REPNE SCASB           ; find the linefeed
+  PUSH DI               ; save the pointer to the next line
+  SUB DI,3              ; retreat the pointer to the last character of the line
+  CMP B[DI],' '         ; is there a trailing blank in the line?
+  IF E INT 3            ; trap if there is
+  MOV CL,3              ; we'll search the last 3 characters in the line
+  STD                   ; the search is backwards
+  MOV AL,'-'            ; we are looking for a hyphen
+  REPNE SCASB           ; is there a hyphen near the end of the line?
+  JNE >L2               ; skip if not-- the line will be omitted
+  LEA DX,[DI-1]         ; save the sort pointer-- 2 bytes before the hyphen
+  MOV CL,4              ; we'll search 4 bytes before the hyphen
+  MOV AL,','            ; we are looking for a comma
+  REPNE SCASB           ; is there a comma shortly before the hyphen?
+  JNE >L2               ; skip if not-- it's not an entry line
+  INC SI,2              ; advance the output pointer to the next slot
+  MOV W[SI],DX          ; output the pointer to the pointers array
+L2:
+  CLD                   ; scanning will resume forward
+  POP DI                ; restore the pointer to the next line
+  CMP DI,BP             ; have we reached the end of the input buffer?
+  JB L1                 ; loop if not, to scan the next line
+  MOV DI,SI             ; pointers are created-- point DI to the past pointer
+  MOV SI,PTRS           ; point SI to the first pointer that we output
+  RET
+
+
+; OUT_FILE creates the output file, whose name (if given) is pointed to by
+;   SI.  The sorted pointers are at BP up to CX.  We find the start and end
+;   of the associated lines, and we output them.
+
+OUT_FILE:
+  CALL OPEN_OPT_OFILE   ; open the output file
+  MOV DI,OBUFF          ; initialize our output buffer pointer
+L1:                     ; loop here for each line to be output
+  PUSH CX,DI            ; save the line count and output pointer
+  MOV DI,[BP]           ; point within this line
+  INC BP,2              ; advance the pointers-pointer
+  CLD                   ; scanning is forward
+  MOV AL,0A             ; we will look for a linefeed
+  MOV CH,0FF            ; load a huge CX count for the search
+  REPNE SCASB           ; find the terminating linefeed
+  PUSH DI               ; save the pointer to the following line
+  DEC DI,2              ; retreat to the end of the line
+  STD                   ; scanning will be backwards
+  REPNE SCASB           ; find the beginning of the line
+  LEA SI,[DI+2]         ; point SI to the start of the line
+  POP CX                ; resotre the pointer to the following line
+  SUB CX,SI             ; calculate the number of bytes in the line
+  CLD                   ; copying will be forwards
+  POP DI                ; restore the output buffer pointer
+  REP MOVSB             ; copy the line to the output buffer
+  CMP DI,OBUFF_LIM      ; is the output buffer getting full?
+  IF AE CALL FLUSH      ; if yes then flush the buffer
+  POP CX                ; restore the pointer to the last pointer
+  CMP BP,CX             ; have we gone beyond the last pointer?
+  JBE L1                ; loop if not, to output the next line
+FLUSH:
+  MOV DX,OBUFF          ; point to the output buffer
+  MOV CX,DI             ; copy the beyond-pointer to CX
+  SUB CX,DX             ; calculate the number of bytes buffered
+  MOV DI,DX             ; reset the output pointer to the start of the buffer
+  JMP MWRITE            ; write the output buffer
+
+
+; COMPARE is called by SIDI_SORT to compare keys BP - [BX].  We do a simple
+;   lexical comparison.
+
+COMPARE:
+  MOV SI,BP             ; point SI to the first string
+  MOV DI,[BX]           ; point DI to the second string
+  MOV CH,2              ; load a huge count
+  REPE CMPSB            ; compare the strings
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: PAGESORT [infile [outfile]]',0D,0A,0
+
+TOO_BIG_MSG:
+  DB 'File is too big.',0D,0A,0

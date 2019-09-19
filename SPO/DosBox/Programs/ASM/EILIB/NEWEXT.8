@@ -1,0 +1,37 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  NEWEXT                                        See EILIB.TXT for terms
+;---------------
+
+; NEWEXT_MAKE copies the file name pointed to by SI to DI, substituting the
+;   new extension pointed to by BX.  The BX-pointed extension should include
+;   the leading period, and should be null-terminated if the extension is
+;   less than 3 letters.
+
+NEWEXT_MAKE:
+  PUSH BP           ; preserve register across call
+  SUB BP,BP         ; initial zero means we haven't seen extension yet
+  LODSB             ; load the first character of the input file name
+L1:                 ; loop here to copy each character of the file name
+  STOSB             ; store the old character
+  LODSB             ; fetch the next character
+  CMP AL,'.'        ; is it the start of an extension?
+  IF E MOV BP,DI    ; if yes then copy the extension-pointer to BP
+  CMP AL,'\'        ; is it a subdirectory character?
+  IF E SUB BP,BP    ; if subdirectory then cancel the extension pointer
+        #if LONG_FNAME
+  CMP AL,0          ; is it the end of the name?
+        #else
+  CMP AL,' '        ; is it the end of the name?
+        #endif
+  JA L1             ; loop if not, to store the character
+  DEC SI            ; end of name: retreat back to the delimiter
+  TEST BP           ; did we see an extension?
+  IF NZ MOV DI,BP   ; if we did then copy the extension to DI
+NEWX_J EQU W[$-2]   ; above MOV DI,BP becomes JMP $+8 in keep-old-ext case
+  XCHG BX,SI        ; swap the new-extension pointer to SI
+  MOVSW 2           ; copy the new extension to the output name
+  XCHG BX,SI        ; swap the input pointer back into SI
+  MOV AL,0          ; load null terminator
+  STOSB             ; terminate the file name with a null
+  POP BP            ; restore clobbered register
+  RET

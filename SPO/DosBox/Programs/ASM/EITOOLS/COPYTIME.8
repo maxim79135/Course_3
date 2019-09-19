@@ -1,0 +1,32 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COPYTIME                                     See EILIB.TXT for terms
+;---------------
+
+; COPYTIME reads the date-time stamp from the file named by the first
+;   argument, and writes it to the file named by the second argument.
+;   The contents of the files are unchanged.
+
+LONG_FNAMES EQU 1   ; we will recognize Win95-or-later long file names
+
+COPYTIME:
+  MOV SI,081        ; point to the start of the command tail
+  CALL OPEN_I_ARG   ; open the first argument for input
+  MOV AX,05700      ; MS-DOS function codes for GET_DATE_TIME
+  INT 021           ; set CXDX to the date-time stamp
+  PUSH CX,DX        ; save the date-time stamp
+  CALL FILE_ARG     ; scan the second argument
+  MOV AX,03D01      ; MS-DOS function codes for OPEN_FOR_WRITE
+  INT 021           ; open the second file for writing
+  XCHG BX,AX        ; swap the open file handle into BX
+  JC >E1            ; abort if there was an error
+  POP DX,CX         ; restore the date-time stamp
+  MOV AX,05701      ; MS-DOS function codes for SET_DATE_TIME
+  INT 021           ; set the date and time of the second file
+  MOV AX,04C00      ; MS-DOS function code for successful exit
+  INT 021           ; return to the operating system
+
+E1:
+  JMP USAGE_EXIT
+
+USAGE_MSG:
+  DB 'usage: COPYTIME fromfile tofile',0D,0A,0

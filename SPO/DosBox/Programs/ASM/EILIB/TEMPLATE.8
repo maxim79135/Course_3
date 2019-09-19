@@ -1,0 +1,388 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  TEMPLATE                                      See EILIB.TXT for terms
+;---------------
+
+; EDIT_TEMPLATE conducts an edit of an entire template of line windows,
+;   as defined by a master data structure pointed to by BP.  The master
+;   structure consists of an array of word pointers, as follows:
+;
+;   1. A pointer to a sequence of strings defining the non-changing parts
+;      of the screen during editing.  The sequence begins with a byte telling
+;      the number of lines the template screen occupies, a byte giving the
+;      attribute (color) of the non-changing part.  There follows each
+;      ASCII string, terminated by a low-valued byte telling where on the
+;      screen the next string will be located:
+;         0  entire sequence is finished
+;         1  skip the number of blanks given by following byte
+;         2  output a colon and skip blanks
+;         3  advance to second following line
+;         4  output colon and advance to second following line
+;         5  change input pointer to the following word
+;         6  return the input pointer to the main stream (beyond last 5-code)
+;         7  advance to the next line
+;         8  menu item: next line plus 11 spaces
+;         9  terminate with menu-selection message
+;        10  repeat next byte, count is second byte
+;        11  keep screen, advance to line numbered by second byte
+;
+;   2. A pointer to a sequence of null-terminated strings giving the
+;      initial value for each variable field to be filled in.  If the
+;      string given here is shorter than the field, the field will be filled
+;      out with blanks.  There should be exactly the same number of strings
+;      as there are fields, so a final terminator is not necessary in this
+;      sequence.
+;
+;   3. A null pointer (DW 0), to facilitate backwards-scanning of the
+;      following array.
+;
+;   4. An array of pointers to line-window structures, one for each line window
+;      to be edited.  The structures are defined by LWIN_PARMS STRUC in the
+;      module ED_LWIN.8.
+;
+;   5. A terminating null pointer (DW 0).
+
+; We start out with the cursor in the first window, and call EDIT_LWINDOW
+; to let the user fill the window with contents.  When we are about to
+; move to another window (after the user types the Enter, Tab, Down-arrow,
+; or one of the direct-window keys), we call the LWIN_EXCHECK routine in
+; that window's structure, to see if the line has been filled with acceptable
+; contents.  If it isn't (the routine returns Carry), we hang the user in
+; that window, forcing him to change the contents until it is acceptable.
+
+; During this template edit, we process various control keys ourselves.  The
+; arrow keys move the user from window to window.  The Gray-plus key will
+; skip the user to the next window that needs to be filled in (and does not
+; have an acceptable default).  The Escape key will abort to our grandcaller
+; if we are in the first window; it is ignored otherwise.  The Alt-X key
+; escapes no matter which window we are in.  If the caller supplies an
+; ESCAPE_EXIT we jump there (without flushing our stack) instead of to our
+; grandcaller.  Shift-down-arrow will swap the current and following lines,
+; moving the cursor to the following line.  Shift-up-arrow performs a similar
+; function with the previous line.  Alt-1 through Alt-0 will move the cursor
+; directly to window 1 through 10, respectively (but will stop at a window with
+; unacceptable contents).
+
+        DATA SEGMENT
+  TPL_ACT DW ?            ; action routine to be used at caller's discretion
+        DATA ENDS
+
+L0:
+;    up    right Alt-X Esc   down  Enter Tab  
+  DW 04800,04B00,02D04,0011B,05000,01C0D,00F09
+        #if EXTRA_TEMPLATE
+;    ShDown ShUp gray+
+  DW 05001,04801,04E2B
+        #endif
+L10 EQU ($-L0)/2
+L11 EQU $-L0-2
+  DW >T5,  >T5,  >T9,  >T3,  >T2,  >T2,  >T2
+        #if EXTRA_TEMPLATE
+  DW >T4, >T6,  >T7
+        #endif
+
+SAME_TEMPLATE:            ; alternate entry point, preserves existing contents
+  MOV LW_BLANK_FLAG B,0EB ; we will preserve the contents of all L-windows
+ACT_TEMPLATE:             ; alternate entry with an initial action routine
+  MOV AX,[BP]             ; fetch the address of the action routine
+  INC BP,2                ; advance BP to the following template structure
+  MOV TPL_ACT,AX          ; store the action routine (used by our caller)
+EDIT_TEMPLATE:
+  PUSH BX,SI              ; preserve registers across call
+  CALL NONVAR_FIELDS      ; lay out the non-variable parts of the template
+  CALL INIT_LWINDOWS      ; initialize and display the windows
+L4:                       ; move to the next window
+  CALL NEXT_LWIN          ; advance BP, and point BX to that window's structure
+  JNZ >L1                 ; jump if the window exists, to edit it
+  POP SI,BX               ; no more L-windows: restore clobbered registers
+  RET
+
+        #if EXTRA_TEMPLATE
+L2:                       ; jump here if an Alt-digit was seen
+  CALL PREV_LWIN          ; move backwards one window
+  JNZ L2                  ; loop if we haven't reached the start
+  INC CX                  ; pre-increment the window count
+  JMP >L3                 ; jump into loop, to advance CL lines
+  
+T7:                       ; gray-plus key: advance as many windows as possible
+  MOV CL,0FF              ; we will advance an unlimited number of windows
+L6:
+  DEC CL                  ; count down windows
+  JZ >L1                  ; jump if the windows are exhausted
+  PUSH CX                 ; save the window count CL
+  CALL LWIN_VIDEO         ; regenerate the screen display of this window
+  CALL LWIN_CHECK         ; perform the window-specific check of the data
+  POP CX                  ; restore the window count CL
+  JC >L1                  ; jump if failure, to edit the failing window
+L3:
+  CALL NEXT_LWIN          ; advance BP, and point BX to that window's structure
+  JNZ L6                  ; loop if next window exists, drop to cancel if not
+        #endif
+T5:                       ; loop here to move up one window
+  CALL PREV_LWIN          ; retreat BP, and point BX to that window's structure
+  JZ L4                   ; jump if there is no previous window, to cancel
+L1:                       ; loop here to edit the next window
+  CALL EDIT_LWINDOW       ; edit the window
+        #if EXTRA_TEMPLATE
+  MOV CL,AH               ; fetch the keycode
+  SUB CL,078              ; reduce the Alt-digits range to zero
+  CMP CL,10               ; was the key an Alt-digit?
+  JB L2                   ; jump if it was, to the direct-window code
+        #endif
+  MOV DI,L0               ; point to our table of action keys
+  MOV CX,L10              ; load the number of action keys
+  REPNE SCASW             ; is our keystroke one of the action keys?
+  JNE L1                  ; loop if not, to continue editing this window
+  JMP L11[DI]             ; keystroke found: jump to corresponding action
+
+T3:                       ; Escape seen during template editing
+        #if ESCAPE_EXIT   ; did the caller provide an escape-jump?
+T9:                       ; jump here if Alt-X is typed
+  JMP ESCAPE_EXIT         ; jump to caller's escape code
+        #else
+  TEST W[BP-2]            ; are we in the first window?
+  JNZ L1                  ; if not then simply ignore the escape key
+T9:                       ; Alt-X typed, or Escape typed in first window
+  STC                     ; Carry signals abnormal exit
+  POP SI,BX,AX            ; restore clobbered registers and discard our return
+  RET                     ; return to our grandcaller
+        #endif
+
+T2:                       ; move-to-next-window keystroke seen
+  CALL LWIN_CHECK         ; verify that the present field is OK
+  JNC L4                  ; jump if it is OK, to advance to the next field
+  JMP L1                  ; failure: continue editing this field
+
+        #if EXTRA_TEMPLATE
+T4:                       ; Shift-Down was seen
+  MOV AX,2                ; we will try to advance BP by 2
+L5:
+  CALL SWAP_LWINS         ; swap windows, and leave BP at the BP+AX window
+  JMP L1                  ; continue editing in that window
+
+T6:                       ; Shift-Up was seen
+  MOV AX,-2               ; we will try to retreat BP by 2
+  JMP L5                  ; join common code to swap windows
+        #endif
+
+
+NONVAR_FIELDS:
+  MOV SI,[BP]         ; fetch the pointer to the non-variable strings
+  INC BP,2            ; advance the pointers pointer
+FIXED_SI_SCREEN:
+  LODSW               ; fetch lines count AL and attribute byte AH
+  PUSH AX             ; save the attribute byte
+  MOV AH,0            ; extend the lines count AL to AX
+  MUL VLINE_SIZE W    ; calculate the number of video bytes in the template
+  XCHG DX,AX          ; swap the beyond-video pointer into DX
+  POP AX              ; restore the attribute AH
+  MOV ES,VIDEO_SEG W  ; point ES to video memory
+  SUB DI,DI           ; point DI to the start of the video window
+  JMP >L1             ; jump into loop
+
+L2:                   ; loop here to output each displaying fixed byte
+  CMP AL,'_'
+  IF E MOV AL,' '
+  STOSW               ; output the byte AL with its attribute AH
+L1:                   ; loop here to fetch another fixed byte
+  LODSB               ; fetch the byte
+  CMP AL,>L13         ; is it a control code?
+  JAE L2              ; loop if not, to display the byte
+  MOV BL,AL           ; it is a control code: copy the code to BL
+  MOV BH,0            ; extend the code BL to BX
+  ADD BX,BX           ; convert the code into a word index
+  CALL NVAC[BX]       ; call the action routine associated with the code
+  JMP L1              ; loop to scan another fixed byte
+
+
+NVAC DW >L0,>L1,>L2,>L3    ; table of pointers for non-variable action routines
+     DW >L4,>L5,>L6,>L7
+     DW >L8,>L9,>L10,>L11
+L13 EQU ($-NVAC)/2         ; size of non-variable action table
+
+L0:                   ; code 0: exit NONVAR_FIELDS
+  MOV CX,DX           ; point CX beyond the video screen area
+  CALL VBLANK_TO_CX   ; blank out the remainder of the screen
+  MOV ES,DS           ; restore ES to our main program segment
+  POP BX              ; discard return address, go to EDIT_TEMPLATE's caller
+  RET
+
+L2:                   ; code 2: output colon followed by blanks
+  MOV AL,':'          ; load colon
+  STOSW               ; output the colon with its video attribute
+L1:                   ; code 1: output blanks
+  MOV AL,' '          ; load blank
+  DB 03C
+L10:                  ; code 10: repeat character
+  LODSB
+  MOV CL,[SI]         ; fetch the number of blanks
+  INC SI              ; advance the input pointer
+L2:
+  MOV CH,0            ; extend the count CL to CX
+  REP STOSW           ; output the blanks with their attribute bytes
+  RET
+
+L8:                   ; code 8: menu item
+  CALL >L7            ; advance to the next line
+  MOV CL,6            ; we will advance 6 more spaces
+  MOV AL,' '          ; load blank
+  JMP L2              ; jump to advance the 6 spaces
+
+L4:                   ; code 4: output colon followed by skipped lines
+  MOV AL,':'          ; load colon
+  STOSW               ; output the colon with its video attribute
+L3:
+  CALL >L7
+L7:                   ; code 7: advance to next line
+  PUSH AX,BX,DX       ; preserve registers
+  MOV BX,VLINE_SIZE W ; load the number of bytes in a video line
+  MOV AX,DI           ; fetch the current video output pointer
+  SUB DX,DX           ; extend the dividend AX to DXAX
+  DIV BX              ; calculate the remainder DX modulo the line size
+  LEA CX,[BX+DI]      ; point CX to one line beyond the current position
+  SUB CX,DX           ; retreat CX to the start of the following line
+  POP DX,BX,AX        ; restore clobbered registers
+L1:
+  CALL VBLANK_TO_CX   ; blank out the screen to the second following line
+  STOSW               ; blank out the first character of that line also
+  RET
+
+L6:                   ; code 6: return from a code-5 string
+  MOV SI,0            ; reset SI to the code-5 return point
+L0 EQU W[$-2]         ; immediate value plugged in by code 5: no nesting
+  RET
+
+L5:                   ; code 5: go to a substring
+  PUSH AX             ; preserve AX across action
+  LODSW               ; fetch the pointer to the substring
+  XCHG SI,AX          ; swap new pointer to SI, return pointer to AX
+  MOV L0,AX           ; store the return pointer
+  POP AX              ; restore clobbered register
+  RET
+
+L0:
+  DB 1,7,'Type your choice',2,0,0
+
+L9:                   ; code 9: put menu prompt at the bottom
+  XCHG CX,AX          ; swap the attribute byte from AH into CH
+  PUSH DX             ; save the beyond-video pointer
+  MOV AX,23           ; menu prompt will go after 23 video lines
+  MUL VLINE_SIZE W    ; calculate the offset of the menu-prompt line
+  XCHG CX,AX          ; swap offset into CX, and restore attribute to AH
+  POP DX              ; restore the beyond-video pointer
+  CALL L1             ; blank the screen from current cursor to menu line
+  MOV SI,L0           ; deflect input to the final "Type your choice" line
+  RET
+
+L11:                  ; code 11: keep screen, go to fixed line number
+  XCHG CX,AX          ; swap the attribute byte from AH into CH
+  PUSH DX             ; save the beyond-video pointer
+  LODSB               ; fetch the specified line number
+  CBW                 ; extend the line number from AL to AX
+  MUL VLINE_SIZE W    ; calculate the offset of the new output line
+  XCHG CX,AX          ; swap offset into CX, and restore attribute to AH
+  POP DX              ; restore the beyond-video pointer
+  MOV DI,CX           ; deflect our output to the specified new line
+  RET
+
+
+
+; VBLANK_TO_CX blanks out video memory, with attribute AH, from video location
+;   DI up to CX.
+
+VBLANK_TO_CX:
+  MOV AL,' '        ; load a blank
+  SUB CX,DI         ; calculate the number of video bytes to output
+  SHR CX,1          ; convert into a number of words
+  REP STOSW         ; output the blank-and-attribute words
+  RET
+
+
+; INIT_LWINDOWS initializes the variable parts of a template, according to
+;   the list of strings whose pointer is pointed to by BP.  If a field is
+;   longer than its intialization string, the tail is blank-filled if the
+;   string is terminated with a 0; left alone if 1.  Thus a 1 by itself
+;   will cause the field to be completely unmodified.
+
+INIT_LWINDOWS:
+  MOV SI,[BP]             ; fetch the pointer to the strings
+  INC BP,2                ; advance the pointers-pointer
+  PUSH BP                 ; preserve register across call
+  JMP >L3                 ; jump into loop
+
+L1:                       ; loop here for each window structure
+  CALL GET_LWIN_OUTP      ; point DI to the window and set CX to its size
+  DB 03D                  ; skip over the following DEC CX and STOSB
+L2:                       ; loop here to output each byte of the string
+  DEC CX                  ; count down remaining bytes
+  STOSB                   ; output this byte
+  LODSB                   ; fetch the next byte
+  CMP AL,1                ; is it a terminating 0 or 1?
+  JA L2                   ; loop if not, to output the byte
+LW_BLANK_FLAG DB          ; 074 if blanking, 0EB if preserving
+  JE >L4                  ; skip if it is the 1-duplication terminator
+  MOV LWIN_CURPOS[BX],0   ; position the cursor at the start of the window
+  MOV AL,' '              ; we are blanking out the field
+  REP STOSB               ; output blanks to the rest of the window
+L4:
+  CALL LWIN_REFRESH       ; generate the video display of the window
+L3:
+  CALL NEXT_LWIN          ; advance BP, and point BX to that window's structure
+  JNZ L1                  ; loop if there is another window, to initialize it
+  POP BP                  ; no more windows: restore clobbered register
+  MOV LW_BLANK_FLAG,074   ; shut off window-preservation for the next call
+  RET
+  
+
+PREV_LWIN:
+  SUB BP,4                ; make the following INC BP,2 a DEC BP,2 instead
+NEXT_LWIN:
+  INC BP,2                ; advance the windows pointer
+L4:
+  MOV BX,[BP]             ; fetch the pointer to this window's structure
+  TEST BX                 ; is it the terminating null?
+  RET
+
+        #if EXTRA_TEMPLATE
+; SWAP_LWINS swaps the contents of L-windows BP and BP+AX, and moves the
+;   edit-cursor to BP+AX.
+
+SWAP_LWINS:
+  CALL GET_LWIN_OUTP    ; point DI to the L-window, and set CX to its size
+  MOV SI,DI             ; copy this window's pointer to SI
+  MOV DX,CX             ; copy this window's size to DX
+  XCHG DI,AX            ; swap the BP-offset into DI
+  MOV CX,[BP+DI]        ; point CX to the other window's record
+  JCXZ RET              ; return with no action if there is no other window
+  PUSH DI,BX            ; save the BP-increment offset and starting BX
+  MOV BX,CX             ; point BX to the other window's record
+  CALL GET_LWIN_OUTP    ; point DI to the other window, and set CX to its size
+  CMP CX,DX             ; which window is bigger?
+  JA >L5                ; skip if CX is bigger
+  XCHG CX,DX            ; ensure CX is bigger, DX is smaller
+  XCHG SI,DI            ; point DI to the bigger window, SI to smaller
+L5:                     ; loop here to swap each byte of the contents
+  MOV AL,[DI]           ; fetch a byte from the bigger window
+  XCHG AL,[SI]          ; swap it into the smaller window
+  STOSB                 ; store the smaller-window byte in the bigger window
+  INC SI                ; advance the smaller-window pointer
+  DEC CX,DX             ; count down sizes
+  JNZ L5                ; loop if there are still bytes in the smaller window
+  MOV AL,' '            ; contents swapped: load blank
+  REP STOSB             ; blank-fill the remainder of the bigger window
+  CALL LWIN_ZVIDEO      ; refresh the video for the other window
+  POP BX                ; restore the pointer to the original window's record
+  CALL LWIN_ZVIDEO      ; refresh the video for the original window
+  CALL LWIN_CHECK       ; check this window for acceptable contents
+  POP CX                ; restore the BP-increment
+  IF NC ADD BP,CX       ; if the contents was acceptable then change windows
+  JMP L4                ; jump to reload BX and return
+        #endif
+
+
+LWIN_CHECK:  
+  CLC                     ; clear carry, to accept a null EXCHECK
+  MOV SI,LWIN_OFFSET[BX]  ; point SI to the start of the window
+  JMP LWIN_EXCHECK[BX]    ; call the exit-check routine for this window
+
+
+

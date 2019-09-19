@@ -1,0 +1,19 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    REV                                         See EILIB.TXT for terms
+;---------------
+
+; REV_STRING reverses the string running from DS:SI through DS:DI-1.  We do so
+;    by repeatedly exchanging the bytes pointed to by each pointer, then moving
+;    the pointers in towards each other, until they meet.
+
+REV_STRING:
+  PUSH SI,DI        ; save registers across call
+L1:                 ; loop here for each pair of bytes
+  LODSB             ; fetch the SI-pointed byte
+  DEC DI            ; decrement DI to the last byte of the remaining string
+  XCHG AL,[DI]      ; exchange the SI-pointed byte with the DI-pointed byte
+  MOV [SI-1],AL     ; store the DI-pointed byte in the SI-pointed spot
+  CMP SI,DI         ; have SI and DI come together yet?
+  JB L1             ; loop if not to swap two more end-bytes
+  POP DI,SI         ; restore clobbered registers
+  RET               ; NoCarry set for disassembler MEMDIS_n's benefit

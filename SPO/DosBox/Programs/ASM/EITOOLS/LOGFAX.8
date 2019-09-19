@@ -1,0 +1,71 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    LOGFAX                                      See EILIB.TXT for terms
+;---------------
+
+; LOGFAX writes a "FAX" record to the PCBSTATS.DAT file, so an incoming
+;   fax appears on the PCBoard screen.
+
+LOGFAX:
+  MOV AH,02A            ; MS-DOS function code for GET_DATE
+  INT 021               ; set AL=day-of-week CX=year DH=month DL=day
+  MOV DI,DATEBUFF       ; point to our date buffer
+  MOV SI,DOWS           ; point to the array of day-of-week names
+  CALL OUT_3NAME        ; output the 3-letter abbreviation for the day of week
+  MOV AL,DH             ; fetch the month
+  MOV SI,MONTHS         ; point to the array of month names
+  CALL OUT_3NAME        ; output the 3-letter abbreviation for month AL
+  MOV AL,DL             ; fetch the day
+  CALL OUT_2DEC         ; output the day
+  MOV AH,02C            ; MS-DOS function code for GET_TIME
+  INT 021               ; set CH=hour  CL=minute  DH=second
+  MOV DI,TIMEBUFF       ; point to our time buffer
+  MOV AL,CH             ; fetch the current hour
+  CALL OUT_2DEC         ; output the current hour
+  MOV AL,CL             ; fetch the current minute
+  CALL OUT_2DEC         ; output the current minute
+  MOV SI,081            ; point to our invocation command tail
+  CALL FILE_ARG         ; point DX to the file-name argument
+  CALL NO_MORE_ARGS     ; ensure there are no more command-tail arguments
+  MOV AL,2              ; MS-DOS OPEN code for "read-write"
+  CALL MOPEN            ; open the PC-Board log file named in the command tail
+  MOV DX,OUTBUFF        ; point to the output buffer
+  CALL MCLOSE_DI        ; output our message into the buffer and close the file
+  JMP GOOD_EXIT         ; exit the program
+  
+
+OUT_2DEC:               ; output the 2-digit decimal value of AL
+  AAM                   ; unpack the binary value of AL into AH and AL
+  XCHG AL,AH            ; swap so the high digit will be output first
+  ADD AX,'00'           ; convert the digits to ASCII values
+  STOSW                 ; output the digits
+  INC DI                ; skip past the following byte
+  RET
+
+
+OUT_3NAME:              ; output 3-letter name numbered AL from SI table
+  MOV AH,3              ; load indexing multiplier
+  MUL AH                ; convert the AL number into a record index
+  ADD SI,AX             ; advance SI to the entry indexed by AL
+  MOVSW                 ; output the first two letters of the entry
+  MOVSB                 ; output the third letter of the entry
+  MOV AL,' '            ; load blank
+  STOSB                 ; output a trailing blank
+  RET
+
+OUTBUFF:                ; our output message
+  DB 'FAX '             ; "FAX" and date-time will appear on the screen
+DATEBUFF:
+  DB 'Mon Sep nn'       ; template for the date
+  DB 40 DUP 0           ; this spacing is required by the PC-Board log file
+TIMEBUFF:
+  DB '12:29',0          ; template for the time
+
+DOWS:
+  DB 'SunMonTueWedThuFriSat'
+MONTHS EQU $-3
+  DB 'JanFebMarAprMayJunJulAugSepOctNovDec'
+
+USAGE_MSG:
+  DB 'usage: LOGFAX fname',0D,0A
+  DB '   outputs "FAX" and date to PCBSTATS file',0D,0A,0
+

@@ -1,0 +1,55 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OMFHEX                                       See EILIB.TXT for terms
+;---------------
+
+; OMFHEX outputs a hex dump of the type byte, length word, and first 23
+;   subsequent bytes from each OMF record in the OBJ file named in the
+;   command tail.
+   
+  JMP OMFHEX          ; skip over the usage message to our code
+
+  DB 0D,0A            ; so that TYPE will work gracefully
+USAGE_MSG:
+  DB 'usage: OMFHEX in.obj out'
+  DB 0D,0A,0
+  DB 01A
+
+NO_I2 EQU 1         ; there is only one input file
+EXTRN IHANDLE:W     ; explicitly declare so that typing is correct in library
+
+OMFHEX:
+  MOV SI,081        ; point SI to our command tail
+  CALL MERGE_21     ; scan and process the 2 input and 1 output files
+  JMP GOOD_EXIT     ; exit back to the operating system
+
+
+
+; PROCESS_MERGE processes the input file from SI up to DX, outputting to DI.
+;   We read and output the OMF type byte, length word, and 23 content bytes.
+;   We return with SI advanced beyond the record, as given by the length word.
+
+PROCESS_MERGE:
+  LODSB             ; fetch the type byte
+  CALL HEX_AL       ; output the type byte
+  MOV AL,020        ; load blank
+  STOSB             ; output intervening blank
+  LODSW             ; fetch the length word
+  PUSH AX,SI        ; save the length word and input pointer
+  MOV CX,AX         ; copy the length word to CX
+  CALL HEX_AX       ; output the length word
+  CMP CX,23         ; are there more than 23 content bytes?
+  IF AE MOV CX,23   ; if yes then reduce output count to 23
+  JCXZ >L2          ; skip if there are no content bytes
+L1:                 ; loop here to output each content byte
+  MOV AL,020        ; load blank
+  STOSB             ; output a leading blank
+  LODSB             ; fetch a content byte
+  CALL HEX_AL       ; output the content byte
+  LOOP L1           ; loop to output the next byte
+L2:
+  MOV AX,0A0D       ; output complete: load CRLF
+  STOSW             ; output the CRLF for the end of the output line
+  POP SI,AX         ; restore record contents pointer and length word
+  ADD SI,AX         ; advance SI to the next OMF record
+  RET
+

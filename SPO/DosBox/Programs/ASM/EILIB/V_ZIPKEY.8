@@ -1,0 +1,28 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  V_ZIPKEY                                      See EILIB.TXT for terms
+;---------------
+
+; VERIFY_ZIPKEY ensures that ZIPKEY has been installed as a memory-resident
+;   program.  If it hasn't, we issue an error message and exit the program.
+
+L2:
+  DB 'you need to run '
+L1:
+  DB 'ZIPKEY 4 before running this program.',0D,0A,0
+
+VERIFY_ZIPKEY:
+  PUSH DS           ; preserve register across call
+  SUB AX,AX         ; load zero
+  MOV DS,AX         ; point DS to zero segment
+  MOV DS,W[02CE]    ; point DS to ZIPKEY's INT 179 segment
+  MOV SI,075        ; point to the "ZIPKEY" signature
+  MOV DI,L1         ; point to out copy of the signature
+  MOV CX,3          ; there are three words to compare
+  REPE CMPSW        ; compare our signature to the INT 179 signature
+  POP DS            ; restore clobbered register
+  IF E RET          ; return of ZIPKEY is in fact present
+  MOV AX,L2         ; point to error message
+  CALL O_SORRY_MSG  ; output "Sorry, " and the error message
+  JMP BAD_EXIT      ; exit the program
+
+

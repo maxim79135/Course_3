@@ -1,0 +1,86 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FIXDOS                                       See EILIB.TXT for terms
+;---------------
+
+; FIXDOS fixes a serious bug in MS-DOS, that causes the InDOS flag to yield
+;   inaccurate results.  There is a routine called before InDOS is incremented,
+;   that sets a static variable.  We find the call and move the increment
+;   before the call.
+
+  JMP FIXDOS        ; jump around message, to the program start
+
+  DB 0D,0A,0A
+SIGNON_MSG:
+  DB 'FIXDOS, V1.0  Copyright 1990 Eric Isaacson',0D,0A
+  DB 0D,0A,0
+FIXED_MSG:
+  DB 'FIXDOS has modified DOS (in memory) to cause the InDOS flag to',0D,0A
+  DB '   give more reliable results.',0D,0A
+  DB 0,01A
+
+FIXDOS:
+  MOV AX,SIGNON_MSG   ; point to the sign-on message
+  CALL EMESSAGE       ; output the sign-on message
+  MOV AH,034          ; MS-DOS function call for GET_INDOS
+  INT 021             ; point ES:BX to the InDOS flag
+  MOV OUR_INDOS,BX    ; store the InDOS offset
+  SUB AX,AX           ; load zero
+  MOV ES,AX           ; point ES to the 86 interrupt vector
+  ES LES DI,[132]     ; point ES:DI to the DOS service interrupt 33
+  MOV CX,080          ; bad code is within 080 bytes of the handler's start
+  MOV AL,0E8          ; load opcode for a near CALL
+L1:                   ; loop here to find the bad CALL
+  REPNE SCASB         ; find the CALL opcode
+  JNZ >E2             ; error if the opcode is not found
+  ES MOV DX,[DI]      ; set DX to the present relative offset
+  LEA BX,[DI+2]       ; point BX beyond the CALL instruction
+  ADD BX,DX           ; advance BX to the procedure being called
+  ES CMP W[BX],08F2E  ; does the procedure start with a CS POP?
+  JNE L1              ; loop if not -- it's a coincidental CALL opcode
+  ADD NEW_PROC_P,DX   ; procedure is found: point our offset to it
+  LEA BP,[DI+1]       ; point BP just before the following code
+  MOV SI,INDOS_SEQ    ; point SI to the following INDOS incrementing code
+  MOV BX,8            ; there are 8 bytes in the target code
+  CALL FIND_STRING    ; find the target INDOS-incrementing code
+  JNZ >E2             ; error if the code was not found
+  LEA SI,[DI-1]       ; code was found: point to the last byte before it
+  ADD DI,5            ; advance DI to the third-last byte of that code
+  MOV CX,SI           ; point CX to the last byte of intervening code
+  SUB CX,BP           ; calculate the number of bytes of intervening code
+  STD                 ; movement is backwards
+  CLI                 ; we cannot tolerate interrupts while changing DOS
+  ES MOV W[DI+1],01F0E; place a MOV DS,CS into the last two bytes
+  ES REP MOVSB        ; move the intervening instructions upwards
+  MOV SI,NEW_CODE     ; point to the last byte of new code
+  MOV CL,8            ; there are 8 bytes of new code
+  REP MOVSB           ; move the new code down
+  MOV AL,02E          ; load CS override byte
+  STOSB               ; output the CS override byte
+  STI                 ; DOS is fixed: we can tolerate interrupts again
+  CLD                 ; restore forward scanning
+  MOV AX,FIXED_MSG    ; point to message saying DOS is fixed
+  CALL EMESSAGE       ; output the good news
+  JMP GOOD_EXIT       ; exit the program, successfully
+
+E2:                   ; error:procedure not found
+  MOV AX,NOFIND_PROCS ; point to message saying so
+  JMP ERROR_EXIT      ; exit with the error
+
+
+INDOS_SEQ:            ; template for the DOS code we will look for
+  MOV DS,BX,CS        ; these are instructions within DOS
+  INC B[0]
+OUR_INDOS EQU W[$-2]
+  NOP
+  CALL $-3
+NEW_PROC_P EQU W[$-2]
+NEW_CODE EQU $-1
+
+NOFIND_PROCS:
+  DB 7
+  DB 'Sorry, could not find the erroneous code within DOS.'
+  DB 0D,0A,0
+
+USAGE_MSG:
+  DB 'usage: FIXDOS',0D,0A,0
+

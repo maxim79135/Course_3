@@ -1,0 +1,60 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   GRANDSUM                                     See EILIB.TXT for terms
+;---------------
+
+; GRANDSUM calculates and outputs the sum of decimal numbers starting in
+;   the column number given in the command tail, from the standard input
+;   file.  Leading blanks are ignored; if the next nonblank isn't a
+;   decimal digit, the line is ignored.  The grand total is output
+;   to standard output.
+
+        DATA SEGMENT
+OBUFF:                  ; output buffer
+  DB 128 DUP ?
+        DATA ENDS
+
+GRANDSUM:
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_DEC       ; read the column number
+  XCHG DX,AX            ; save the column number in DX
+  CALL NO_MORE_ARGS     ; insure no more command-tail arguments
+  CALL PROCESS_LINES    ; call PROCESS_LINE repeatedly for each line
+  MOV AX,TOTAL W        ; fetch the low word of the total
+  MOV DL,TOTAL+2 B      ; fetch the high byte of the 30byte total
+  MOV BX,100 BY 10      ; 100-byte limit; base 10
+  MOV DI,OBUFF          ; point to the output buffer
+  CALL NUMOUT           ; output the grand total
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output CRLF
+  MOV DX,OBUFF          ; point to the output buffer
+  CALL OWRITE_DI        ; output the total to the console
+  JMP GOOD_EXIT         ; exit the program
+
+
+
+TOTAL  DW 0,0           ; variable holding our sum
+
+; PROCESS_LINE processes the line of CX bytes pointed to by SI (and beyond by
+;   DI), and copies the line to the output buffer.
+
+PROCESS_LINE:
+  CMP CX,DX             ; is the line too short for our column?
+  JBE RET               ; jump if yes, to output the sum and the line
+  ADD SI,DX             ; advance SI to our column
+  CALL TAIL_BLANKS      ; skip over any leading blanks
+  MOV AL,[SI]           ; fetch a character from the column
+  SUB AL,'0'            ; reduce digits range to zero
+  CMP AL,10             ; was it a decimal digit?
+  JAE RET               ; jump if not, to output the sum and the line
+  CALL SCAN_DECIMAL     ; it was a digit: fetch the number
+  ADD TOTAL,AX          ; add the number into the sum
+  ADC TOTAL+2,0         ; carry the addition to the high word
+  RET
+
+
+
+USAGE_MSG:
+  DB 'usage: GRANDSUM colnum <fname ',0D,0A
+  DB '   adds up numbers in a column within a file',0D,0A,0
+
+

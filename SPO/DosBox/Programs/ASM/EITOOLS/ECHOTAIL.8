@@ -1,0 +1,19 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ECHOTAIL                                     See EILIB.TXT for terms
+;---------------
+
+; ECHOTAIL writes our command tail to the error console.  This is useful if
+;   ECHO OFF is in effect.
+
+ECHOTAIL:
+  MOV BL,B[080]       ; fetch the length of the command tail
+  MOV BH,0            ; extend the length from BL to BX
+  MOV B[BX+082],0A    ; append a linefeed to the command tail
+  LEA CX,[BX+2]       ; point BX beyond the linefeed we just appended
+  MOV DX,081          ; point DX to the command tail contents
+  MOV BX,2            ; load the open-file handle for the error console
+  MOV AH,040          ; DOS function number for WRITE
+  INT 021             ; write the command tail
+  MOV AX,04C00        ; DOS function numbers for GOOD_EXIT
+  INT 021             ; exit the program
+

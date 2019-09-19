@@ -1,0 +1,100 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FN                                           See EILIB.TXT for terms
+;---------------
+
+; FN is a variant of the F string-searching program, in which we search
+;   for instances of a number within a set of files.  In addition to finding
+;   the given string of digits, the FIND_NUMBER routine requires the string
+;   not to be embedded in a larger token-- i.e., there must not be adjacent
+;   numbers, letters, or ".", or a preceding "(" or "\" next to the number,
+;   or it will not be reported.
+
+PF_FIND_PROC EQU FIND_NUMBER
+
+  JMP F_      ; jump around USAGE_MSG to the F.8 code
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FN [!] [-c | +cX] number filenames',0D,0A
+  DB '  finds all lines containing given number',0D,0A
+  DB '  The number must not be embedded in a',0D,0A
+  DB '  larger token: no adjacent letters, digits,',0D,0A
+  DB '  or period, and no preceding ( or \ is allowed.',0D,0A
+  DB '  ! suppresses the output of the containing file names',0D,0A
+  DB '  -c causes display of a whole record containing the word',0D,0A
+  DB '     where indented lines continue a record.  For +cX, non-X lines',0D,0A
+  DB '     continue a record.',0D,0A
+  DB 0,01A
+
+
+; FIND_NUMBER searches for the number BX--DS:SI within the array CX--ES:DI.
+;   Return Z if found, with ES:DI pointing to the found number.  Return NZ if
+;   not found; with ES:DI pointing to CX residual bytes at the end of the
+;   buffer, which should be carried over if there is another buffer.  Return
+;   CX = 0 (there are no residual bytes) if the first character of the target
+;   word does not occur in the last BX-1 bytes of the array.
+
+FIND_NUMBER:
+  TEST BX,BX        ; are we looking for a null string?
+  JZ RET            ; always successful if yes
+L1:                 ; loop here for each match of the first byte of the string
+  ; NOTE: NZ is set in both the drop-through and loop cases at this point!
+  ;    This insures that CX = 0 will cause a correct NZ return.
+  MOV AL,[SI]       ; fetch the first byte of the string
+  REPNE SCASB       ; look for the first byte of the string
+  JNE RET           ; return failure if the first byte is not found
+  ES MOV AL,[DI-2]  ; fetch the character before the first digit of the number
+  CMP AL,'.'        ; is it a period?
+  JE L1             ; loop if yes-- the number is embedded
+  CMP AL,'('        ; is it a left paren?
+  JE L1             ; loop if yes-- the number is embedded
+  CMP AL,'\'        ; is it a backslash?
+  JE L1             ; loop if yes-- the number is embedded
+  CMP AL,'+'        ; is it a plus sign?
+  JE L1             ; loop if yes-- the number is embedded
+  CMP AL,'-'        ; is it a minus sign?
+  JE L1             ; loop if yes-- the number is embedded
+  CMP AL,'0'        ; is it below all digits and letters?
+  JB >L6            ; jump if it is: number start is OK
+  CMP AL,'9'        ; is it a digit?
+  JBE L1            ; loop if yes -- the number is embedded
+  OR AL,020         ; coerce the character to lower case
+  SUB AL,'a'        ; reduce letters-range to 0
+  CMP AL,26         ; is it a letter?
+  JB L1             ; loop if yes -- the number is embedded
+L6:                 ; the start of the number is OK
+  INC CX            ; increment count back to the matched byte
+  CMP CX,BX         ; are there enough remaining bytes to match the string?
+  JB >L2            ; return failure if not
+  PUSH CX,SI,DI     ; save the pointers to the starts of strings
+  DEC DI            ; retreat array pointer back to first matched byte
+  MOV CX,BX         ; fetch the length of the string
+  REPE CMPSB        ; compare the whole string
+  ES MOV AL,[DI]    ; fetch the character following the string, just in case
+  POP DI,SI,CX      ; restore pointers to pre-comparison values
+  LOOPNE L1         ; loop if no match, with a DEC CX to cancel above INC CX
+  CMP AL,'\'        ; is the following character a backslash?
+  JE L1             ; loop if yes -- the number is embedded
+  CMP AL,'.'        ; is it a period?
+  JE L1             ; loop if yes -- the number is embedded
+  CMP AL,'0'        ; is it too low to be a digit or letter?
+  JB >L7            ; return success if yes
+  CMP AL,'9'        ; is it a digit?
+  JBE L1            ; loop if yes -- the number is embedded
+  OR AL,020         ; coerce the character to lower case
+  SUB AL,'a'        ; reduce letters-range to 0
+  CMP AL,26         ; is it a letter?
+  JB L1             ; loop if yes -- the number is embedded
+L7:                 ; successful match
+  DEC DI            ; retreat string pointer to first byte
+  INC CX            ; increment count to reflect the retreat
+  SUB AL,AL         ; Z flag signals success
+  RET
+
+L2:                 ; first character found; but not enough subsequent chars
+  DEC DI            ; retreat back to the character (CX is already incremented)
+  OR AL,0FF         ; insure NZ to signal failed find
+  RET
+
+INCLUDE F.8   ; the remainder of the program code is identical to F.8

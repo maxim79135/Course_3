@@ -1,0 +1,46 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HEX_AX                                       See EILIB.TXT for terms
+;---------------
+
+; HEX_AX outputs the 4-digit hex value of AX to ES:DI.
+
+; HEX_AL outputs the 2-digit hex value of AL to ES:DI.
+
+; NOLEAD_HEX_AL outputs the 1- or 2-digit hex value of AL to ES:DI.
+
+        #if ref HEX_DXAX
+HEX_DXAX:
+  CALL >L0          ; output the high word of DXAX
+L0:                 ; swap DX into AX, and output it
+  XCHG AX,DX        ; swap the word
+        #endif
+HEX_AX:
+  CALL >L1          ; swap AH into AL and output it
+L1:                 ; drop here to swap in and output the original AL
+  XCHG AL,AH        ; swap AH into AL
+HEX_AL:
+  PUSH AX           ; preserve AX across call
+  AAM 16            ; decompose AL into nibbles AH and AL
+  CALL >L2          ; output the first hex digit
+  CALL >L2          ; output the second hex digit
+  POP AX            ; restore clobbered register
+  RET
+
+
+        #if ref NOLEAD_HEX_AL
+NOLEAD_HEX_AL:      ; HEX_AL but suppress a leading zero
+  CMP AL,010        ; will there be two hex digits?
+  JAE HEX_AL        ; jump if there will: HEX_AL does the job
+  DB 03D            ; single digit: skip over XCHG AL,AH to ADD AL,090H
+        #endif
+L2:
+  XCHG AL,AH        ; swap high nibble into AL
+  ADD AL,090H       ; these 4 lines convert AL into an ASCII hex digit,
+  DAA               ;    in an outrageously clever and incomprehensible
+  ADC AL,040H       ;    fashion!!!
+  DAA               ;
+  STOSB             ; output the hex digit
+        #if SCREEN_HEX
+  INC DI            ; advance beyond the video attribute byte
+        #endif
+  RET

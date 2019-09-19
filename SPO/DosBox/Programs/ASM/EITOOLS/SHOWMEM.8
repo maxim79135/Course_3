@@ -1,0 +1,49 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SHOWMEM                                      See EILIB.TXT for terms
+;---------------
+
+; SHOWMEM produces a display of the current memory map.
+
+NO_DOSCHECK EQU 1   ; we do not trap errors in MSDOS.8
+
+SHOWMEM:
+  MOV DI,01000      ; point DI to free memory
+  MOV AX,CS         ; fetch our own program segment value
+  DEC AX            ; retreat to its memory-allocation record
+L1:                 ; loop here to output a memory record address
+  STOSW             ; output the record address (a segment value)
+  MOV BX,-1         ; initialize our required size counter
+L2:                 ; loop here to search for valid memory records
+  DEC AX            ; retreat the proposed segment value
+  JZ >L3            ; exit if we have reached zero
+  INC BX            ; increment the required size counter
+  MOV DS,AX         ; point DS to the proposed memory record
+  CMP B[0],'M'      ; is there a correct type byte?
+  JNE L2            ; loop if not, to search for another record
+  CMP BX,W[3]       ; is the size word the required value?
+  JNE L2            ; loop if not, to search for another record
+  JMP L1            ; we have a valid record: loop to record it
+
+L3:                 ; our downwards scanning of memory is complete
+  MOV BP,DI         ; copy the output pointer to BP, for reading
+  MOV DX,DI         ; we will eventually write from this output pointer
+L4:                 ; loop here to output the report for each record
+  DEC BP,2          ; retreat the record-pointers pointer
+  CMP BP,01000      ; are we past the first pointer?
+  JB >L5            ; exit if we are
+  MOV DS,AX,[BP]    ; copy the pointer to DS and AX
+  CALL HEX_AX       ; output the pointer as a hex value
+  MOV AL,' '        ; load intervening blank
+  STOSB             ; output the intervening blank
+  MOV AX,W[1]       ; fetch the owning PSP value
+  CALL HEX_AX       ; output the owning PSP value
+  MOV AX,0A0D       ; load CRLF
+  STOSW             ; output terminating CRLF
+  JMP L4            ; loop to process the next pointer
+
+L5:                 ; report is complete
+  MOV DS,SS         ; point DS to our program segment
+  CALL OWRITE_DI    ; output the report
+  JMP GOOD_EXIT     ; exit this program
+
+

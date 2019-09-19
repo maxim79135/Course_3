@@ -1,0 +1,60 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   CMTHEADS                                     See EILIB.TXT for terms
+;---------------
+
+; CMTHEADS extracts the comment headers all the A86 source files named in
+;   the command tail.  This program was used to help create the summary
+;   files for the EILIB and EITOOLS files.  We assume that all files begin
+;   with the header format of these files, starting with the three-line
+;   block with a copyright message at the end of the first two lines.
+;   To avoid repetitious clutter in the output, we filter out the copyright
+;   messages.
+
+CMTHEADS:
+  CALL NONBLANK_TAIL  ; verify there are command-tail arguments
+  MOV DI,OBUFF        ; initialize the output pointer
+  CALL PFILE_WILD     ; process all the files listed in the command tail
+  CALL FLUSH_OBUFF    ; flush the output
+  JMP GOOD_EXIT       ; exit the program
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage, e.g.: CMTHEADS *.8 >out',0D,0A
+  DB '  extracts comment headers from A86 source files',0D,0A
+  DB 0A,0,01A
+
+
+; PFILE_REC is called once for each source file specified, with the
+;   beginning of the file buffered at SI--DX.  We scan and output the
+;   comment headers, then we reset DX to SI, which causes PROCESS_FILE
+;   to skip to the next file, without recalling us for subsequent buffers
+;   within this file.
+
+PFILE_REC:
+  CALL COPY47         ; copy the first line, minus the copyright message
+  CALL COPY47         ; copy the second line, minus the copyright message
+L1:                   ; loop here to process each subsequent comment line
+  CALL COPY_LINE      ; copy the line
+  CALL CHECK_OBUFF    ; check the output buffer for overflow
+  PUSH SI             ; save the pointer to the next line
+  CALL TAIL_BLANKS    ; advance to the first nonblank in the line
+  POP SI              ; restore the pointer to the line start
+  CMP AL,';'          ; is it a comment line?
+  JE L1               ; loop if yes, to output the line
+  CMP AL,' '          ; is it a blank line?
+  JBE L1              ; loop if yes, to output the line
+  MOV DX,SI           ; content line seen: reset DX to flush the file
+  RET
+
+
+COPY47:               ; copy the first 47 bytes of the SI-pointed line
+  MOV CX,47           ; load count of 47
+L1:                   ; loop here to copy each byte
+  LODSB               ; fetch a byte
+  STOSB               ; output the byte
+  CMP AL,0A           ; is it the end of the line?
+  LOOPNE L1           ; loop if not, to copy the next byte
+  JE RET              ; return if the whole line was less than 48 bytes
+  CALL SKIP_LINE      ; line is bigger: skip over the rest of the line
+  JMP DETRAIL_CRLF    ; retract trailing blanks and output CRLF
+

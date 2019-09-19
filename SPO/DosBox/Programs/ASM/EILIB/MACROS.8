@@ -1,0 +1,32 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MACROS                                       See EILIB.TXT for terms
+;---------------
+
+; SKIP1 and SKIP2 are macros that effect a fast version of a JMP instruction,
+;   around the next 1 or 2 bytes in the program instruction stream.  We
+;   generate the opcodes for CMP AL,ib or CMP AX,iw, which clobber the flags
+;   but occupy less space and execute more quickly than JMP $+3 or JMP $+4
+;   would.
+
+; SS_CALL makes a CALL to a user-supplied library routine.  We determine if
+;   the routine is a memory variable , and, if it is, we prepend an SS
+;   override byte to the CALL instruction.
+
+SKIP1 MACRO         ; skip over the next one-byte instruction
+  DB 03C            ; CMP AL,ib opcode consumes the next instruction byte
+#EM
+
+SKIP2 MACRO         ; skip over the next two-byte instruction
+  DB 03D            ; CMP AX,iw opcode consumes the next instruction byte
+#EM
+
+
+SS_CALL MACRO
+        ##if (TYPE #1) EQ 2
+  SS                  ; supply override if this is an indirect call
+        ##endif
+  CALL #1             ; invoke caller's procedure
+#EM
+
+
+

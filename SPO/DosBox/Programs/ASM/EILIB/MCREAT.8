@@ -1,0 +1,30 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MCREAT                                       See EILIB.TXT for terms
+;---------------
+
+; MCREAT creates a file whose path name is pointed to by DS:DX, giving the file
+;   a standard set of permissions.  Return Carry if there was an error in
+;   creating the file, with AX set to an error number.  Return NoCarry if
+;   successful, with AX set to the open-file number.
+
+MCREAT:
+  PUSH CX           ; preserve register across call
+  SUB CX,CX         ; 0-code provides the standard access
+        #if LONG_FNAMES
+  PUSH SI           ; save register across call
+  MOV SI,DX         ; point SI to the file name to be opened
+  MOV BX,1          ; write-only access
+  MOV DX,012        ; truncate if it exists, create if it doesn't exist
+  MOV AX,0716C      ; MSDOS function number for LONG_CREAT
+  INT 021           ; call MSDOS to do the creation
+  POP SI            ; restore clobbered register
+        #else
+  MOV AH,03C        ; MSDOS function number for CREAT
+  INT 021           ; call MSDOS to do the creation
+        #endif
+  POP CX            ; restore clobbered register
+  MOV BX,AX         ; copy file handle to BX, for convenience
+  RET
+
+
+

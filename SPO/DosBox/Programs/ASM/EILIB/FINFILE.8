@@ -1,0 +1,37 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FINFILE                                      See EILIB.TXT for terms
+;---------------
+
+; FIND_IN_FILE finds the string of BP bytes, pointed to by DS:SI, within
+;  the file whose open handle number is BX.  The calling program must delcare
+;  a buffer IBUFF, running up to BEYOND_IBUFF, into which the input file is
+;  read.  The caller must also point DI beyond any residual bytes that are
+;  already in IBUFF.
+
+L0:                     ; loop here for each failed find
+  PUSH SI               ; preserve target pointer during residual bytes-move
+  MOV SI,DI             ; point SI to the residual bytes
+  MOV DI,IBUFF          ; point DI to the start of IBUFF
+  REP MOVSB             ; copy residual bytes to the start of IBUFF
+  POP SI                ; restore clobbered pointer
+FIND_IN_FILE:
+  CALL FILL_IBUFF       ; fill IBUFF with data to search
+  MOV DI,IBUFF          ; point DI to the start of IBUFF, for searching
+  MOV CX,DX             ; point CX beyond the bytes read
+  SUB CX,DI             ; calculate the number of bytes read
+  XCHG BX,BP            ; swap the target count into BX
+  CALL FIND_STRING      ; find the target string
+  XCHG BX,BP            ; swap the file handle back into BX
+  JZ >L1                ; jump if the string was found
+  CMP DX,BEYOND_IBUFF   ; string was not found-- is there more data to read?
+  JE L0                 ; loop if yes
+  RET                   ; NZ signals that we failed to find the string
+
+L1:                          ; string was found
+  CMP DI,BEYOND_IBUFF-1000   ; is the string too close to the end?
+  JB >L2                     ; jump if not -- it's OK where it is
+  CMP DX,BEYOND_IBUFF        ; is there more of the file to read?
+  JE L0                      ; jump if there is-- we'll read beyond the string
+L2:                          ; common success exit
+  CMP AL,AL                  ; set Z to signal success
+  RET

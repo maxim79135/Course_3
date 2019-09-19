@@ -1,0 +1,21 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ELAPSE                                       See EILIB.TXT for terms
+;---------------
+
+; ELAPSE sets DLAX to the number of hundredths of seconds that have
+;   elapsed since the last time ELAPSE was called.
+
+ELAPSE:
+  CALL GET_TIME_DLAX  ; set DLAX to the current hundredths within day
+  PUSH AX,DX          ; save the time
+  SUB AX,0D600        ; subtract the previous low word
+L0 EQU W[$-2]         ; previous low word is stored in above imm value
+  SBB DX,083          ; carry the subtraction to the previous high word
+L1 EQU W[$-2]         ; previous high word is stored in above imm value
+  POP L1,L0           ; pop this time into the previous slots, for next call
+  JNC RET             ; return if there was no carry
+  ADD AX,0D600        ; midnight elasped: add back low word of 24 hours
+  ADC DX,083          ; add with carry the high word of 24 words
+  RET
+
+

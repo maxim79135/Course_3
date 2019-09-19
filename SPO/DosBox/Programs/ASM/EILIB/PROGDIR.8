@@ -1,0 +1,51 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PROGDIR                                      See EILIB.TXT for terms
+;---------------
+
+; OUR_PROGDIR returns Z if we found our program name in the environment
+;   segment.  We also null-terminate the containing directory name, and
+;   return SI pointing to its offset.  The caller must point a segment
+;   register to the environment segment W[02C] to access the name.
+
+OUR_PROGDIR:
+  PUSH ES           ; preserve register across call
+  MOV AL,0          ; we search for nulls within the environment-buffer
+        #if def POINT_ENV   ; Windows programs need to provide a routine
+  CALL POINT_ENV    ; point ES:DI to the environment string
+        #else
+  MOV ES,W[02C]     ; fetch the environment segment pointer
+  SUB DI,DI         ; the environment starts at offset zero in its segment
+        #endif
+  MOV CH,0FF        ; load an unlimited count
+L1:                 ; loop here to look for the end of the environment
+  REPNE SCASB       ; find the next null
+  SCASB             ; are there two consecutive nulls?
+  JNE L1            ; loop if not, to keep looking
+  INC DI,2          ; end of environment found: skip over following word
+  MOV SI,DI         ; point SI to the invocation path
+  ES TEST B[DI]     ; is our program path there?
+  JS >L9            ; skip if not
+  MOV CX,64         ; limit the terminator search to 64 bytes
+  REPNE SCASB       ; scan to the terminating null
+  JNE >L9           ; skip if the null was not found
+  NEG CX            ; negate the remaining bytes
+  ADD CX,64         ; calculate the number of bytes in the invocation path
+  DEC DI            ; retreat to the last byte of the path
+  MOV AL,'\'        ; we will look for the final subdirectory character
+  STD               ; searching is backwards
+  REPNE SCASB       ; find the last subdirectory character
+  CLD               ; resume forward scanning
+  JE >L2            ; jump if a subdir char was found
+  ES CMP B[DI+2],':'; no subdir char: is there a drive letter?
+  IF E INC DI,2     ; if yes then advance to the associated colon
+L2:
+  INC DI            ; advance to the subdir char we just found
+  MOV AL,0          ; load null
+  STOSB             ; null-terminate our program path
+  CMP AL,AL         ; set Z flag to signal success
+L9:
+  POP ES            ; restore clobbered register
+  RET               ; Z for success, NZ for failure
+
+
+

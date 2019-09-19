@@ -1,0 +1,90 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FULLPATH                                     See EILIB.TXT for terms
+;---------------
+
+; FULL_PATH outputs to DI the full path name, null-terminated, of the file
+;   whose root-path is pointed to by DS:DX (terminated by comma or
+;   blank-or-less).  If the path does not itself contain any subdirectories,
+;   we try to find it in the current directory, followed by all directories
+;   given in the environment-variable whose name is pointed to by CS:AX.  The
+;   variable name is terminated by an equals-sign.  We return Carry if we
+;   cannot find the file anywhere.  We advance DX beyond the root-name and DI
+;   to its terminating null if we succeeded; we preserve DX and DI if we did
+;   not succeed.
+
+;   This module assumes CS=DS=ES contains all program-specific data.
+
+FULL_PATH:
+  PUSH CX,SI,BP       ; preserve registers across call
+  MOV BP,DI           ; save the beginning output pointer in BP through call
+  PUSH AX             ; save the environment-variable pointer
+  SUB CL,CL           ; set Z, and initialize count of subdir/colon chars
+  CALL >S2            ; try to find the root name by itself
+  POP SI              ; restore the environment-variable pointer to SI
+  JNC >L9             ; return NC success if the file was found
+  ADD CL,0FF          ; set Carry if there were subdir chars or a colon
+  JC >L8              ; return Carry if the given name was a full path already
+  CALL FIND_ENV_VAR   ; not a full path: point DS:SI to the environment var
+  JC >L8              ; return Carry failure if environment var wasn't found
+  INC SI              ; variable found: skip past the equals-sign
+L1:                   ; loop here to try each path in the enivronment var
+  PUSH DS             ; save the environment segment
+  CALL >S1            ; construct the full path and try to find it
+  POP DS              ; restore the environment segment
+  JNC >L9             ; return NC success if we found this path
+  TEST B[SI-1]        ; was the previous path terminated by a null?
+  JNZ L1              ; loop if not, to try the next path
+L8:
+  STC                 ; paths are exhausted: set Carry for failure
+  MOV DI,BP           ; do not advance DI if we failed
+L9:                   ; common exit
+  MOV DS,CS           ; restore DS to our program segment
+  POP BP,SI,CX        ; restore other clobbered registers
+  RET
+
+S1:
+  CALL TAIL_BLANKS    ; skip over leading blanks
+  MOV DI,BP           ; save the starting output pointer in BX
+  DB 03C              ; skip over the STOSB to the first LODSB
+L1:                   ; loop here to copy each char of the path variable
+  STOSB               ; output the previous character
+  LODSB               ; fetch the next character
+  TEST AL             ; is it a terminating null?
+  JZ >L2              ; skip if yes
+  CMP AL,';'          ; is it a terminating semicolon?
+  JNE L1              ; loop if not
+L2:                   ; path terminator was scanned
+  MOV AL,'\'          ; load subdir character
+  DEC DI              ; retreat to the last output byte
+  SCASB               ; was there a trailing subdir char in the path?
+  MOV DS,CS           ; point DS to our program segment, for root scanning
+S2:
+  PUSH SI,DX          ; save the pointer beyond this path variable
+  MOV SI,DX           ; point SI to the root pointer
+  JE >L5              ; jump if there was: no need to output another one
+  DB 03C              ; there was not a trailing subdir: go to STOSB to output it
+L3:                   ; loop here to count a subdir char or a colon in the root
+  INC CX              ; bump CL to a nonzero value
+L4:
+  STOSB               ; output the previous character of the root
+L5:
+  LODSB               ; fetch another character from the root name
+  CMP AL,':'          ; is it a drive-specification?
+  JE L3               ; loop if yes, to mark that it is already a full path
+  CMP AL,'\'          ; is it a subdirectory character?
+  JE L3               ; loop if yes, to mark that it is already a full path
+  CMP AL,','          ; is it a terminating comma?
+  JE >L6              ; jump if it was, out of the loop
+  CMP AL,' '          ; is it a blank or less?
+  JA L4               ; loop if not, to output the char and continue scanning
+L6:                   ; root name is complete
+  MOV B[DI],0         ; null-terminate the name
+  MOV DX,BP           ; point DX to the full path we just output
+  MOV AH,04E          ; MS-DOS function code for FIND_FIRST_FILE
+  INT 021             ; does the file name exist with this full path?
+  POP DX              ; restore the root pointer
+  IF NC LEA DX,[SI-1] ; if we succeeded then advance the root pointer
+  POP SI              ; restore other clobbered registers
+  RET                 ; return NoCarry if the file exists
+
+

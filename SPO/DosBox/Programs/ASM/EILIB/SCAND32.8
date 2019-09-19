@@ -1,0 +1,35 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SCAND32                                      See EILIB.TXT for terms
+;--------------- requires A386
+
+; SCAN_DEC_EAX sets EAX to the value of the decimal-number argument
+;   pointed to by SI, and advances SI beyond the argument.
+
+SCAN_DEC_EAX:
+  PUSH EBX,EDX      ; preserve registers across call
+  SUB EBX,EBX       ; initialize EBX, we will accumulate value there
+L1:                 ; loop here for each digit of the number
+  SUB EAX,EAX       ; preload zero, so new digit value will be in EAX
+L3:
+  LODSB             ; load the next digit
+        #if COMMA_NUMS
+  CMP AL,','        ; is it an embedded comma?
+  JE L3             ; loop if yes, to ignore the comma
+        #endif  
+  SUB AL,'0'        ; reduce the digit to a binary value
+  MOV EDX,10        ; load multiplicand, it is also the digit-limit value
+  CMP AL,DL         ; is it in fact another decimal digit?
+  JAE >L2           ; jump if not to exit this procedure
+  XCHG EAX,EBX      ; swap previous accumulation into EAX, new digit into EBX
+  MUL EDX           ; multiply the previous accumulation by 10
+  ADD EBX,EAX       ; add into the new digit value
+  JMP L1            ; loop to accumulate another digit
+
+L2:                 ; non-digit was seen
+  DEC SI            ; retreat back to the non-digit
+  XCHG EAX,EBX      ; swap the accumulated value into EAX
+  POP EDX,EBX       ; restore clobbered registers
+  RET
+
+
+

@@ -1,0 +1,21 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  FILIBUFF                                      See EILIB.TXT for terms
+;---------------
+
+; FILL_IBUFF fills IBUFF (up to BEYOND_IBUFF if possible) with data read from
+;   open file BX.  Input DI points beyond any residual bytes already in IBUFF.
+
+FILL_IBUFF:
+  MOV DX,DI           ; point DX beyond the residual bytes
+L1:                   ; loop here to read each chunk of input data
+  MOV CX,BEYOND_IBUFF ; point CX beyond our buffer
+  SUB CX,DX           ; calculate the number of bytes we have room for
+  MOV AH,03F          ; MS-DOS function number for READ
+  INT 021             ; read standard input into our buffer
+  ADD DX,AX           ; point DX beyond the bytes we just read
+  TEST AX             ; did we read anything?
+  JZ RET              ; skip if we didn't-- no use trying to read more
+  CMP AX,CX           ; did we read a whole buffer-full?
+  JB L1               ; loop if we didn't, to try to read more
+  RET
+

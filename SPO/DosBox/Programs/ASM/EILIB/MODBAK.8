@@ -1,0 +1,120 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    MODBAK                                      See EILIB.TXT for terms
+;---------------
+
+; MODBAK does the file and buffer handling for programs that modify a named
+;   file, saving the file with a .BAK extension.  The caller must supply 
+;   the declarations for OBUFF, OBUFF_LIM and OWRITE_H, plus the procedure 
+;   MODBAK_REC.  MODBAK_REC is called with DS:SI pointing to and DX beyond the 
+;   file contents to be processed, and ES:DI pointing to an output buffer.  We 
+;   guarantee the inclusion of at least 4K bytes before and after SI, if it is 
+;   there in the file and if the caller does not disturb the input segment.  We 
+;   also keep the caller's registers BX, CX, and BP unchanged, flush output if 
+;   DI exceeds OBUFF_LIM.  MODBAK_REC must advance SI by at least 1 each time 
+;   it is called, and output to DI, returning DI advanced beyond its output.  
+;   MODBAK_REC should preserve our DX beyond-pointer, unless it wants to 
+;   prematurely halt processing: in that case, it can set both DX and SI to 
+;   something less than 0FFFE. 
+
+; IO_CLOSE closes both the input handle IHANDLE and the output handle OWRITE_H.
+
+        #if !MODBAK_PAD   ; caller can modify amount of guaranteed file content
+MODBAK_PAD EQU 4K         ;   before and after the current buffer pointer
+        #endif
+MODBAK_LIM EQU -2-MODBAK_PAD
+
+MODBAK:
+  CALL TAIL_BLANKS        ; skip over leading blanks in the command tail
+  PUSH SI                 ; save the modify-file name
+  CALL OPEN_I_ARG         ; open the input file
+  POP SI                  ; restore the modify-file
+        #if MODBAK_SAVE_DATE
+  MOV AX,05700            ; DOS function number for GET_FILE_TIME
+  INT 021                 ; set CX=time and DX=date of the BX-handle file
+  PUSH CX,DX              ; save the time and date
+        #endif
+  CALL OPEN_MODBAK        ; open the file
+  MOV OWRITE_H,AX         ; store the output handle
+  CALL PROCESS_MODBAK     ; process the entire input
+  MOV DS,CS               ; restore DS to our program segment
+        #if MODBAK_SAVE_DATE
+  POP DX,CX               ; restore the date and time for the file
+  MOV BX,OWRITE_H         ; fetch the output file handle
+  MOV AX,05701            ; DOS function codes for SET_FILE_TIME
+  INT 021                 ; copy the date and time to the output file
+        #endif
+  CALL IO_CLOSE           ; close the input and output files
+  JMP RENAME_MODBAK       ; delete the input file and rename the output to it
+
+
+MODBAK_ABORT:
+  CALL IO_CLOSE           ; close the input and output files
+  MOV DX,TMP_NAME         ; point to the temporary file name
+        #if LONG_FNAMES
+  PUSH CX,SI              ; save registers during delete
+  SUB CX,CX               ; no attribute matching
+  SUB SI,SI               ; no wildcard action
+  MOV AX,07141            ; MS-DOS function number for RENAME
+  INT 021                 ; delete the second file
+  POP SI,CX               ; restore clobbered registers
+        #else
+  MOV AH,041              ; MS-DOS function number for DELETE
+  INT 021                 ; delete the second file
+        #endif
+  JMP USAGE_EXIT          ; abort with the usage message
+
+
+IO_CLOSE:
+  MOV BX,IHANDLE W        ; load the input handle
+  CALL MCLOSE             ; close the input file
+  MOV BX,OWRITE_H W       ; load the output handle
+  JMP MCLOSE              ; close the temporary output file
+
+
+        #if !PROCESS_MODBAK
+PROCESS_MODBAK:
+  PUSH BX,CX          ; preserve registers during reading
+  MOV AX,CS           ; fetch our code-segment pointer, for calculation
+  ADD AX,01000        ; advance to the next 64K
+  MOV DS,AX           ; point DS to the next 64K
+  MOV SI,DX,2         ; initialize SI and DX to the start of that segment
+  MOV W[SI-2],0AFF    ; initialize pre-buffer word with linefeed and 0FF
+  MOV DI,OBUFF        ; initialize the output pointer
+L0:                   ; loop here to read each chunk of the file
+  MOV CX,-2           ; point CX to the end of the 64K
+  CS MOV BX,IHANDLE   ; load the open-file handle for the input file
+  CALL MREAD_CX       ; fill the 64K segment with input data
+  PUSHF               ; save Carry flag setting
+  ADD DX,AX           ; point DX beyond the data
+  MOV BX,DX           ; also point BX beyond the data
+  MOV W[BX],0FF0A     ; terminate the data with a linefeed and 0FF
+  POPF                ; restore Carry flag setting
+L5:                   ; jump here if the open failed
+  POP CX,BX           ; restore the caller's registers
+  JC RET              ; return Carry if the read (or open) failed
+L2:                   ; we don't need to check for near-end-of-buffer
+  CMP SI,DX           ; are we at the end of the file?
+  JAE >L4             ; exit if we are
+L1:                   ; loop here to process each chunk of data
+  CS CALL MODBAK_REC  ; invoke caller's procedure to process a record
+  CALL CHECK_OBUFF    ; check for output buffer overflow
+  CMP DX,-2           ; is this buffer-full the end of the file?
+  JB L2               ; skip the near-end limit check if it is
+  CMP SI,MODBAK_LIM   ; not the end-of-file: are we near the end-of-buffer?
+  JB L1               ; loop if not, to process another record
+  PUSH BX,CX,ES       ; time to read more: preserve registers
+  MOV CX,DX           ; point beyond the buffer
+  MOV DX,DI           ; preserve DI in DX
+  MOV ES,DS           ; point ES to the buffer's segment
+  SUB SI,MODBAK_PAD   ; retreat to insure pad before SI
+  MOV DI,2            ; we will copy down to the buffer bottom
+  SUB CX,SI           ; calculate the number of bytes to be moved
+  REP MOVSB           ; move the trailing bytes to the bottom of the buffer
+  MOV SI,MODBAK_PAD+2 ; adjust SI to reflect the move
+  XCHG DX,DI          ; restore caller's DI and point DX beyond the bytes moved
+  POP ES              ; restore caller's ES
+  JMP L0              ; jump to read the next buffer-full
+
+L4:                   ; the file is all processed
+  JMP FLUSH_OBUFF     ; flush any bytes from the output buffer
+        #endif

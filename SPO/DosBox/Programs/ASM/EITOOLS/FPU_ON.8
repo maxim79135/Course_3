@@ -1,0 +1,10 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FPU_ON                                       See EILIB.TXT for terms
+;---------------
+
+; FPU_ON is the companion program to FPU_OFF, which turns off the floating
+; point processor.  This program turns it back on again.
+
+  POP DS            ; tricky way to get zero into the DS register
+  OR B[0410],2      ; turn on the BIOS flag for the floating-point unit
+  INT 32            ; exit back to the operating system

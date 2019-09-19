@@ -1,0 +1,139 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OCSHOW                                       See EILIB.TXT for terms
+;---------------
+
+; OCSHOW is a memory-resident program that outputs a line to BIOS console
+;   output whenever a file is opened or closed via the MS-DOS file-handle
+;   routines.  It serves as an interesting (but radical!) diagnostic aid.
+
+; This program was written for pre-Win95, DOS-only systems.  It does not
+; work in a DOS box under Win98, although it does work in DOS-only mode,
+; and it also outputs messages successfully during bootup, when placed
+; into AUTOEXEC.BAT.
+
+  JMP OCSHOW            ; jump to the set-up code
+
+@ EQU OFFSET            ; handy abbreviation
+
+OUR_33:                 ; our MS-DOS service handler
+  CMP AH,03D            ; is it an OPEN call?
+  JE >L4                ; jump if it is an OPEN call
+  CMP AH,03E            ; is it a CLOSE call?
+  JE >L5                ; jump if it is a CLOSE call
+  JMP 0:0               ; jump to the old handler
+OLD_HANDLER EQU D[$-4]  ; old address plugged in by initialization code
+
+L5:                     ; it is a CLOSE call
+  PUSH BP               ; preserve register
+  PUSHF                 ; simulate and INT call
+  CS CALL OLD_HANDLER   ; call the old handler to perform the OPEN
+  MOV BP,SP             ; point to stack, for addressing
+  PUSH AX,ES,SI         ; preserve registers
+  PUSHF                 ; put flags on the stack
+  POP SI                ; pop flags into SI
+  MOV [BP+6],SI         ; store the flags for our own IRET
+  JC >L8                ; skip output if there was an error
+  MOV ES,CS             ; point to our segment, for output
+  MOV SI,CLOSING        ; point to "Closing" message
+  CALL OUT_SI           ; output the "Closing" message
+  MOV AL,BL             ; fetch the file handle
+  CALL OUT_DEC          ; display the file handle
+  JMP >L7               ; jump to common code
+
+L4:                     ; it is an OPEN call
+  PUSH BP               ; preserve register
+  PUSHF                 ; simulate and INT call
+  CS CALL OLD_HANDLER   ; call the old handler to perform the OPEN
+  MOV BP,SP             ; point to stack, for addressing
+  PUSH AX,ES,SI         ; preserve registers
+  PUSHF                 ; put flags on the stack
+  POP SI                ; pop flags into SI
+  MOV [BP+6],SI         ; store the flags for our own IRET
+  MOV ES,CS             ; point to our segment
+  MOV SI,OPENING        ; point to "Opening"
+  CALL OUT_SI           ; output "Opening"
+  MOV SI,FAILED         ; point to "FAILED"
+  IF C CALL OUT_SI      ; if we failed output "FAILED"
+  IF NC CALL OUT_DEC    ; if we succeeded then output the returned handle
+  CALL OUT_BLANK        ; output intervening blank
+  MOV ES,DS             ; point to the user's file-name segment
+  MOV SI,DX             ; point to the file name
+  CALL OUT_SI           ; display the file name
+L7:
+  CALL OUT_CRLF         ; output the terminating CRLF
+  MOV AH,0          ; function code for GET KEY
+;  INT 016          ; get the keystroke from the IBM BIOS
+L8:
+  POP SI,ES,AX,BP       ; restore clobbered registers
+  IRET
+
+
+; OUT_SI outputs to BIOS console the ES:SI-pointed, null-terminated message.
+
+OUT_SI:
+  PUSHF                 ; preserve flags across call
+  PUSH AX               ; preserve AX as well
+  DB 081                ; skip over the following CALL OUT_AL
+L1:                     ; loop here to output each byte
+  CALL OUT_AL           ; output the byte
+  ES LODSB              ; fetch the next byte
+  TEST AL               ; is it the terminating null?
+  JNZ L1                ; loop if not, to output the byte
+  POP AX                ; restore clobbered register
+  POPF                  ; restore flags
+  RET
+
+
+OUT_CRLF:
+  MOV AL,0D             ; load CR
+  CALL OUT_AL           ; output the CR
+  MOV AL,0A             ; load LF
+  DB 03D                ; skip to output the LF
+OUT_BLANK:
+  MOV AL,020            ; load blank
+OUT_AL:
+  PUSH AX,BX,CX,DX,DI,DS; preserve registers across call
+  MOV BH,0              ; display page is zero
+  MOV AH,0E             ; BIOS function number for TTY_OUT
+  INT 010               ; output the character
+  POP DS,DI,DX,CX,BX,AX ; restore clobbered registers
+  RET
+
+
+OUT_DEC:
+  AAM                   ; decompose AL into its decimal digit values
+  TEST AH               ; is the top digit zero?
+  JZ >L1                ; skip if it is
+  XCHG AL,AH            ; top digit is nonzero: swap it into AL
+  CALL >L1              ; output the top digit
+  XCHG AH,AL            ; restore the bottom digit
+L1:
+  ADD AL,'0'            ; convert the binary value into an ASCII digit
+  JMP OUT_AL            ; jump to output the digit
+
+
+OPENING:
+  DB 'Opening ',0
+CLOSING:
+  DB 'Closing ',0
+FAILED:
+  DB 'FAILED',0
+
+PROGSIZE EQU ($+15)/16
+
+OCSHOW:                 ; initialization code for the TSR
+  SUB AX,AX             ; load zero
+  MOV DS,AX             ; point DS to the 86 interrupt vector
+  MOV AX,OUR_33         ; point to our handler
+  MOV DI,@ OLD_HANDLER  ; we will output to the old handler's JMP slot
+  CLI                   ; we cannot tolerate interrupts while resetting vector
+  XCHG AX,[084]         ; swap the new offset into the vector
+  STOSW                 ; output the old offset
+  MOV AX,CS             ; fetch our program segment
+  XCHG AX,[086]         ; swap the new segment into the vector
+  STOSW                 ; output the old segment
+  STI                   ; we can tolerate interrupts again
+  MOV DX,PROGSIZE       ; load the number of paragraphs we need to save
+  MOV AX,03100          ; MS-DOS function code for TERMINATE_STAY_RESIDENT
+  INT 021               ; terminate but stay resident
+

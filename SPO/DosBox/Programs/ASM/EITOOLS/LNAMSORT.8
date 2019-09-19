@@ -1,0 +1,69 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   LNAMSORT                                     See EILIB.TXT for terms
+;---------------
+
+; LNAMSORT sorts the file whose name is given as the second argument in the
+;   command tail.  We do a case-insensitive lexicographic sort on the last
+;   word in each line.
+
+PRE_LF_NEEDED EQU 1     ; we need a linefeed preceding every line
+
+LNAMSORT:
+  MOV SI,081            ; point to our invocation command tail
+  PUSH SI               ; save the command-tail pointer, for possible rescan
+  CALL OPEN_I_ARG       ; open the input file
+  CALL TAIL_BLANKS      ; scan over intervening blanks
+  CMP AL,0D             ; is there an explicit output file given?
+  POP AX                ; restore the input-file pointer to AX
+  IF E XCHG SI,AX       ; if no output file given then use the input file
+  CALL FILE_ARG         ; point DX to the name of the output file
+  CALL LSORT_IHANDLE    ; sort the file
+  JMP GOOD_EXIT         ; exit back to the operating system
+
+USAGE_MSG:
+  DB 'usage: LNAMSORT colnum infile [outfile]',0D,0A
+  DB '    sorts on the last name in each line',0D,0A
+  DB 0
+
+COMPARE EQU UL_COMPARE            ; our compare is the upper/lower compare
+
+GEN_SORTP:          ; return AX pointing to last word in SI-line
+  CALL TAIL_BLANKS  ; skip over leading blanks
+  CMP AL,0D         ; is it a blank line?
+  JNE >L3           ; jump if it is not, for line scanning
+  INC SI,2          ; blank line seen: skip over it
+  OR AL,0FF         ; set NC/NZ so the blank line is ignored
+  RET
+
+L1:                 ; loop here to scan each succeeding character of the line
+  LODSB             ; fetch the character
+  CMP AL,0A         ; is it the terminating linefeed?
+  JE >L2            ; skip if it is
+L3:
+  CMP SI,BX         ; have we reached the end of the buffer?
+  JB L1             ; loop if not, to scan another character
+  STC               ; incomplete record: set Carry to signal it
+  RET
+
+L2:                 ; line is scanned: now we need to find the last word
+  PUSH SI           ; save the next line's pointer
+L4:                 ; loop here to scan back over trailing blanks
+  DEC SI            ; retreat the source pointer
+  CMP B[SI-1],' '   ; is the previous character a blank?
+  JBE L4            ; loop if so, to continue scanning backwards
+L5:                 ; loop here to scan back over the last word
+  DEC SI            ; retreat the source pointer
+  CMP B[SI-1],' '   ; is the previous character a blank?
+  JA L5             ; loop if not, to continue scanning backwards
+  XCHG AX,SI        ; swap the last word's pointer into AX for return
+  POP SI            ; restore the next-line pointer
+  CMP AL,AL         ; set NC/Z to signal a successful record
+  RET
+
+
+L0:                 ; loop here to scan back to the line start
+  DEC SI            ; retreat the source pointer and continue scanning
+COPY_SORTREC:       ; output record SI to DI
+  CMP B[SI-1],0A    ; are we at the beginning of the line?
+  JNE L0            ; loop if not, to retreat the pointer
+  JMP COPY_LINE     ; we are at the start of the line: output the line

@@ -1,0 +1,46 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  IPUT_KEY                                      See EILIB.TXT for terms
+;---------------
+
+; INIT_PUT_KEY performs an initialization optimization for PUT_KEY.
+;   If the BIOS key buffer boundary pointers at 0:0480 appear to
+;   be maintained, we substitute more general queue-comparison
+;   instructions for the existing, fixed-queue comparisons.
+
+        #if ! PUT_KEY_REG
+PUT_KEY_REG EQU BX
+        #endif
+
+L0:                       ; replacement instructions for a general key queue
+  CMP PUT_KEY_REG,[082]   ; buffer limit is stored at 082 in most BIOS code
+  MOV PUT_KEY_REG,[080]   ; buffer start is stored at 080
+
+INIT_PUT_KEY:
+  MOV DS,AX,040       ; point to the BIOS segment
+  MOV SI,080          ; point SI to the buffer start and limit words
+  LODSW               ; fetch the buffer start
+  XCHG DI,AX          ; swap the buffer start into DI
+  LODSW               ; fetch the buffer limit
+  XCHG SI,AX          ; swap the buffer limit into SI
+  MOV AX,[01A]        ; fetch the current queue pointer
+  MOV DS,CS           ; restore DS to our program segment
+  CMP AX,DI           ; is the current pointer below the buffer start?
+  JB RET              ; do nothing if it is
+  CMP AX,SI           ; is the current pointer above the buffer limit?
+  JAE RET             ; do nothing if it is
+  SUB SI,DI           ; calculate the buffer size
+  JB RET              ; do nothing if the limit is below the start
+  ROR SI,1            ; size had better not be odd: if it is SI is now >08000
+  SUB SI,011          ; shift the small sizes 0 to 020 out of range
+  CMP SI,0800-011     ; is the buffer a plausible size?
+  JA RET              ; do nothing if it isn't
+  MOV SI,L0           ; buffer appears to be maintained: point to new code
+  MOV DI,PUT_KEY_CMP  ; we will modify our PUT_KEYS code
+  MOVSW               ; 2 bytes moved
+  MOVSW               ; 4-byte CMP BX,[082] is moved
+  INC DI,2            ; skip over the following conditional jump
+  MOVSW               ; 2 more bytes moved
+  MOVSW               ; 4-byte MOV BX,[080] is moved
+  RET
+
+

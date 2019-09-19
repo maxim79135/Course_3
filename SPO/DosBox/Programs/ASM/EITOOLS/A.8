@@ -1,0 +1,162 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;      A                                         See EILIB.TXT for terms
+;---------------
+
+; "A" verfies that a 1.44 megabyte diskette with a volume name of SCRATCH
+;   is in the A drive, deletes all the files on the diskette, and
+;   copies all the files named in the command tail to the diskette.
+
+; The initial file deletion is accomplished by rewriting the initial sectors
+; of the diskette, with those of an empty directory.  This doesn't seem
+; to work on my more-recent Win98 computer; I'd guess because Win98 is
+; caching the diskette's directory, and it is not aware of the BIOS writes
+; we made (or is protecting against them).
+
+  JMP _A            ; skip over the following messages
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: A fnames',0D,0A
+  DB '    copies files to SCRATCH diskette on drive A',0D,0A
+  DB 0,01A
+
+NO_DOSCHECK EQU 1
+
+        DATA SEGMENT
+ANAME:              ; buffer to contain the constructed file name on drive A
+  DB 128 DUP ?
+        DATA ENDS
+
+E1:                     ; error seen
+  JMP USAGE_EXIT        ; output USAGE_MSG and exit the program
+
+_A:
+  MOV AX,W[2]           ; fetch the upper limit of free memory
+  MOV BX,CS             ; load our own segment value
+  SUB AX,BX             ; calculate the number of paras allocated to us
+  JC E1                 ; error exit if underflow
+  CMP AX,(64+48)*(1K/16); do we have enough memory for our 48K buffer?
+  JB E1                 ; error exit if we do not
+  SUB CX,CX             ; our stack runs to 0000
+  MOV SI,081            ; point to our command tail
+  CALL WILD_ARGS        ; expand wildcard specifications in the command tail
+  JCXZ E1               ; output error message if there were no arguments
+  PUSH CX               ; save the number of arguments
+  CALL CLEAR_SCRATCH    ; verify correct diskette and erase files on it
+  POP CX,AX             ; restore args count and discard leading null pointer
+L1:                     ; loop here to pop and process each file name
+  POP DX                ; pop the file name from the stack
+  PUSH CX               ; save the number of arguments
+  CALL ADRIVE_NAME      ; construct the A-drive name and point DI to it
+  CALL COPY_FILE48      ; copy the file to the A-drive
+  POP CX                ; restore the number of arguments
+  LOOP L1               ; loop to copy the next file
+  CALL MOTOR_OFF        ; turn the floppy-drive motor off
+  JMP GOOD_EXIT         ; exit the program
+
+
+CLEAR_SCRATCH:
+  SUB CX,CX             ; initialize the retry count to zero
+L0:                     ; loop here to retry if the write failed
+  INC CX                ; bump the retry count
+  CMP CX,10             ; have we exhausted the retries?
+  MOV AX,PUT_SCRATCH    ; point to message instructing user to insert diskette
+  IF E CALL EMESSAGE    ; output the message
+  MOV AL,0              ; we are processing drive A
+  PUSH CX               ; save the retry count
+  CALL INIT_CLUS        ; initialize low-level reading of drive A
+  POP CX                ; restore the retry count
+  JC L0                 ; loop if the diskette was not ready
+  MOV CL,20             ; we will read the first 20 sectors of the drive
+  CALL IO_FIRST         ; read the sectors
+  MOV BP,CLUSBUFF W     ; point BP to the main read-buffer for the drive
+  LEA DI,[BP+14]        ; point DI into the drive parameters
+  MOV SI,EXPECTED       ; point SI to expected values for those parms
+  MOV CX,NPARMS_144     ; load the number of expected parm values
+  REPE CMPSB            ; are the parms consistent with a 1.44 floppy?
+  JNE L0                ; loop if they are not, to prompt for another disk
+  LEA DI,[BP+02B]       ; point to the volume name that we read
+  MOV CX,11             ; volume name has 11 characters
+  REPE CMPSB            ; is the volume name "SCRATCH    "?
+  JNE L0                ; loop if not, to prompt for another disk
+  LEA DI,[BP+0200]      ; point DI beyond the boot sector
+  CALL OUTPUT_FAT       ; output an empty FAT table
+  CALL OUTPUT_FAT       ; output a second empty FAT table
+  ADD DI,020            ; skip over the second copy of the volume name
+  MOV CX,01BE0/2        ; load the number of words in the directory sectors
+  REP STOSW             ; empty out the root directory of the disk image
+  MOV CLUS_BIOS_FN B,3  ; reset our low-level routine to write instead of read
+  MOV CL,33             ; we will write 33 sectors
+IO_FIRST:
+  SUB DX,DX             ; high word of sector number is zero
+  SUB AX,AX             ; low word of sector number is zero
+  JMP SEC_DXAX          ; perform I/O on CL sectors from DXAX
+
+
+OUTPUT_FAT:             ; output an empty FAT table to DI-pointed memory
+  MOV AX,0FFF0          ; load the first word
+  STOSW                 ; output the first word
+  MOV AX,00FF           ; load the second word
+  STOSW                 ; output the second word
+  SUB AX,AX             ; load zero
+  MOV CX,011FC/2        ; load the number of remaining words
+  REP STOSW             ; blank out the remainder of the FAT table
+  RET
+
+
+EXPECTED:                   ; required parm values for a 1.44 meg diskette
+  DB 1,0,2,0E0,0,040,0B,0F0,9,0,012,0,2,0,0,0
+NPARMS_144 EQU $-EXPECTED   ; required volume name for our diskette
+  DB 'SCRATCH    '
+
+PUT_SCRATCH:
+  DB 0D,0A
+  DB 'Place a diskette whose volume name is SCRATCH into drive A.',0D,0A
+  DB 0D,0A,0
+
+
+ADRIVE_NAME:          ; make the A-drive file name and point DI to it
+  MOV SI,DX           ; copy the source file name pointer to SI
+  MOV DI,ANAME        ; point DI to our buffer for the A-drive name
+  PUSH DI             ; save the pointer for return
+  MOV AX,':A'         ; load "A:" drive specifier
+  STOSW               ; output the "A:" drive specifier
+  MOV BX,DI           ; save the starting root pointer
+L1:                   ; loop here if a drive colon or subdir \ was seen
+  MOV DI,BX           ; reset the output back to the start of the root
+L2:                   ; loop here to copy each character of the name
+  LODSB               ; fetch a character
+  TEST AL             ; is it the terminating null?
+  JZ >L6              ; jump if yes, to display the name and exit
+  CMP AL,':'          ; is it a drive-specifying colon?
+  JE L1               ; loop if it is, to retract the output
+  CMP AL,'\'          ; is it a subdirectory specifier?
+  JE L1               ; loop if it is, to retract the output
+  CMP AL,'a'          ; is it too low to be a lower case letter?
+  JB >L7              ; jump if too low
+  CMP AL,'z'          ; is it too high to be a lower case letter?
+  IF BE AND AL,0DF    ; if not then coerce the letter to upper-case
+L7:
+  STOSB               ; output the character
+  JMP L2              ; loop for another character
+
+L6:                   ; terminator was seen
+  PUSH DX             ; save the source-file name pointer
+  MOV AX,0A0D         ; load CRLF
+  STOSW               ; temporarily terminate the name with a CRLF
+  MOV DX,BX           ; point to the name
+  CALL OWRITE_DI      ; display the name on the console
+  POP DX              ; restore the source-file name pointer
+  ES MOV B[DI-2],0    ; replace the CRLF with a null terminator
+  POP DI              ; restore the pointer to the path
+  RET
+
+
+MOTOR_OFF:            ; shut off the motor of the floppy drive
+  MOV DX,03F2         ; load the control port number for the floppy drive
+  IN AL,DX            ; fetch the control byte
+  AND AL,0F           ; shut off the upper nibble of the control byte
+  OUT DX,AL           ; store the revised value of the control byte
+  RET
+

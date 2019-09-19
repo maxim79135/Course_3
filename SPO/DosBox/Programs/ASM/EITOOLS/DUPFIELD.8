@@ -1,0 +1,95 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DUPFIELD                                     See EILIB.TXT for terms
+;---------------
+
+; DUPFIELD splits an input file into two output files, according to whether
+;   a given field in a line is duplicated within the file.  The input file
+;   must be sorted according to the field being compared.  The first output
+;   file contains the first copy of each line with a duplicated field.
+;   The second output file contains each non-duplicated line.
+
+  JMP DUPFIELD        ; skip over the usage message to our code
+
+  DB 0D,0A,0A         ; so that TYPE will work gracefully
+USAGE_MSG:
+  DB 'usage: DUPFIELD colnum fsize infile out_dups out_nodups',0D,0A
+  DB 0,01A
+
+@ EQU OFFSET          ; handy abbreviation for the OFFSET operator
+NO_I2 EQU 1           ; there is no second input file for MERGE_21
+EXTRN O1_PTR:W        ; declare output pointers for proper instruction code
+EXTRN O2_PTR:W
+N_MERGE_OUT EQU 2     ; there are two output files
+
+DUPFIELD:
+  MOV SI,081        ; point SI to our command tail
+  CALL VERIFY_DEC   ; scan the column number for comparison
+  MOV COLNUM,AX     ; store the column number for comparison
+  CALL VERIFY_DEC   ; scan the field size
+  MOV FSIZE,AX      ; store the field size
+  CALL MERGE_21     ; scan and process the 1 input and 2 output files
+  JMP GOOD_EXIT     ; exit back to the operating system
+
+
+
+; PROCESS_MERGE processes the input file from SI up to DX, outputting to the
+;   files at O1_PTR and O2_PTR.
+
+PROCESS_MERGE:
+  MOV AX,COLNUM W     ; fetch the column number
+  ADD AX,FSIZE W      ; calculate the ending column number for the field
+  INC AX,2            ; include two more bytes
+  ADD AX,SI           ; advance beyond the current input pointer
+  CMP AX,DX           ; does our field exist within this buffer?
+  JB >L2              ; jump if it does
+  MOV SI,DX           ; field does not exist: discard the input buffer
+  RET
+
+L2:                   ; our field does exist in the input buffer
+  MOV DI,SI           ; we will compare fields in the next two lines
+  CALL MATCH?         ; do the fields match?
+  JE >L3              ; jump if they do, to output to the first file
+  MOV AX,@ O2_PTR     ; no match: output this line to the second file
+OUT_SI_DI:            ; output SI up to DI, to buffer at [AX]
+  MOV CX,DI           ; point beyond the line to be output
+  SUB CX,SI           ; calculate the number of bytes to output
+  XCHG DI,AX          ; swap the output pointer-pointer into DI
+  PUSH DI             ; save the output pointer-pointer
+  MOV DI,[DI]         ; fetch the output pointer
+  REP MOVSB           ; output the skipped field
+  XCHG AX,DI          ; swap the final output pointer to AX
+  POP DI              ; restore the output pointer-pointer
+  MOV [DI],AX         ; store the output pointer
+  RET
+
+L3:                   ; the fields match
+  MOV AX,@ O1_PTR     ; we will output to the first file
+  CALL OUT_SI_DI      ; output the line to the first file
+  MOV DI,SI           ; initialize comparison pointer for skipping lines
+L4:                   ; loop here to skip over subsequent matching lines
+  CALL MATCH?         ; is there a matching line beyond DI?
+  JE L4               ; loop if there is, to continue skipping lines
+  MOV SI,DI           ; point SI to the next non-matching line
+  RET
+
+
+; MATCH? compares the key fields of the SI-pointed line with the line
+;   following the DI-pointed line.  We return with DI advanced to the
+;   second line.  We return Z if the fields matched.
+
+MATCH?:
+  MOV AL,0A           ; load linefeed
+  MOV CH,0FF          ; load huge count
+  REPNE SCASB         ; advance DI to the next line
+  PUSH SI,DI          ; save pointers across compare
+  MOV AX,0            ; load the column number of the field
+COLNUM EQU W[$-2]     ; column number is plugged into the above imm value
+  ADD SI,AX           ; advance SI to the column
+  ADD DI,AX           ; advance DI to the column
+  MOV CX,0            ; load the field size
+FSIZE EQU W[$-2]      ; field size is plugged into the above imm value
+  REPE CMPSB          ; compare the fields
+  POP DI,SI           ; restore the pointers
+  RET
+
+

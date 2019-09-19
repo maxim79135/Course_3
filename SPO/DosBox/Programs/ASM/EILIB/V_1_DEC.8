@@ -1,0 +1,16 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   V_1_DEC                                      See EILIB.TXT for terms
+;---------------
+
+; VERIFY_1_DEC sets AX to the single decimal argument in the SI-pointed
+;  command tail.  If there is no such argument, we abort the program.
+
+VERIFY_1_DEC:
+  CALL VERIFY_DEC       ; verify and fetch the decimal argument
+  PUSH AX               ; save the arugment value acroos the check
+  CALL TAIL_BLANKS      ; advance to the next non-blank beyond the argument
+  CMP AL,0D             ; it had better be the end of the command tail
+  POP AX                ; restore the argument value
+  IF NE JMP USAGE_EXIT  ; abort if it was not the end of the command tail
+  RET
+

@@ -1,0 +1,55 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;     FEX                                        See EILIB.TXT for terms
+;---------------
+
+; FEX outputs to standard output the entire contents of a sequence of
+;   files, except for those data records containing a given string.  Searching
+;   is case insensitive.  The operation of FEX is identical to FNC
+;   with switches controlling the definition of a "data record".  The
+;   only difference is that everything not output by FNC, is output by
+;   FEX, and vice versa.
+
+PF_FIND_PROC EQU FIND_NOCASE    ; searching is case-insensitive
+
+FEX:
+  MOV SI,081              ; point to our invocation command tail
+  MOV BX,SETREC_SWITCHES  ; point to switch table
+  CALL BX_SWITCHES        ; scan any record-definition switches
+  MOV BP,DI,STRING_TARGET ; point to destination for the first (string) arg
+  CALL SCAN_STRING        ; scan the string-argument
+  MOV BX,CX               ; set BX to the count, for PFOUND_WILD_HERE
+  MOV DI,OBUFF            ; initialize our output pointer
+  CALL FIND_STRINGS       ; scan wildcard file args and find the strings there
+  CALL FLUSH_OBUFF        ; flush any pending output content
+  JMP GOOD_EXIT           ; exit the program
+
+        #if !def USAGE_MSG  ; suppress if we are INCLUDEd by a variant program
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: FEX [-c | +cX] string filenames',0D,0A
+  DB '  finds all lines not containing string',0D,0A
+  DB '  -c causes display of a whole records, where indented lines',0D,0A
+  DB '     continue a record.  For +cX, non-X lines continue a record.',0D,0A
+  DB 0,01A
+        #endif
+
+
+; FIND_STRINGS is called with SI pointing to one or more file names, possibly
+;   containing wildcard characters.  The PFOUND_WILD_HERE routine handles
+;   all the name parsing, wildcard expansion, file reading and buffering,
+;   and string searching for us.  It will also output any flushed material
+;   between found strings.  When a string is found, it will call our code
+;   following its CALL instruction.  We will determine the bounds of the
+;   record containing the string, output any unflushed bytes up to the record,
+;   and advance the FEX_P already-output pointer beyond the record (thus
+;   causing output of the record to be withheld).
+
+FIND_STRINGS:
+  CALL PFOUND_WILD_HERE   ; call following code when string found in any file
+  CALL SET_RECORD_P       ; point SI to the data record containing the string
+  CALL FEX_FLUSH          ; flush out any unoutput bytes up to SI
+  ADD SI,CX               ; advance past the record containing our string
+  JMP SET_FEX_P           ; reset the FEX marker so this record is skipped
+
+

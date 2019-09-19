@@ -1,0 +1,52 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  SEMSTRIP ,-                       ; See EILIB.TXT for terms
+        ;---------------
+
+; SEMSTRIP strips all comments from an assembly-language source file.  I
+;   sometimes use this when diagnosing bugs in my assembler, to reduce
+;   the size of a source file which demonstrates a big.
+
+DB '   strips all comments from an assembly-language source file.',0D,0A,0
+
+PROCESS_LINE:       ; filter CX bytes at SI--DI to BP
+  MOV DI,BP         ; point DI to the output buffer
+  CALL TAIL_BLANKS  ; skip any leading blanks
+  CMP AL,0D         ; was it a blank line?
+  JE >L9            ; jump if yes, to output CRLF only
+  CMP AL,';'        ; was it a comment line?
+  JNE >L2           ; jump if not, to copy the line to the first column
+  RET  
+
+L1:                 ; loop here to copy each byte of the line
+  STOSB             ; output the byte
+L2:
+  LODSB             ; input the next byte of the line
+  CMP AL,''''       ; is it the start of a single-quoted string?
+  JE >L7            ; jump if it is, to copy the string
+  CMP AL,""""       ; is it the start of a double-quoted string?
+  JE >L7            ; jump if it is, to copy the string
+  CMP AL,';'        ; is it the start of a comment?
+  JE >L8            ; jump if it is, to retract trailing blanks and exit
+  CMP AL,0A         ; is it the end of the line?
+  JNE L1            ; loop if not, to output the byte
+L8:                 ; loop here to retract trailing blanks
+  DEC DI            ; retreat the output pointer
+  ES CMP B[DI],' '  ; are we at a blank or below?
+  JBE L8            ; loop if we here, to continue retreating
+  INC DI            ; advance back beyond the last non-blank
+L9:                     ; end of line
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output CRLF
+  JMP PROCESS_LINE_EXIT ; jump to check buffered output bytes and return
+
+L7:                 ; string was seen, delimiter AL
+  MOV AH,AL         ; save delimiter in AH
+  STOSB             ; output the opening delimiter
+L5:                 ; loop here to find closing delimiter
+  LODSB             ; fetch string character
+  STOSB             ; output the character unchanged
+  CMP AL,AH         ; is it the delimiter?
+  JNE L5            ; loop if not
+  JMP L2            ; jump back to the main loop
+
+

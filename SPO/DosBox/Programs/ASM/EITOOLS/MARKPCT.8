@@ -1,0 +1,226 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MARKPCT                                      See EILIB.TXT for terms
+;---------------
+
+; MARKPCT marks a PC-TRANS file to make all pending transactions dated
+;    as if they were just posted.  We look for, and mark, all transaction
+;    lines with a 0 (pending) marker in the final field.  Then we rewrite
+;    the time-and-date so they run at one-minute intervals ending five
+;    minutes before the current time.  We check both the current and
+;    previous months' files.
+
+MARKPCT:
+  CALL MARK_TIME        ; get current date and time, and store in their slots
+  MOV SI,TRN_IBUFF      ; point to our file buffer
+  MOV BP,DATE_PTRS      ; point to the start of the pointers-buffer
+  MOV DX,THIS_FNAME     ; point to the name of this month's file
+  CALL SCAN_FILE        ; scan this month's file
+  PUSH BX,DX,SI,DI,BP   ; save the register settings for this month
+  MOV BP,BX             ; point BP to where this month left off
+  MOV SI,DI             ; point SI beyond this month's file contents
+  MOV DX,PREV_FNAME     ; point to the name of last month's file
+  CALL SCAN_FILE        ; scan last month's file
+  CALL REWRITE_FILE     ; revise any pointers in last month's file
+  POP BP,DI,SI,DX,BX    ; restore this month's pointers
+  CALL REWRITE_FILE     ; revise and pointers in this month's file
+  JMP GOOD_EXIT         ; return to the operating system
+  
+
+
+; MARK_TIME fetches the current date and time from DOS, and fills the
+;   THIS_MMYY and PREV_MMYY fields, and time values, appropriately.
+
+MARK_TIME:
+  MOV AH,02C            ; MS-DOS function codes for GET_TIME
+  INT 021               ; set CH to hours, CL to minutes
+  MOV AL,60             ; load minutes per hour
+  MUL CH                ; set AX to the number of minutes in this hour number
+  MOV CH,0              ; extend minutes count from CL to CX
+  ADD AX,CX             ; add in minutes: now AX is the minutes since midnight
+  MOV THIS_TIME,AX      ; store the minute count for later use
+  MOV AH,02A            ; MS-DOS function codes for GET_DATE
+  INT 021               ; set CX=year DH=month DL=day
+  MOV AL,DL             ; fetch the day number
+  MOV DI,THIS_DD        ; point to output slot
+  CALL OUT_DECIMAL2     ; output the day number in the slot
+  XCHG AX,CX            ; swap the year number into AX
+  MOV CL,100            ; load century divisor
+  DIV CL                ; decompose the year into century and year-within cen
+  MOV DL,AH             ; copy the 2-digit year number to DL
+  MOV DI,THIS_MMYY      ; point to slot within this month's file name
+  CALL OUT_MMYY         ; output the mmyy to this month;s name
+  MOV DI,PREV_MMYY      ; point to slot within the previous month's file name
+  DEC DH                ; retreat to previous month
+  JNZ OUT_MMYY          ; skip if we didn't retreat to month 0
+  MOV DH,12             ; month 0: make it December instead
+  DEC DL                ; decrement the year
+  IF S MOV DL,99        ; if year had been 0 then make it 99
+OUT_MMYY:               ; output to DI DH=mm followed by DL=yy
+  MOV AL,DH             ; fetch the month number
+  CALL OUT_DECIMAL2     ; output the month number mm
+  MOV AL,DL             ; fetch the year number
+  JMP OUT_DECIMAL2      ; output the year number yy
+
+
+; SCAN_FILE reads to SI the TRN file whose name is pointed to by DX, and
+;   places markers to pending times at the BP-pointed pointers table.
+;   We return with DX,SI,BP preserved, BX pointing beyond the last pointer
+;   output, and DI pointing beyond the buffered file contents.
+
+SCAN_FILE:
+  PUSH DX,SI            ; preserve registers across call
+  MOV DI,SI             ; point DI to the buffer, in case the open-file fails
+  CALL MOPEN_READ       ; open the file for reading
+  JC >L8                ; return with no pointers if the open-file failed
+  MOV CX,0FF00          ; point beyond the free buffer area
+  MOV DX,SI             ; point DX to the buffer
+  SUB CX,DX             ; calculate the capacity of the buffer
+  CALL MREAD            ; read the file
+  CMP AX,CX             ; did the file fill the buffer?
+  JE >E1                ; error exit if it did
+  XCHG DI,AX            ; the file fit: swap the file size into DI
+  ADD DI,SI             ; calculate the pointer beyond the file
+  MOV B[DI],0A          ; mark the end-of-file, to prevent overscanning
+  CALL MCLOSE           ; close the file
+  MOV BX,BP             ; initialize the pointers-output pointer
+L1:                     ; loop here to process each line of the file
+  CMP SI,DI             ; have we reached the end of the buffer?
+  JAE >L9               ; return if we have
+  SUB CX,CX             ; there is more contents: initialize the marker counter
+L2:                     ; loop here to scan each character of the line
+  LODSB                 ; fetch the character
+  CMP AL,0A             ; is it the terminating linefeed?
+  JE >L3                ; jump if it is
+  CMP AL,0FE            ; not a linefeed: is it a field marker?
+  JNE L2                ; loop if not
+  INC CX                ; it is: increment the markers count
+  MOV DX,SI             ; DX points just beyond the last marker
+  JMP L2                ; loop to continue scanning the line
+
+L3:                     ; terminating linefeed is seen
+  CMP CX,4              ; were there too few markers for a transaction line?
+  JB L1                 ; loop if yes, to leave the line unchanged
+  PUSH SI,DI            ; enough markers: save pointers
+  MOV SI,TEMPLATE       ; point SI to a template for a transaction line
+  MOV CX,18             ; there are 18 bytes in the template
+  MOV DI,DX             ; point DI beyond the last marker seen
+  SUB DI,15             ; retreat to the beginning of the time field
+  MOV [BX],DI           ; store the pointer, in case the line passes
+  DEC DI                ; retreat to the marker previous to the time field
+L4:                     ; loop here to verify the line against the template
+  CMPSB                 ; does this character match the template?
+  LOOPE L4              ; loop if it does
+  JE >L6                ; jump if loop successfully completed, to record ptr
+  CMP B[SI-1],'?'       ; mismatch seen: was the template a "don't care" byte?
+  JE L4                 ; loop if it was "don't care"
+  JMP >L7               ; the line does not match the template: don't store ptr
+
+L6:                     ; we have found a pending-transaction line
+  INC BX,2              ; validate the line by advancing the pointers-pointer
+L7:                     ; common exit for line-scan
+  POP DI,SI             ; restore file pointers
+  JMP L1                ; continue scanning the next line
+
+L8:                     ; failure opening the file
+  MOV BX,BP             ; signal no pointers output
+L9:                     ; common exit
+  POP SI,DX             ; restore starting pointers
+  RET
+
+
+E1:                     ; file was too big
+  CALL MCLOSE           ; close the file
+  MOV AX,TOO_BIG        ; point to error message
+E2:                     ; common error exit with AX-pointed message
+  CALL O_SORRY_MSG      ; output "Sorry, " and the message
+  JMP ERROR_EXIT        ; exit the program with an error code
+
+
+
+; REWRITE_FILE sees if BX has advanced beyond BP; if it has, we adjust the
+;   date/time fields indicated by those pointers, and rewrite the SI--DI
+;   buffer to the DX-named file.
+
+REWRITE_FILE:
+  CMP BX,BP             ; were there any pointers output for this file?
+  JBE RET               ; return with no action if there are no pointers
+  CMP BX,DP_LIMIT       ; were there too many pointers for the buffer?
+  MOV AX,TOO_MANY       ; point to message, in case there were
+  JAE E2                ; jump to error exit if there were
+  MOV AX,BX             ; fetch the pointer beyond the pointers output
+  SUB AX,DATE_PTRS      ; calculate the total number of pointer bytes output
+  SHR AX,1              ; divide-by-two converts byte count to word count
+  ADD AX,5              ; add 5 to subtrahend, so we'll end at five minutes ago
+  MOV CX,0              ; load the current minutes-since-midnight
+THIS_TIME EQU W[$-2]    ; time is plugged into the above imm value
+  SUB CX,AX             ; calculate the starting time for this fixup-loop
+  IF B SUB CX,CX        ; if underflow then simply set to midnight
+  PUSH SI,DI            ; ready to make fixes: save buffer pointers
+L1:                     ; loop here for each time to be fixed
+  MOV DI,[BP]           ; point DI to the next pending-transaction time record 
+  INC BP,2              ; advance the pointers-pointer
+  CALL OUT_TIME         ; output time CX, and increment CX to the next minute
+  MOV SI,THIS_MMYY      ; point to current MMYY, for copying
+  MOVSW                 ; output MM
+  INC DI                ; skip past the intervening hyphen
+  MOV AX,0              ; load DD
+THIS_DD EQU $-2         ; current DD is pluged into above imm value
+  STOSW                 ; output DD
+  INC DI                ; skip past the intervening hyphen
+  MOVSW                 ; output YY
+  CMP BX,BP             ; is there another record to fix?
+  JA L1                 ; loop if there is
+  MOV SI,DX             ; buffer is fixed: point SI to the file name
+  CALL OPEN_MODBAK      ; open the (temporary name) output file
+  POP CX,DX             ; point DX to and CX beyond the buffer
+  CALL MWRITE_CX        ; write the buffer to the file
+  CALL MCLOSE           ; close the file
+  JMP RENAME_MODBAK     ; rename temporary to permanent name
+
+
+; OUT_TIME outputs time CX (coded as minutes since midnight), as a hh mm
+;   format, to DI.
+
+OUT_TIME:
+  PUSH CX               ; preserve the caller's time
+  XCHG AX,CX            ; swap the time into AX
+  MOV CL,60             ; load minutes-per-hour divisor
+  DIV CL                ; decompose the time to hours and minutes
+  MOV CL,AH             ; save the minutes in CL
+  CALL OUT_DECIMAL2     ; output the hour AL
+  INC DI                ; skip past the intervening colon (already there)
+  XCHG AX,CX            ; swap the minutes into AL
+  CALL OUT_DECIMAL2     ; output the minutes
+  POP CX                ; restore the time
+  INC CX,DI             ; increment to next minute, and skip past field marker
+  RET
+
+
+TEMPLATE:
+  DB 0FE,'??:??',0FE,'??-??-??',0FE,' 0'
+TOO_BIG:
+  DB 'the .TRN file is too big.',0D,0A,0
+TOO_MANY:
+  DB 'too many transactions.',0D,0A,0
+THIS_FNAME:
+  DB 'C:\U\PCTRANS\'
+  DB 'T'
+THIS_MMYY:
+  DB 'mmyy.TRN',0
+PREV_FNAME:
+  DB 'C:\U\PCTRANS\'
+  DB 'T'
+PREV_MMYY:
+  DB 'mmyy.TRN',0
+
+NO_DOSCHECK EQU 1         ; we do our own DOS error handling
+
+        include           ; assemble library files, so TRN_IBUFF is at the end
+        DATA SEGMENT
+        EVEN
+DATE_PTRS:                ; table of pointers to times needed to be fixed
+        DW 1000 DUP ?     ; we can accommodate up to 1000 pending transactions
+DP_LIMIT:                 ; table limit
+        DW ?              ; separate tables, just to be conservative
+TRN_IBUFF:                ; buffer containing entire contents of the 2 files
+        DATA ENDS

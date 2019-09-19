@@ -1,0 +1,69 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  POINTVID                                      See EILIB.TXT for terms
+;---------------
+
+; POINT_CURSOR places the screen cursor, with block style CX, to row DH and
+;   column DL on the current video screen.
+
+; POINT_VIDEO calculates and stores the number of bytes of a line in video
+;   memory, as well as the segment of current video memory.  The segment
+;   register value is chosen so that the screen starts at offset zero.
+
+; RESTORE_CURSOR resets the cursor block size to the value it had before
+;   the call to POINT_VIDEO.
+
+RESTORE_CURSOR:         ; reset the cursor block size to its old value
+  MOV CX,0              ; fetch the old cursor block size
+         L8 EQU W[$-2]  ; block setting is plugged into the above imm word
+  MOV DX,0              ; fetch the old cursor position
+         L9 EQU W[$-2]  ; cursor position is plugged into the above imm word
+POINT_CURSOR:
+  MOV BH,0            ; load the current video page number
+VIDEO_PAGE EQU B[$-1] ; page number is plugged into the above imm byte
+  MOV AH,2            ; video BIOS function number for SET CURSOR POSITION
+  INT 010             ; call the BIOS to put user cursor in lower left corner
+SET_CURBLOCK:         ; set the cursor block size to rasters CH through CL
+  MOV AH,1            ; BIOS function number for SET_CURSOR_BLOCK
+  INT 010             ; call the BIOS video services interrupt
+  RET
+
+
+VLINE_SIZE   DW 160     ; number of bytes in a video line (= 2*columns)
+VIDEO_SEG    DW 0B800   ; pointer to the active video segment
+
+POINT_VIDEO:
+  PUSH DS               ; preserve register across call
+  SUB AX,AX             ; load zero
+  MOV DS,AX             ; point DS to zero, to address BIOS variables
+  MOV AX,W[0460]        ; fetch the old cursor block size
+  CS MOV L8,AX          ; save the old cursor block size
+  MOV AX,W[044C]        ; fetch the size of a memory display page
+  SHR AX,CL,4           ; convert the size from bytes to paragraphs
+  XCHG CX,AX            ; swap the paragraph count into CX
+  MOV AL,B[0462]        ; fetch the active video page number
+  CS MOV VIDEO_PAGE,AL  ; store the page number
+  CBW                   ; extend the page number from AL to AX
+  MOV BX,AX             ; copy the page number to BX, for addressing
+  MUL CX                ; calculate the paragraph-offset of this video page
+  ADD AX,0B000          ; add in the offset for video mode 7
+  XCHG SI,AX            ; swap the segment pointer into SI, used later
+  ADD BX,BX             ; convert the page number from a byte to word index
+  MOV BX,[BX+0450]      ; fetch the cursor position for this page
+  CS MOV L9,BX          ; store the old cursor position
+  MOV AX,W[0449]        ; fetch AL=display mode;  AH= # screen columns
+  CMP AL,7              ; is the video mode 7 (monochrome)?
+  JE >L0                ; jump if yes, that's an acceptible mode
+  ADD SI,0800           ; VIDEO_SEG is 0B800 for page 0, color modes
+  CMP AL,2              ; is the video mode 2?
+  JE >L0                ; jump if yes, that's also an acceptible mode
+  CMP AL,3              ; not 7 or 2; it had better be 3
+  IF NE JMP BAD_EXIT    ; abort if not
+L0:
+  MOV AL,AH             ; fetch the number of columns in a line
+  MOV AH,0              ; extend the column count AL to AX
+  ADD AX,AX             ; convert the columns (words) count into a bytes count
+  CS MOV VLINE_SIZE,AX  ; store the bytes count for a video line
+  CS MOV VIDEO_SEG,SI   ; also store the pointer to the video segment
+  POP DS                ; restore clobbered register
+  RET
+

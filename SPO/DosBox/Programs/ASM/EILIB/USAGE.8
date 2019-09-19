@@ -1,0 +1,39 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  USAGE                                         See EILIB.TXT for terms
+;---------------
+
+; USAGE_EXIT outputs the null-terminated message USAGE_MSG to the error
+;   console, then exits the program.  The message must be supplied by the
+;   caller.
+
+; EMSG_USAGE_EXIT outputs the CS:AX-pointed message, followed by USAGE_MSG,
+;   and then exits the program.
+
+; ERROR_EXIT outputs the CS:AX-pointed message, and exits the program.
+
+; NONBLANK_TAIL ensures that there is a nonblank command tail at DS:081.  If
+;   the command tail is blank, we exit with USAGE_MSG.
+
+EMSG_USAGE_EXIT:
+  CALL EMESSAGE       ; output the AX-pointed error message
+USAGE_EXIT:
+  MOV AX,USAGE_MSG    ; point to the caller's usage message
+        #if def ERROR_EXIT
+  JMP ERROR_EXIT      ; if the user has an error exit then call it
+        #else
+ERROR_EXIT:           ; else we'll supply the routine ourselves
+  CALL EMESSAGE       ; output the exiting error message
+  JMP BAD_EXIT        ; exit the program with a non-zero error code
+        #endif
+
+        #if ref NONBLANK_TAIL
+NONBLANK_TAIL:
+  MOV SI,081          ; point to our invocation command tail
+  CALL TAIL_BLANKS    ; advance to the first nonblank in the command tail
+  CMP AL,0D           ; is it an empty command tail?
+  JE USAGE_EXIT       ; exit program if it is
+  RET
+        #endif
+
+usage_size equ 0      ; make sure USAGE_MSG is now null-terminated
+

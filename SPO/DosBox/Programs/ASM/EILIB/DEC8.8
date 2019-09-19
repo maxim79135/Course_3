@@ -1,0 +1,45 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;     DEC8                                       See EILIB.TXT for terms
+;---------------
+
+; OUT_DECIMAL8 outputs DXAX as a string of 8 decimal digits, right-justified and
+;   blank-filled, to DI-pointed memory.  DI advances beyond the output.
+
+OUT_DECIMAL8:
+  PUSH AX,BX,CX,DX  ; preserve registers across call
+  XCHG CX,AX        ; swap low word of number-to-be-output into CX
+  MOV AX,'  '       ; load two blanks
+  STOSW 4           ; output 8 blanks for left-fill
+  PUSH DI           ; save pointer to low digit
+  DEC DI            ; DI now points to the last digit
+  MOV BX,10         ; the modulus of the output is 10
+  STD               ; output is backwards
+  JMP >L2           ; jump into loop
+
+L1:                 ; loop here as long as we need two divides for a digit
+  XCHG CX,AX        ; swap out the least significant word
+  XCHG AX,DX        ; swap most significant into AX
+  SUB DX,DX         ; will will divide 00DX by BX
+  DIV BX            ; AX = high word of final quotient
+  XCHG AX,CX        ; swap back original low word
+  DIV BX            ; quo is CXAX, rem is DX
+  XCHG CX,DX        ; quo is DXAX, rem is CX
+  XCHG AX,CX        ; quo is DXCX, rem is AX
+  ADD AL,'0'        ; convert the low digit from binary to ASCII
+  STOSB             ; output the ASCII digit
+L2:
+  XCHG AX,CX        ; swap the low word of the remaining number into AX
+  CMP DX,BX         ; would a single divide cause an overflow?
+  JAE L1            ; loop if it would, to do two divide instructions
+L3:                 ; loop here for each digit when reduced to one divide
+  DIV BX            ; divide number by 10
+  XCHG DX,AX        ; swap remainder (low digit) into AX, quotient into DX
+  ADD AL,'0'        ; convert the low digit from binary to ASCII
+  STOSB             ; output the ASCII digit
+  XCHG AX,DX        ; swap quotient back into AX
+  MOV DL,0          ; zero out DL (DH is already 0)
+  TEST AX           ; are there any more digits left to output?
+  JNZ L3            ; loop if yes to compute them
+  POP DI,DX,CX,BX,AX; restore clobbered registers
+  CLD               ; restore forward direction
+  RET

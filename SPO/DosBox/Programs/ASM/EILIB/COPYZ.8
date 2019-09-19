@@ -1,0 +1,27 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    COPYZ                                       See EILIB.TXT for terms
+;---------------
+
+; COPYZ copies the null-terminated string (including the null) from DS:SI
+;   to ES:DI.
+
+COPYZ:                    ; loop here to copy each character of the path
+        #if def MAX_COPYZ
+  PUSH SI                 ; save the starting source, for length calculation
+        #endif
+L3:
+  LODSB                   ; fetch the next character
+  STOSB                   ; copy it to our stack-image
+  TEST AL                 ; is it the null-terminator?
+  JNZ L3                  ; loop if not, to copy the next character
+        #if def MAX_COPYZ
+  POP AX                  ; pop the starting source pointer into AX
+  SUB AX,SI               ; calculate the negate of the string count
+  NEG AX                  ; flip to the positive string count
+  CMP AX,MAX_COPYZ        ; does the count exceed the previous maximum
+  IF AE MOV MAX_COPYZ,AX  ; if yes then store a new maximum count
+        #endif
+  RET
+
+
+

@@ -1,0 +1,48 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;     OV                                         See EILIB.TXT for terms
+;---------------
+
+; OV changes the current directory ..\fname, where fname is given in the
+;   invocation command tail.
+
+OV:
+  MOV DL,0          ; load code for current drive
+  MOV SI,IBUFF      ; point to free space
+  MOV AH,047        ; function number for "get current path name"
+  INT 021           ; put the current path name into IBUFF
+  MOV DI,SI         ; copy pointer to IBUFF
+  MOV AL,0          ; search for the terminating null
+  MOV CH,-1         ; unlimited count-- we will find it
+  REPNE SCASB       ; scan past the terminating null
+  DEC DI            ; retreat back to the null
+  STD               ; next scan will be backwards
+  MOV AL,'\'        ; search for the last subdirectory-marker
+  REPNE SCASB       ; scan back to that marker
+  INC DI,2          ; advance beyond the last marker
+  CLD               ; we will scan forwards again
+  MOV SI,081        ; point to the invocation command tail
+L1:                 ; loop here to discard leading blanks
+  LODSB             ; load a character
+  CMP AL,0D         ; is it the terminating linefeed?
+  JE >L3            ; if yes then do nothing
+  CMP AL,' '        ; is the character blank?
+  JBE L1            ; loop if yes
+L2:                 ; loop here to output each character of new path
+  STOSB             ; output the previously scanned character
+  LODSB             ; load the next character
+  CMP AL,' '        ; is it blank?
+  JA L2             ; loop if not
+  MOV B[DI],0       ; terminate the path
+  MOV SI,IBUFF      ; point to the start of the path
+  CMP B[SI],'\'     ; were we given an leading \?
+  IF NE DEC SI      ; if not then let's supply one ourselves
+  MOV DX,SI         ; MSDOS expects the pointer to be in DX
+  MOV AH,03B        ; function number for "change current directory"
+  INT 021           ; directory is now changed
+  SBB AL,AL         ; set zero if success; -1 if failure
+L3:
+  MOV AH,04C        ; function code for "exit"
+  INT 021           ; go back to operating system
+
+  DB '\'
+IBUFF:

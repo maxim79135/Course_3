@@ -1,0 +1,270 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MERGE_21                                     See EILIB.TXT for terms
+;---------------
+
+; MERGE_21 handles the file input and output for merging two files into
+;    one.  The three files are named in the SI-pointed invocation command
+;    tail.  We open the files, get bufferfuls of input, and then repeatedly
+;    call the routine PROCESS_MERGE which the main caller must provide.
+
+; We call PROCESS_MERGE with SI pointing to and DX beyond the first file's
+;   buffered bytes, BX pointing to and BP beyond the second file's buffered
+;   bytes, and DI pointing an output buffer.  PROCESS_MERGE must advance
+;   at least one of the input pointers beyond the bytes it processed, and
+;   make any output to DI, advancing DI beyond the output.  We check buffers
+;   between each call, to see that the input buffers aren't too empty and
+;   the output buffers aren't too full.
+
+; The main program must provide a message USAGE_MSG to be output in case of
+; an error with the files.
+
+; There are a some of conditional-assembly variables that will affect our
+; code extensively.  NO_I2, if nonzero, will supress the reading of the
+; second input file: PROCESS_MERGE will be called only the SI--DX file
+; buffered, and it should process that one file only.  N_MERGE_OUT can
+; be set to greater than one, in which case there will be more than one
+; output file, whose output pointers are maintained in the array O_PTRS.
+; NO_OUT will suppress the output file entirely.
+
+; Finally, the caller can provide a routine TRAILING_ARGS to be called 
+; to scan any command-tail arguments after the file names, and/or to
+; perform other initializations.
+
+EXTRN IHANDLE:W
+
+        DATA SEGMENT
+
+        #if NO_I2           ; is there no second input file?
+  N_IFILES EQU 1            ; if yes then the number of input files is 1
+  I1_HANDLE EQU IHANDLE     ; if yes then I1_HANDLE is simply IHANDLE
+        #else
+  N_IFILES EQU 2            ; if no then the number of input files is 2
+        #endif
+
+        #if N_MERGE_OUT     ; if there are multiple input files
+  BUFFSIZE EQU 24000/(N_MERGE_OUT+N_IFILES)
+  LIMSIZE  EQU BUFFSIZE/2
+
+O_PTRS:                        ; array of output pointers for each output file
+  DW (4*N_MERGE_OUT) DUP ?     ; handle, pointer, buffer, and limit for each
+
+O1_PTR EQU W[O_PTRS+2]
+O2_PTR EQU W[O_PTRS+10]
+O3_PTR EQU W[O_PTRS+18]
+O4_PTR EQU W[O_PTRS+26]
+O5_PTR EQU W[O_PTRS+34]
+O6_PTR EQU W[O_PTRS+42]
+O7_PTR EQU W[O_PTRS+50]
+
+O_BUFFS:                                      ; array of output buffers
+  DB ((BUFFSIZE+LIMSIZE)*N_MERGE_OUT) DUP ?
+
+        #else           ; if there are not multiple output files
+
+  BUFFSIZE EQU 8K       ; size of each buffer excluding the limit-room
+  LIMSIZE  EQU 4K       ; this much output room is guaranteed to PROCESS_MERGE
+
+O_BUFF:                 ; output buffer
+   DB BUFFSIZE DUP ?
+O_LIMIT:                ; getting-full limit for the output buffer
+   DB LIMSIZE DUP ?     ; this much output room is guaranteed to PROCESS_MERGE
+
+        #endif
+
+I1_BUFF:                ; first input buffer
+   DB BUFFSIZE DUP ?
+I1_LIMIT:               ; getting-empty limit for the first buffer
+   DB LIMSIZE DUP ?     ; this many bytes guaranteed to PROCESS_MERGE
+I1_END EQU $-1
+
+        #if !NO_I2
+I1_HANDLE  DW ?         ; open-file handle for first input file
+
+I2_BUFF:                ; second input buffer
+   DB BUFFSIZE DUP ?
+I2_LIMIT:               ; getting-empty limit for the second buffer
+   DB LIMSIZE DUP ?     ; this many bytes are guaranteed to PROCESS_MERGE
+I2_END EQU $-1
+        #endif
+
+        DATA ENDS
+
+MERGE_21:
+  CALL COPY_TAIL        ; copy the command tail to our local buffer
+  CALL OPEN_I_ARG       ; open the first file for input
+        #if !NO_I2
+  MOV I1_HANDLE,AX      ; store the open-file handle for the first input file
+  CALL OPEN_I_ARG       ; open the second input file; handle to IHANDLE
+        #endif
+        #if !NO_OUT
+        #if N_MERGE_OUT ; if there are multiple output files
+  MOV DI,O_PTRS         ; point DI to the output pointers buffer
+  MOV AX,O_BUFFS        ; point AX to the buffers themselves
+  MOV CX,N_MERGE_OUT    ; load the number of output files
+L4:                     ; loop here to set up each output buffer
+  PUSH AX               ; save the buffers pointer
+  CALL OPEN_O_ARG       ; open the output file
+  STOSW                 ; output the open-file handle
+  POP AX                ; restore the buffers pointer
+  STOSW                 ; initial output pointer is the buffer pointer
+  STOSW                 ; also store the buffer pointer
+  ADD AX,BUFFSIZE       ; advance to the limit value
+  STOSW                 ; store the limit value
+  ADD AX,LIMSIZE        ; advance to the next output buffer
+  LOOP L4               ; loop to set up the next output buffer
+        #else           ; if there is exactly one output file
+  CALL OPEN_O_ARG       ; open the output file; handle to OHANDLE
+  MOV DI,O_BUFF         ; initialize output buffer empty
+        #endif
+        #endif
+        #if def TRAILING_ARGS
+  CALL TRAILING_ARGS    ; call any trailing-args routine supplied by caller
+        #else
+  CALL NO_MORE_ARGS     ; ensure there are no more command-tail arguments
+        #endif
+  MOV SI,DX,I1_END      ; initialize first input buffer empty
+        #if !NO_I2
+  MOV BX,BP,I2_END      ; initialize second input buffer empty
+        #endif
+L1:                     ; loop here for each PROCESS_MERGE call
+  CMP SI,I1_LIMIT       ; is the first input buffer too near empty?
+  IF AE CALL FILL_I1    ; if so then fill it
+        #if !NO_I2
+  CMP BX,I2_LIMIT       ; is the second input buffer too near empty?
+  IF AE CALL FILL_I2    ; if so then fill it
+        #endif
+        #if !NO_OUT
+        #if N_MERGE_OUT
+  CALL M21_CHECK_OUTPUT ; check all output buffers to see if they need flushing
+        #else
+  CMP DI,O_LIMIT        ; is the output buffer too near full?
+  IF AE CALL FLUSH_OH   ; if so then flush it
+        #endif
+        #endif
+  CMP SI,DX             ; is the first input buffer exhausted?
+        #if !NO_I2
+  IF AE CMP BX,BP       ; if yes then is the second buffer also exhausted?
+        #endif
+  JAE >L8               ; jump if yes-- input processing is all done
+  PUSH DX,BP            ; preserve the beyond-pointers
+  CALL PROCESS_MERGE    ; call our main program to process the merge
+  POP BP,DX             ; restore the beyond-pointers
+  JMP L1                ; loop for another call
+
+L8:                     ; processing is complete
+  MOV BX,I1_HANDLE      ; fetch the first input handle
+  CALL MCLOSE           ; close the first input file
+        #if !NO_I2
+  MOV BX,IHANDLE W      ; fetch the second input handle
+  CALL MCLOSE           ; close the second input file
+        #endif
+        #if NO_OUT
+  RET
+        #else
+        #if N_MERGE_OUT
+  MOV ALWAYS_FLUSH W,09090  ; disable checking so buffers are always flushed
+  CALL M21_CHECK_OUTPUT     ; flush the output buffers
+  MOV CX,N_MERGE_OUT        ; load the count of output files
+  MOV SI,O_PTRS             ; point to the output handles
+L4:                         ; loop here to close each output file
+  MOV BX,[SI]               ; fetch the output file handle
+  ADD SI,8                  ; advance SI to the next handle pointer
+  CALL MCLOSE               ; close the output file
+  LOOP L4                   ; loop to close the next output file
+  RET
+
+
+; M21_CHECK_OUTPUT checks all the output buffers to see if they need to be
+;   flushed.
+
+M21_CHECK_OUTPUT:
+  PUSH BX,DX,SI       ; preserve registers across call
+  MOV CX,N_MERGE_OUT  ; load the count of output files
+  MOV SI,O_PTRS       ; point to the output file pointers
+L4:                   ; loop here to check each output buffer
+  PUSH CX             ; preserve files count
+  LODSW               ; fetch the file handle
+  XCHG BX,AX          ; swap the handle into BX
+  LODSW               ; fetch the output pointer
+  XCHG CX,AX          ; swap the pointer into CX
+  LODSW               ; fetch the pointer to the start of the output buffer
+  XCHG DX,AX          ; swap the buffer pointer into DX
+  LODSW               ; fetch the limit value
+  CMP CX,AX           ; has the output pointer reached the limit
+ALWAYS_FLUSH DW       ; disable the following jump if we always output
+  JB >L5              ; skip if the output pointer has not reached the limit
+  CALL MWRITE_CX      ; output the buffered bytes
+  MOV [SI-6],DX       ; reset the output pointer to the start of the buffer
+L5:
+  POP CX              ; restore files count
+  LOOP L4             ; loop to check the next output file
+  POP SI,DX,BX        ; restore clobbered registers
+  RET
+
+
+        #else  
+  CALL FLUSH_OH       ; flush the output buffer to the file
+  MOV BX,OHANDLE W    ; fetch the output handle
+  JMP MCLOSE          ; close the output file
+
+
+; FLUSH_OH flushes the output file, and resets the DI buffer pointer.
+
+FLUSH_OH:
+  PUSH BX,DX          ; preserve registers across call
+  MOV BX,OHANDLE W    ; fetch the output handle
+  MOV DX,O_BUFF       ; point DX to the start of buffered output
+  CALL MWRITE_DI      ; output the buffered bytes
+  MOV DI,DX           ; reset DI to the start of the buffer
+  POP DX,BX           ; restore clobbered registers
+  RET
+        #endif
+        #endif
+
+
+; FILL_I1 copies residual bytes from SI--DX to the I1_BUFF bottom, then
+;    fills the rest of I1_BUFF with input from the file.  We return SI
+;    reset to I1_BUFF, and DX pointing beyond the bytes read.
+
+FILL_I1:
+  PUSH BX,DI          ; preserve regsiters across call
+  MOV BX,I1_HANDLE    ; fetch the first open-file handle
+  MOV AX,I1_END       ; point AX beyond the I1 buffer
+  MOV CX,DX           ; point CX beyond the currently-buffered bytes
+  MOV DI,I1_BUFF      ; point DI to the bottom of our buffer
+  CALL >L5            ; call common code to read the bytes
+  POP DI,BX           ; restore clobbered registers
+  RET
+
+
+        #if !NO_I2
+; FILL_I2 copies residual bytes from BX--BP to the I2_BUFF bottom, then
+;    fills the rest of I2_BUFF with input from the file.  We return BX
+;    reset to I2_BUFF, and BP pointing beyond the bytes read.
+
+FILL_I2:
+  PUSH DX,SI,DI       ; preserve registers across call
+  MOV SI,BX           ; copy buffer pointer to SI, for common code
+  MOV BX,IHANDLE W    ; fetch the second open-file handle
+  MOV AX,I2_END       ; point AX beyond the I2 buffer
+  MOV CX,BP           ; point CX beyond the currently-buffered bytes
+  MOV DI,I2_BUFF      ; point DI to the bottom of the buffer
+  CALL >L5            ; call common code to read the bytes
+  MOV BP,DX           ; point BP beyond the bytes read
+  MOV BX,SI           ; point BX to the buffered bytes
+  POP DI,SI,DX        ; restore clobbered registers
+  RET
+        #endif
+
+L5:                   ; common code to copy bytes and read new bytes
+  SUB CX,SI           ; calculate the number of residual bytes
+  PUSH DI             ; preserve destination
+  REP MOVSB           ; copy the residual bytes down to the buffer bottom
+  POP SI              ; reset SI to the buffer bottom
+  MOV DX,DI           ; point DX beyond the copied bytes
+  XCHG AX,CX          ; swap the beyond-buffer pointer into CX
+  SUB CX,DX           ; calculate the remaining room in the input buffer
+  CALL MREAD          ; read bytes from the file into the buffer
+  ADD DX,AX           ; advance DX beyond the bytes actually read
+  RET
+  

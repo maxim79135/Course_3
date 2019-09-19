@@ -1,0 +1,26 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HEXDIGIT                                     See EILIB.TXT for terms
+;---------------
+
+; SI_HEX_DIGIT sees if the SI-pointed byte (SI advances) is a hex digit. We
+;   return NoCarry if it is, with AL set to the corresponding binary value.  We
+;   return Carry if it is not, with AL trashed.
+
+; HEX_DIGIT sets NoCarry if AL is a hex digit, and converts it to its binary
+;   value.
+
+SI_HEX_DIGIT:
+  LODSB             ; fetch the character
+HEX_DIGIT:
+  CMP AL,'0'        ; is it too low to be a decimal digit?
+  JB RET            ; return Carry if it is too low
+  CMP AL,'9'        ; is it a decimal digit?
+  JBE >L1           ; skip if yes
+  AND AL,NOT 020    ; coerce AL to an upper-case letter
+  SUB AL,'A'        ; reduce the range A--F to 0--5
+  ADD AL,-6         ; set Carry if AL was not in the A--F range
+  JC RET            ; return if AL was not in the A--F range
+L1:
+  AND AL,0F         ; mask the answer down to a binary value
+  RET
+

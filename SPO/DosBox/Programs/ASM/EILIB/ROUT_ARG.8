@@ -1,0 +1,26 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ROUT_ARG                                     See EILIB.TXT for terms
+;---------------
+
+; ROUT_ARG reads to DI the entire file, limit CX bytes, whose name is given by
+;   the SI-pointed command-tail argument.  We advance SI beyond the name, and
+;   DI beyond the contents.  We jump to USAGE_EXIT if anything is wrong.
+
+ROUT_ARG:
+  PUSH BX,DX        ; preserve registers across call
+  CALL FILE_ARG     ; scan and null-terminate the file name
+  JC >E1            ; error if no name is there
+  CALL MOPEN_READ   ; open the file for reading
+  JC >E1            ; error if the file could not be opened
+  MOV DX,DI         ; point DX to the output buffer
+  CALL MREAD        ; read the file to the output buffer
+  JC >E1            ; error if the read failed
+  ADD DI,AX         ; advance DI beyond the actual bytes read
+  CMP AX,CX         ; did the file fill the buffer?
+  JE >E1            ; error if it did-- the file is too big
+  CALL MCLOSE       ; close the file
+  POP DX,BX         ; restore clobbered registers
+  RET
+
+E1:                 ; failure
+  JMP USAGE_EXIT    ; output USAGE_MSG and exit the program

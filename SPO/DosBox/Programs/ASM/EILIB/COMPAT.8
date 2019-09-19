@@ -1,0 +1,32 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COMPAT                                       See EILIB.TXT for terms
+;---------------
+
+; This is a file of macro definitions included for compatibility with
+; MASM 5.0 or later.  These macros are primarily for OBJ mode.  The
+; definitions replace the built-in segmentation model directives:
+;
+;       dosseg  .code   .data    .stack
+
+dosseg equ .dosseg
+
+.model MACRO
+DGROUP GROUP _DATA,STACK
+        ##if ('#1' = 'medium') or ('#1' = 'large')
+  PROC EQU FAR
+        ##endif
+#em
+
+.code MACRO
+SEGMENT WORD PUBLIC 'CODE'
+#em
+
+.data MACRO
+_DATA SEGMENT WORD PUBLIC 'DATA'
+#em
+
+.stack MACRO
+STACK SEGMENT PARA STACK 'STACK'
+ORG 0400H
+#em
+

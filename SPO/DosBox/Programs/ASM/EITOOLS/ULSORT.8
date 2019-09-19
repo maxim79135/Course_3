@@ -1,0 +1,31 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ULSORT                                       See EILIB.TXT for terms
+;---------------
+
+; ULSORT sorts the file whose name is given as the second argument in the
+;   command tail.  We do a case-insensitive lexicographic sort.
+
+ULSORT:
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_DEC       ; fetch the column number
+  MOV UL_COL1,AL        ; store the column number in its first slot
+  MOV UL_COL2,AL        ; store the column number in its second slot
+  PUSH SI               ; save the command-tail pointer, for possible rescan
+  CALL OPEN_I_ARG       ; open the input file
+  CALL TAIL_BLANKS      ; scan over intervening blanks
+  CMP AL,0D             ; is there an explicit output file given?
+  POP AX                ; restore the input-file pointer to AX
+  IF E XCHG SI,AX       ; if no output file given then use the input file
+  CALL FILE_ARG         ; point DX to the name of the output file
+  CALL LSORT_IHANDLE    ; sort the file
+  JMP GOOD_EXIT         ; exit back to the operating system
+
+USAGE_MSG:
+  DB 'usage: ULSORT colnum infile [outfile]',0D,0A
+  DB '    does a case-insensitive sort',0D,0A
+  DB 0
+
+COMPARE EQU UL_COMPARE            ; our compare is the upper/lower compare
+GEN_SORTP EQU GEN_NONBLANK_LINE   ; we are sorting nonblank lines
+COPY_SORTREC EQU COPY_LINE        ; record output is a simple line-copy
+

@@ -1,0 +1,76 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  FIND_WORD                                     See EILIB.TXT for terms
+;---------------
+
+; FIND_WORD searches for the word BX--DS:SI within the array CX--ES:DI.
+;   Return Z if found, with ES:DI pointing to the found word.  Return NZ if
+;   not found; with ES:DI pointing to CX residual bytes at the end of the
+;   buffer, which should be carried over if there is another buffer.  Return
+;   CX = 0 (there are no residual bytes) if the first character of the target
+;   word does not occur in the last BX-1 bytes of the array.
+
+; This routine differs from FIND_NOCASE in that, in addition to finding
+;   the given string, we require the string not to be embedded in a larger
+;   word (the characters on either side of the string must not be a letter).
+
+FIND_WORD:
+  TEST BX           ; are we looking for a null string?
+  JZ RET            ; always successful if yes
+  PUSH DX,BP        ; save registers across call
+  LODSB             ; fetch the first byte of the target string
+  DEC BX            ; count down the target bytes
+  MOV DX,CX         ; save the remaining buffer count in DX
+  MOV BP,DI         ; save the buffer pointer in BP
+  REPNE SCASB       ; find the first instance of the first letter
+  XOR AL,020        ; flip the case of the first letter
+  XCHG DX,CX        ; swap remaining buffer count into CX
+  XCHG BP,DI        ; swap buffer pointer into DI
+  PUSH AX           ; save the current first letter
+L1:                 ; loop here for each found first letter
+  POP AX            ; restore the current first letter
+  REPNE SCASB       ; find the next instance of that letter
+  CMP DI,BP         ; is it beyond the first instance of the other case?
+  JB >L2            ; skip if not, we'll still use this case
+  XOR AL,020        ; the other case comes first-- flip AL to it
+  XCHG DI,BP        ; swap its pointer into DI
+  XCHG CX,DX        ; swap its remaining count into CX
+L2:
+  CMP CX,BX         ; are there enough buffer letters for the rest of the word?
+  JBE >L5           ; jump if not, to failure exit
+  PUSH AX           ; save the current first letter
+  ES MOV AL,[DI-2]  ; fetch the character before the string's first letter
+  OR AL,020         ; coerce the byte to lower case
+  SUB AL,'a'        ; reduce the alphabet to range 0--25
+  CMP AL,26         ; was the character a letter?
+  JB L1             ; loop if yes-- the letter is embedded
+  PUSH CX,SI,DI     ; save the pointers to the starts of strings
+  TEST BX           ; are there any more letters in the target word?
+  JZ >L4            ; skip if not
+  MOV CX,BX         ; fetch the remaining length of the word
+L3:                 ; loop here to compare each letter of the target word
+  LODSB             ; fetch a letter from the target
+  ES XOR AL,[DI]    ; compare to the letter in the buffer
+  INC DI            ; advance the buffer pointer
+  AND AL,NOT 020    ; force the case-difference bit to zero
+  LOOPZ L3          ; loop if all the other bits matched
+L4:                 ; Z is now set if the entire word matches, NZ if not
+  ES MOV AL,[DI]    ; fetch the buffer character following the matched word
+  POP DI,SI,CX      ; restore pointers to pre-comparison values
+  JNE L1            ; loop if no match, to try another word
+  OR AL,020         ; coerce the byte to lower case
+  SUB AL,'a'        ; reduce the alphabet to range 0--25
+  CMP AL,26         ; was the following character a letter?
+  JB L1             ; loop if yes-- word was embedded not separate
+  POP AX            ; the word was found-- restore AH
+  MOV AL,0          ; Z flag signals success
+  JMP >L6           ; join common exit code
+
+L5:                 ; first character found; but not enough subsequent chars
+  MOV AL,0FF        ; insure NZ to signal failed find
+L6:                 ; common exit code
+  INC BX,CX         ; restore target length and increment buffer count
+  DEC SI,DI         ; retreat pointers to the starts of target and found-string
+  POP BP,DX         ; restore clobbered registers
+  TEST AL           ; set Z or NZ, depending on our success
+  RET
+

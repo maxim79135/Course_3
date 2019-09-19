@@ -1,0 +1,44 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PALETTE                                      See EILIB.TXT for terms
+;---------------
+
+; ATTR_PALETTE places a palette of the 256 possible colors at the top of
+;   the text-mode video screen.  The caller must set ES to 0B800 video
+;   memory.
+
+ATTR_PALETTE:
+  MOV DX,24 BY 0    ; row 24, column zero
+  MOV BH,0          ; video page 0
+  MOV AH,2          ; BIOS function number for SET_CURSOR
+  INT 010           ; put the cursor at the bottom of the video screen
+  MOV AH,0          ; load the first attribute value
+  MOV CL,'0'        ; load the first digit of that attribute value
+  MOV DX,'00'       ; load the second and third digits of the value
+  MOV DI,160        ; output starts at second line (allows for exit rollover)
+L1:                 ; loop here to output each attribute value
+  MOV AL,' '        ; load leading blank
+  STOSW             ; ouput leading blank
+  MOV AL,CL         ; load first digit
+  STOSW             ; output first digit
+  MOV AL,DH         ; load second digit
+  STOSW             ; output second digit
+  MOV AL,DL         ; load third digit
+  STOSW             ; output third digit
+  MOV AL,' '        ; output trailing blank
+  STOSW             ; output trailing blank
+  INC DL            ; increment the last digit
+  CMP DL,03A        ; have we gone past 9?
+  JNE >L2           ; skip if not
+  MOV DL,'0'        ; we have: zero the digit
+  INC DH            ; increment the second digit
+  CMP DH,03A        ; have we gone past 9?
+  JNE >L2           ; skip if not
+  MOV DH,'0'        ; we have: zero the digit
+  INC CL            ; increment the first digit
+L2:
+  INC AH            ; increment the attribute byte
+  JNS L1            ; loop to display this attribute value
+  RET
+
+
+

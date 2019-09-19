@@ -1,0 +1,14 @@
+
+Thank you for purchasing the A86+D86+A386+D386 package!  If you
+have not purchased the printed manual, you can read the materials
+in the text files A86MANU.TXT and D86MANU.TXT.  In Chapter 2 of
+each manual, there is a demonstration to show you how the program
+works.
+
+Thank you also for purchasing the EILIB library.  This install file
+has reset A86LIB to point to EILIB, but that will go away when you
+reboot your computer.  Don't forget to place a SET A386LIB command
+and/or SET A86LIB command into your AUTOEXEC.BAT file, as described
+in the file EILIB.TXT, in the \A86\EILIB subdirectory.
+
+

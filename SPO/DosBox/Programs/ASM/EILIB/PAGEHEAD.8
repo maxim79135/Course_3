@@ -1,0 +1,29 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PAGEHEAD                                     See EILIB.TXT for terms
+;---------------
+
+; PAGE_HEAD_READ reads the BX-handle file into OBUFF, prepending the
+;   fixed header PAGE_HEAD, of PAGE_HEAD_SIZE bytes.  The caller must
+;   supply the header and declare OBUFF and OBUFF_SIZE.  We close the
+;   input file and return with DX pointing to, and DI beyond, the
+;   buffered bytes.
+
+PAGE_HEAD_READ:
+  MOV DI,OBUFF          ; point to the output buffer
+  PUSH DI               ; save the buffer pointer
+  MOV SI,PAGE_HEAD      ; point to header bytes
+  MOV CX,PAGE_HEAD_SIZE ; load count of header bytes
+  REP MOVSB             ; copy the header to the output buffer
+        #if DATE_SPACES
+  CALL OUT_TODAY        ; output today's date
+  MOV CL,DATE_SPACES    ; load the spacing count from date to letter
+  MOV AX,0A0D           ; load CRLF
+  REP STOSW             ; output line-spacing according to the count
+        #endif
+  MOV DX,DI             ; copy the output pointer to DX, for reading
+  MOV CX,OBUFF_SIZE     ; load the capacity for our read
+  CALL MREAD            ; read the input file
+  ADD DI,AX             ; advance DI beyond the bytes read
+  POP DX                ; restore the buffer pointer
+  JMP MCLOSE            ; close the input file
+

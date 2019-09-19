@@ -1,0 +1,50 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HUGE_NUM                                     See EILIB.TXT for terms
+;---------------
+
+; HUGE_DECOUT outputs to DI-pointed memory the multiple-precision number
+;  consisting of CX words at SI.  The input number is unsigned binary, with
+;  the low words first.
+
+HUGE_DECOUT:
+  PUSH DS,CX,SI,DI  ; preserve register across call
+  MOV BX,10         ; the base for our output is 10
+  MOV AX,CX         ; fetch the number of words in the number
+  ADD AX,AX         ; convert it into a number of bytes
+  SUB SP,AX         ; make room on our stack for the bytes
+  MOV BP,SP         ; point BP to the stack version of the number
+  PUSH AX           ; save the size of the number
+  PUSH CX,DI,ES     ; save other register across the copy
+  MOV ES,SS         ; point destination to stack, to copy the number
+  MOV DI,BP         ; point DI to the stack buffer also
+  REP MOVSW         ; copy the number to the stack buffer
+  POP ES,DI,CX      ; restore clobbered registers
+  JMP >L3           ; jump into the loop, for output
+
+L2:                 ; loop here for each remaining digit of output
+  PUSH CX           ; save the remaining words count
+L1:                 ; loop here for each word in the number
+  DEC BP,2          ; retreat our source pointer to the next lower word
+  MOV AX,[BP]       ; fetch the word from the number
+  DIV BX            ; divide (residue,word) by the base
+  MOV [BP],AX       ; store the quotient back into the memory buffer
+  LOOP L1           ; loop to divide the next word
+  XCHG AX,DX        ; all words divided: swap residue (last digit) into AL
+  ADD AL,'0'        ; convert the binary digit into ASCII
+  STOSB             ; output the digit
+  POP CX            ; restore the count of words
+L3:
+  ADD BP,CX         ; advance BP beyond the number
+  ADD BP,CX         ; it takes two additions, since CX is a words-count
+  SUB DX,DX         ; initial residue is zero
+  CMP W[BP-2],DX    ; is the upper word of the number zero?
+  JNZ L2            ; loop if not, to unpack another digit
+  DEC BP,2          ; retreat the beyond-pointer to the new high word
+  LOOP L2           ; count down remaining words, and loop
+  POP AX            ; restore the original bytes count
+  ADD SP,AX         ; release the stack allocation for the number
+  POP SI            ; set SI to the starting output pointer
+  MOV DS,ES         ; point DS to the output segment
+  CALL REV_STRING   ; reverse the output string to the correct order
+  POP SI,CX,DS      ; restore clobbered registers
+  RET

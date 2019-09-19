@@ -1,0 +1,33 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  EMBEDCAP                          ; See EILIB.TXT for terms
+        ;---------------
+
+; EMBEDCAP is a filter that outputs all lines containing a capital letter that
+;   follows something other than a blank or below, dash, or comma.
+
+PROCESS_LINE:           ; filter CX bytes at SI--DI to BP
+  PUSH SI,CX            ; preserve registers across call
+  INC SI                ; we do not need to look at the first character
+L1:                     ; loop here to scan each byte of the line
+  CMP SI,DI             ; have we reached the end of the line?
+  JAE >L9               ; jump if we have, to skip the line without output
+  LODSB                 ; fetch a character from the line
+  SUB AL,'A'            ; reduce letters-range to zero
+  CMP AL,26             ; was it an upper-case letter?
+  JA L1                 ; loop if not, to continue scanning
+  MOV AL,[SI-2]         ; fetch the previous character
+  CMP AL,' '            ; was it a blank or below?
+  JBE L1                ; loop if it was, to continue scanning
+  CMP AL,'-'            ; was it a dash?
+  JE L1                 ; loop if it was, to continue scanning
+  CMP AL,','            ; was it a comma?
+  JE L1                 ; loop if it was, to continue scanning
+L8:                     ; we have found an embedded cap in the line
+  MOV DI,BP             ; point DI to the output buffer
+  POP CX,SI             ; restore the line count and pointer
+  REP MOVSB             ; output the line
+  JMP PROCESS_LINE_EXIT ; jump to check buffered output bytes and return
+
+L9:                     ; there was no embedded cap
+  POP CX,SI             ; restore clobbered registers
+  RET                   ; return without outputting the line

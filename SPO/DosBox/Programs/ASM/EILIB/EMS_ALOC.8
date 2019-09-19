@@ -1,0 +1,35 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  EMS_ALOC                                      See EILIB.TXT for terms
+;---------------
+
+; EMS_ALLOC verifies that EMS is available, and allocates BX pages (each 16K
+;   bytes) to our program.  We abort the program if sufficient EMS memory
+;   is not available.  If successful, we return EMS_FRAME set to the segment
+;   register value of the EMS frame.
+
+; EMS is a DOS-based memory-expansion technique that is no longer commonly
+;   used.  I am including these library routines because they had appeared
+;   in an earlier version of EILIB.
+
+EMS_ALLOC:
+  PUSH DX             ; preserve register across call
+  CALL EMS_SIZE       ; see how many EMS pages are available
+  CMP CX,BX           ; are there enough pages available?
+  JB >L3              ; abort if not
+  MOV EMS_FRAME,AX    ; we have enough pages: store the segment address
+  MOV AH,043          ; EMS function number for EMS_ALLOCATE
+  INT 067             ; allocate the pages and get a handle
+  TEST AH             ; was the allocation call successful?
+  JNZ >L3             ; abort if not
+  MOV EMS_HANDLE,DX   ; call was successful: store the handle
+  POP DX              ; restore clobbered register
+  MOV EMS_ENABLE B,090; enable EMS_HANDLE_FUNC routines
+  RET
+
+L3:                     ; failure exit
+  MOV AX,>L4            ; point to message telling about failure
+  JMP ERROR_EXIT        ; abort the program
+
+L4:
+  DB  'Sorry, sufficient EMS memory is not available.',0D,0A,0
+

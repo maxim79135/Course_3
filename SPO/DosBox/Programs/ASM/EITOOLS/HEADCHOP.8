@@ -1,0 +1,37 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   HEADCHOP                                     See EILIB.TXT for terms
+;---------------
+
+; HEADCHOP is a filter that chops a given number of bytes from the beginning
+;   the (HEAD) of standard output, and passes the rest, unchanged, to
+;   standard output.  The number of bytes to chop is given as a single
+;   decimal argument in the invocation command tail.
+
+HEADCHOP:
+  MOV SI,081H         ; point to our invocation command tail
+  CALL VERIFY_1_DEC   ; set AX to the single decimal argument
+  XCHG CX,AX          ; swap the byte count into CX
+  CALL READ_INPUT     ; read and discard the indicated number of bytes
+L1:                   ; loop here for each bufferfull of data
+  MOV CX,SP           ; point CX beyond available memory
+  SUB CH,010          ; subtract out 0800 for this program, and 0800 for stack
+  CALL READ_INPUT     ; read bytes into available memory
+  JCXZ >L2            ; jump if there were no more bytes read
+  CALL OWRITE         ; copy what we just read to standard output
+  JMP L1              ; loop to copy more
+
+L2:                   ; standard input is exhausted
+  JMP GOOD_EXIT       ; go back to the operating system
+
+
+READ_INPUT:           ; read CX bytes from standard input to buffer at 0800
+  MOV DX,0800         ; point to the buffer
+  SUB BX,BX           ; MS-DOS handle for standard input is zero
+  CALL MREAD          ; read from standard input
+  IF C SUB AX,AX      ; if error then show no actual bytes read
+  XCHG CX,AX          ; return the actual byte count in CX
+  RET
+  
+USAGE_MSG:
+  DB 'usage: HEADCHOP nnnn <in >out',0D,0A
+  DB '   chops decimal nnnn bytes from the start of the input file',0D,0A,0

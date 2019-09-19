@@ -1,0 +1,52 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER   WORDSL    ,ONE_DEC               ; See EILIB.TXT for terms
+        ;---------------
+
+; WORDSL outputs all words whose length is less than or equal to a specified
+;   number.  "Words" consist of strings of letters separated by non-letters.
+;   The output separates the words by CRLFs.
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage, e.g.: WORDSL 4 <in >out',0D,0A
+  DB '  outputs words with 4 or less characters',0D,0A,0,01A
+
+ONE_DEC:
+  CALL VERIFY_1_DEC   ; verify that there is a decimal argument in command tail
+  XCHG DX,AX          ; swap the argument value into DX
+  RET
+
+PROCESS_LINE:         ; filter CX bytes at SI--DI to BP
+  MOV DI,BP           ; fetch the output buffer pointer
+L1:                   ; loop here to find a letter
+  LODSB               ; fetch a charcter from the line
+  CMP AL,0A           ; is it a terminating linefeed?
+  JE >L3              ; jump if it is
+  OR AL,020           ; coerce the byte to lower-case
+  SUB AL,'a'          ; reduce letters-range to zero
+  CMP AL,26           ; was the byte a letter?
+  JAE L1              ; loop if not, to continue scanning
+  SUB CX,CX           ; initialize letters count
+L2:                   ; loop here to scan each letter of the word
+  INC CX              ; increment the letters count
+  LODSB               ; fetch a byte
+  OR AL,020           ; coerce to lower case
+  SUB AL,'a'          ; reduce letters-range to zero
+  CMP AL,26           ; was the byte a letter?
+  JB L2               ; loop if it was, to continue counting letters
+  DEC SI              ; retreat back to the non-letter
+  CMP CX,DX           ; does the word size exceed the maximum count
+  JA L1               ; loop if it does: we will not output the word
+  SUB SI,CX           ; word is small enough to be output: retreat to it
+L4:                   ; loop here to output each letter of the word
+  LODSB               ; fetch a letter
+  OR AL,020           ; coerce to lower case
+  STOSB               ; output the letter
+  LOOP L4             ; loop to output the next letter
+  MOV AX,0A0D         ; load CRLF
+  STOSW               ; output CRLF
+  JMP L1              ; loop to continue scanning the line
+
+L3:                       ; linefeed is seen
+  JMP PROCESS_LINE_EXIT   ; reset BP, check for overflow, and return
+

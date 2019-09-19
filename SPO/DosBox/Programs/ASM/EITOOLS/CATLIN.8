@@ -1,0 +1,88 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  CATLIN                                        See EILIB.TXT for terms
+;---------------
+
+; CATLIN concatenates the files named in the command tail, and outputs the
+;   results to standard output.  We assume line-oriented files, and thus we
+;   filter away any trailing blank lines and end-of-file markers from the
+;   ends of files, and insure that the final line ends with CRLF.  We also
+;   assume that the truncated material never exceeds 256 bytes -- if it does,
+;   we might handle the file correctly, or we might truncate less, depending
+;   on the buffer alignment.
+
+CATLIN:
+  MOV SI,081          ; point SI to our invocation command tail
+  CALL WILD_ARGS      ; expand the command-tail list into file-name pointers
+  JZ >L3              ; jump if there were no command-tail arguments
+L1:                   ; loop here to open and output each file in the list
+  LODSW               ; fetch the pointer to the file name
+  XCHG DX,AX          ; swap the pointer into DX, for opening
+  CALL MOPEN_READ     ; open the file
+L2:
+  CALL OUT_LFILE      ; read and output the file
+  LOOP L1             ; loop to read and output another file
+  JMP GOOD_EXIT       ; files complete: exit the program
+
+L3:                   ; there were no file names in the command tail
+  SUB BX,BX           ; load the open-file handle for standard input
+  INC CX              ; set CX to 1, so we won't loop for any more files
+  JMP L2              ; jump into loop, to copy standard input
+
+
+
+; OUT_LFILE reads, outputs to console, and closes the open file whose handle
+;     is BX.  We check for end-of-file and strip the trailing blank lines and
+;     EOF markers.
+
+OUT_LFILE:
+  PUSH CX,SI          ; preserve registers across call
+  MOV DX,01000        ; point DX to a free area
+L1:                   ; loop here to read each bufferful of data
+  MOV CX,SP           ; point CX beyond free memory, to our stack pointer
+  SUB CH,4            ; leave plenty of room for our stack
+  PUSH CX             ; save the beyond-pointer
+  SUB CX,DX           ; calculate the number of free memory bytes available
+  CALL MREAD          ; read a bufferful of data from the file
+  MOV CX,DX           ; point CX to the bytes read
+  ADD CX,AX           ; advance CX beyond the actual bytes read
+  POP AX              ; restore to AX the pointer beyond the buffer
+  MOV DX,01000        ; point DX to the start of the buffer
+  CMP CX,AX           ; was the entire buffer filled?
+  JNE >L2             ; jump if it was not filled-- the final buffer
+  DEC CH              ; not the final buffer: retreat CX to the last 256 bytes
+  MOV SI,CX           ; point SI to the last 256 bytes in the buffer
+  CALL OWRITE_CX      ; output all but the last 256 bytes of the buffer
+  MOV CX,256          ; load the tailing count
+  MOV DI,DX           ; point DI to the bottom of the buffer
+  REP MOVSB           ; copy the trailing bytes to the bottom of the buffer
+  MOV DX,DI           ; point DX beyond the residual bytes
+  JMP L1              ; loop to read another bufferfull
+
+L2:                   ; we have just read the final buffer
+  MOV DI,CX           ; point DI beyond the end of the file
+L3:                   ; loop here to truncate blank lines
+  DEC DI              ; retreat to the final byte of the file
+  CMP DI,01000        ; are we below the start of the buffer
+  JB >L4              ; don't write anything if we are
+  MOV AL,[DI]         ; fetch the final file byte
+  CMP AL,0D           ; is it a carriage return?
+  JE L3               ; loop if yes, to truncate it
+  CMP AL,0A           ; is it a linefeed?
+  JE L3               ; loop if yes, to truncate it
+  CMP AL,01A          ; is it an end-of-file marker?
+  JE L3               ; loop if yes, to truncate it
+  CMP AL,' '          ; is it a blank?
+  JE L3               ; loop if yes, to truncate it
+  INC DI              ; non-blank seen: advance DI past it
+  MOV AX,0A0D         ; load CRLF
+  STOSW               ; output the CRLF to the end of the file
+  CALL OWRITE_DI      ; write the buffer to standard output
+L4:
+  CALL MCLOSE         ; close the file
+  POP SI,CX           ; restore clobbered registers
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: CATLIN [infiles] [>out]',0D,0A
+  DB '    concatenates files, stripping trailing blank lines and EOFs',0D,0A,0

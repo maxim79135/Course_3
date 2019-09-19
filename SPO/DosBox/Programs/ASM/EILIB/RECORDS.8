@@ -1,0 +1,102 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  RECORDS                                       See EILIB.TXT for terms
+;---------------
+
+; This module handles record-oriented standard input.  The main module must 
+; call PROCESS_RECORDS when it is ready for standard input; it must supply
+; a routine PROCESS_RECORD that we call, and it must jump to GOOD_EXIT when
+; we are done.
+
+; We call PROCESS_RECORD with SI pointing to the input data stream, DX
+; pointing beyond the last byte of buffered data from that stream, and DI
+; pointing to the output buffer.  PROCESS_RECORD must advance SI beyond the
+; data it processes (which must be at least one byte), and output to DI.
+
+; This is an older module; it's a predecessor to the more-refined PFILE
+; routines.  I retain it because a few of the older tools use it, and I
+; haven't gotten around to revising them.
+
+        #if !(def IBUFF_SIZE)
+IBUFF_SIZE  = 32K
+IMAX_RECORD = 2K
+        #if !NO_OBUFF
+OBUFF_SIZE  = 16K
+OMAX_RECORD = 2K
+        #endif
+        #endif
+
+; This module assumes DS=ES=SS at all times.
+
+        DATA SEGMENT
+L0:
+        DB IBUFF_SIZE DUP ?
+IBUFF_LIMIT EQU $-IMAX_RECORD
+BEYOND_IBUFF:
+        DB ?,?
+        #if !NO_OBUFF
+L9:
+        DB OBUFF_SIZE DUP ?
+OBUFF_LIMIT EQU $-OMAX_RECORD
+BEYOND_OBUFF:
+        #endif
+        DATA ENDS
+
+
+; PROCESS_RECORDS performs the entire program processing for a records-filter.
+;   We call PROCESS_RECORD for each record we encounter in standard input, and
+;   handle the buffering of standard output.
+
+        #if ref DX_RECORDS
+DX_RECORDS:
+  CALL MOPEN_READ
+  CALL PROCESS_RECORDS
+  JMP MCLOSE
+        #endif
+
+PROCESS_RECORDS:
+  MOV DI,L9           ; initialize output pointer
+  MOV SI,DX           ; SI = DX insures there are no initial residual bytes
+  JMP >L2             ; jump into loop, to read the first buffer of data
+
+L1:
+        #if !NO_OBUFF
+  CMP DI,OBUFF_LIMIT  ; is the output buffer too full?
+  IF AE CALL >L6      ; if yes then flush it
+        #endif
+        #if ref DX_RECORDS
+  PUSH BX             ; save the open-file handle
+        #endif
+  PUSH DX             ; preserve beyond-pointer across call
+  CALL PROCESS_RECORD ; call the main program to process the record
+  POP DX              ; restore the beyond-input pointer
+        #if ref DX_RECORDS
+  POP BX              ; restore the open-file handle
+        #endif
+  CMP SI,IBUFF_LIMIT  ; are we close to the end of the input buffer?
+  JB >L5              ; skip if not, to process another record
+L2:                   ; we need to read more into the input buffer
+  PUSH AX,BX,CX,DI    ; preserve registers across the read
+  MOV CX,DX           ; point CX beyond the previous leftover bytes
+  SUB CX,SI           ; calculate the number of residual bytes
+  MOV DI,L0           ; the bytes will be copied to the start of the buffer
+  REP MOVSB           ; copy the residual bytes down to the buffer start
+        #if !(ref DX_RECORDS)
+  SUB BX,BX           ; open file handle for standard input is zero
+        #endif
+  CALL FILL_IBUFF     ; fill IBUFF with data from open file BX
+  POP DI,CX,BX,AX     ; restore clobbered registers
+  MOV SI,L0           ; point SI to the start of the input buffer
+L5:                   ; no need to read more input data
+  CMP SI,DX           ; are we all out of data?
+  JB L1               ; loop if not, to process another record
+L6:                   ; flush the output buffer
+        #if !NO_OBUFF
+  PUSH AX,BX,CX,DX    ; preserve registers across the flush
+  MOV DX,L9           ; point DX to the output buffer
+  MOV CX,DI           ; point CX beyond the bytes we buffered
+  SUB CX,DX           ; calculate the number of bytes we buffered
+  MOV DI,DX           ; reset the output pointer to the start of the buffer
+  IF NZ CALL OWRITE   ; write the buffer to standard output
+  POP DX,CX,BX,AX     ; restore clobbered registers
+        #endif
+  RET

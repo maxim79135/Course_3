@@ -1,0 +1,208 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    SUBW                                        See EILIB.TXT for terms
+;---------------
+
+; SUBW searches for every instance of the first string-argument word in
+;   standard input, and substitutes the second string-argument.  The
+;   resulting file is output to standard output.  The string arguments
+;   can contain control characters, as determined by the filtering
+;   mechanism in SCAN_STRING, described in the procedure-level documentation.
+;   Instances of the word must be standalone to undergo substitution: no
+;   leading letters; no trailing letters or period.
+
+        DATA SEGMENT
+BUFFSIZE EQU 08000          ; buffer size
+S1_LEN  DW ?                ; first string length
+STRING1:                    ; first string content
+        DB 64 DUP ?
+S2_LEN  DW ?                ; second string length
+STRING2:                    ; second string content
+        DB 64 DUP ?
+OBUFF:                      ; output buffer
+        DB 04000 DUP ?
+IBUFF:                      ; input buffer
+        DB 08000 DUP ?
+        DATA ENDS
+
+MAIN:
+SUBW:
+  MOV SI,081        ; point to our invocation command-tail
+  MOV DI,STRING1    ; destination for the first string scanned
+  PUSH DI           ; save this pointer
+  CALL SCAN_STRING  ; scan the first substitution-string
+  MOV BX,CX         ; the size of this target string will reside in BX
+  MOV DI,STRING2    ; destination for the second string-operand
+  CALL SCAN_STRING  ; scan the second substitution-string
+  MOV BP,CX         ; the size of this new-string will reside in BP
+  POP SI            ; restore the pointer to the target string
+  MOV DI,IBUFF      ; point DI to input buffer, where FETCH_INPUT expects it
+  SUB CX,CX         ; we start out with no residual bytes
+L1:                 ; loop here to process each buffer-full of input
+  CALL FETCH_INPUT  ; input another buffer-full of bytes
+  JZ >L2            ; jump if there were no more bytes
+  CALL SUB_STRINGS  ; process buffer-full, except for residual bytes
+  CALL FLUSH_OUTPUT ; flush buffered output, and copy residual bytes
+  JMP L1            ; loop to process another buffer-full
+
+L2:                 ; no more input was taken
+  MOV SI,DI         ; point SI to the residual bytes
+  MOV DI,OBUFF      ; destination for the residual bytes is OBUFF
+  REP MOVSB         ; copy the bytes to the output buffer
+  MOV DX,DI         ; move beyond-buffered-bytes pointer back to DX
+  CALL FLUSH_OUTPUT ; output the residual bytes
+  JMP GOOD_EXIT     ; exit the program
+
+
+; SUB_STRINGS finds all instances of the target string (BX bytes at SI) in the
+;   input buffer (CX bytes at DI), and substitutes the new string.  The
+;   substituted text is output to OBUFF.  We return with DX pointing beyond the
+;   buffered output bytes; and DI pointing to CX residual bytes, needed for
+;   the start of the next input buffer.
+
+SUB_STRINGS:
+  MOV DX,OBUFF      ; point to the start of the output buffer
+L1:                 ; loop here after each substitution
+  PUSH DI           ; save the start of the remaining input buffer
+  CALL FIND_WORD    ; find the next instance of the target word
+  POP AX            ; restore remaining-input pointer to AX
+  PUSHF             ; save find-result: Z if target was found
+  PUSH CX,SI        ; save registers across output operation
+  XCHG SI,AX        ; swap remaining-input pointer into SI
+  MOV CX,DI         ; point CX beyond the skipped-over input
+  SUB CX,SI         ; compute the number of input bytes skipped over
+  XCHG DI,DX        ; swap output pointer into DI
+  REP MOVSB         ; output the skipped-over input bytes
+  XCHG DX,DI        ; swap output pointer back into DX
+  POP SI,CX         ; restore clobbered registers
+  POPF              ; restore find-result
+  JNZ RET           ; return if the target was not found
+  PUSH CX,SI        ; target was found: preserve registers
+  XCHG DI,DX        ; swap output pointer into DI
+  MOV SI,STRING2    ; source for substitution is the second string
+  MOV CX,BP         ; fetch the size of the second string
+  REP MOVSB         ; output the second string in place of the first
+  XCHG DX,DI        ; swap the output pointer back to DX
+  POP SI,CX         ; restore clobbered registers
+  ADD DI,BX         ; advance input pointer beyond the found string
+  SUB CX,BX         ; reduce remaining count by the size of the advance
+  JMP L1            ; loop to look for another instance of the string
+
+
+; FETCH_INPUT assumes that the CX residual bytes returned by FIND_WORD
+;   have been copied to DI-pointed memory.  We input another buffer-full of
+;   bytes to [DI+CX]; and compute CX = the size of the new buffer-full
+;   (including the residual bytes).  We return Z if no new input was read.
+
+FETCH_INPUT:
+  PUSH BX                ; preserve register across call
+  SUB BX,BX              ; handle number of standard input is zero
+  MOV DX,DI              ; point DX to the start of the buffer
+  ADD DX,CX              ; advance DX beyond the residual bytes
+  MOV CX,IBUFF+BUFFSIZE  ; point CX beyond the input buffer
+  SUB CX,DX              ; compute the number of bytes we can input this time
+  MOV AH,03F             ; MSDOS function number for READ
+  INT 021                ; read a buffer-full of standard input
+  MOV CX,DX              ; point CX to the start of this last read
+  ADD CX,AX              ; add in the number of bytes actually read
+  SUB CX,DI              ; compute the number of bytes now in the buffer
+  POP BX                 ; restore clobbered register
+  TEST AX                ; return Z if no more bytes were read
+  RET
+
+
+; FLUSH_OUTPUT flushes the output bytes, from OBUFF up to the output pointer
+;   DX; and resets DX to OBUFF.  We also copy the CX residual bytes from the
+;   end of the previous input buffer, down to IBUFF; and leave DI pointing to
+;   IBUFF, and the CX residual count preserved.
+
+FLUSH_OUTPUT:
+  PUSH AX,BX,SI,CX  ; preserve registers across call
+  MOV BX,1          ; handle number of standard output is 1
+  MOV CX,DX         ; point CX beyond the buffered output bytes
+  MOV DX,OBUFF      ; point DX to the start of the bytes
+  SUB CX,DX         ; compute the number of bytes buffered
+  MOV AH,040        ; MSDOS function number for WRITE
+  INT 021           ; write the buffered bytes
+  MOV SI,DI         ; point SI to the residual bytes
+  MOV DI,IBUFF      ; set up the destination for the residual bytes
+  POP CX            ; restore the residual byte count
+  PUSH CX,DI        ; save residual count and destination
+  REP MOVSB         ; copy the residual bytes down to the start of IBUFF
+  POP DI,CX,SI,BX,AX; restore clobbered registers
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: subw <in >out oldstring newstring',0D,0A,0
+
+
+; FIND_WORD searches for the word BX--DS:SI within the array CX--ES:DI.
+;   Return Z if found, with ES:DI pointing to the found word.    Return NZ if
+;   not found; with ES:DI pointing to CX residual bytes at the end of the
+;   buffer, which should be carried over if there is another buffer.  Return
+;   CX = 0 (there are no residual bytes) if the first character of the target
+;   word does not occur in the last BX-1 bytes of the array.
+
+FIND_WORD:
+  TEST BX           ; are we looking for a null string?
+  JZ RET            ; always successful if yes
+  PUSH DX,BP        ; save registers across call
+  LODSB             ; fetch the first byte of the target string
+  DEC BX            ; reduce the target count by the first letter
+  MOV DX,CX         ; save the remaining buffer count in DX
+  MOV BP,DI         ; save the buffer pointer in BP
+  REPNE SCASB       ; find the first instance of the first letter
+  XOR AL,020        ; flip the case of the first letter
+  XCHG DX,CX        ; swap remaining buffer count into CX
+  XCHG BP,DI        ; swap buffer pointer into DI
+  PUSH AX           ; save the current first letter
+L1:                 ; loop here for each found first letter
+  POP AX            ; restore the current first letter
+  REPNE SCASB       ; find the next instance of that letter
+  CMP DI,BP         ; is it beyond the first instance of the other case?
+  JB >L2            ; skip if not, we'll still use this case
+  XOR AL,020        ; the other case comes first-- flip AL to it
+  XCHG DI,BP        ; swap its pointer into DI
+  XCHG CX,DX        ; swap its remaining count into CX
+L2:
+  CMP CX,BX         ; are there enough buffer letters for the rest of the word?
+  JBE >L5           ; jump if not, to failure exit
+  PUSH AX           ; save the current first letter
+  ES MOV AL,[DI-2]  ; fetch the character before the buffer's first letter
+  OR AL,020         ; coerce the byte to lower case
+  SUB AL,'a'        ; reduce the alphabet to range 0--25
+  CMP AL,26         ; was the character a letter?
+  JB L1             ; loop if yes-- the letter is embedded
+  PUSH CX,SI,DI     ; save the pointers to the starts of strings
+  TEST BX           ; are there any more letters in the target word?
+  JZ >L4            ; skip if not
+  MOV CX,BX         ; fetch the remaining length of the word
+L3:                 ; loop here to compare each letter of the target word
+  LODSB             ; fetch a letter from the target
+  ES XOR AL,[DI]    ; compare to the letter in the buffer
+  INC DI            ; advance the buffer pointer
+  AND AL,NOT 020    ; force the case-difference bit to zero
+  LOOPZ L3          ; loop if all the other bits matched
+L4:                 ; Z is now set if the entire word matches, NZ if not
+  ES MOV AL,[DI]    ; fetch the buffer character following the matched word
+  POP DI,SI,CX      ; restore pointers to pre-comparison values
+  JNE L1            ; loop if no match, to try another word
+  CMP AL,'.'        ; does a period follow the word?
+  JE L1             ; loop if yes, period suppresses the match
+  OR AL,020         ; coerce the byte to lower case
+  SUB AL,'a'        ; reduce the alphabet to range 0--25
+  CMP AL,26         ; was the following character a letter?
+  JB L1             ; loop if yes-- word was embedded not separate
+  POP AX            ; the word was found-- restore AH
+  MOV AL,0          ; Z flag signals success
+  JMP >L6           ; join common exit code
+
+L5:                 ; first character found; but not enough subsequent chars
+  MOV AL,0FF        ; insure NZ to signal failed find
+L6:                 ; common exit code
+  INC BX,CX         ; restore target length and increment buffer count
+  DEC SI,DI         ; retreat pointers to the starts of target and found-string
+  POP BP,DX         ; restore clobbered registers
+  TEST AL           ; set Z or NZ, depending on our success
+  RET
+

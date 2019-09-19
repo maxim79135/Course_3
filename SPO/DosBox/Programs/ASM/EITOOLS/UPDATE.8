@@ -1,0 +1,140 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   UPDATE                                       See EILIB.TXT for terms
+;---------------
+
+; UPDATE merges an update file into a master file, and outputs the merged
+;   database to another file.  The three files are named in order on the
+;   invocation command tail.  The update file consists of lines beginning
+;   with + or -.  The line content beyond the plus-or-minus must be sorted
+;   lexicographically.  Plus lines are added to the master file, and minus
+;   lines are deleted.  The input master file must also be sorted
+;   lexicographically.
+
+UPDATE:
+  MOV SI,081            ; point to the start of the command tail
+  CALL MERGE_21         ; set up buffers and call PROCESS_MERGE repeatedly
+  JMP GOOD_EXIT         ; exit the program
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: UPDATE plus_minus_file master_file new_file',0D,0A
+  DB '   uses the plus-minus file to update the master file.',0D,0A
+  DB '   All files must be sorted.',0D,0A
+  DB 0D,0A,0,01A
+
+
+NO_DOSCHECK EQU 1   ; our MSDOS.8 library routines will not trap errors
+
+
+; PROCESS_MERGE is called by MERGE_21 to perform a single update operation.
+;   We are called with SI pointing to and DX beyond the update file's bytes,
+;   BX pointing to and BP beyond the master file's bytes, and DI pointing
+;   to where we should output.  We compare the update line to the current
+;   master line, and make the update where appropriate.
+
+PROCESS_MERGE:
+  CMP SI,DX         ; is the update file exhausted?
+  JAE >L2           ; jump if yes, to output the master file
+  LODSB             ; fetch the control character of the update file
+  CMP AL,'+'        ; is it an add-line?
+  JE >L1            ; jump if it is
+  CMP AL,'-'        ; is it a delete-line?
+  JNE >L7           ; jump if not, to skip the line
+  CALL CMP_LINES    ; minus sign: compare the delete line to the master line
+  JA >L2            ; jump if the master pointer hasn't caught up to the update
+  JE >L3            ; jump if the delete line matches the master line
+  ADD SI,CX         ; delete line not in master file: just discard it
+  RET
+
+L3:                 ; the delete line matches the master line
+  ADD SI,CX         ; discard the delete line
+  CALL BX_LENGTH    ; calculate the length of the master line
+  ADD BX,CX         ; discard the master line
+  RET
+
+L1:                 ; plus-sign was seen
+  CALL CMP_LINES    ; compare the insert line to the master line
+  JA >L2            ; jump if the master pointer hasn't caught up to the update
+  JE >L5            ; jump if the master line matches the insert line
+  REP MOVSB         ; output the insert line
+  RET
+
+L5:                 ; skip the update line and output the master line
+  ADD SI,CX         ; advance SI beyond the update line
+  INC SI            ; cancel the following DEC SI
+L2:                 ; output the master line
+  DEC SI            ; retreat SI back to its sign
+  CALL BX_LENGTH    ; calculate the length of the master line
+  XCHG SI,BX        ; swap the master pointer into SI
+  REP MOVSB         ; output the master line
+  XCHG BX,SI        ; restore the update and master pointers
+  RET
+
+L7:                 ; test line begins with neither + nor -: discard it
+  LODSB             ; fetch a character to discard
+  CMP AL,0A         ; is it the terminating linefeed?
+  JE RET            ; return if it is
+  CMP SI,DX         ; are there more test characters?
+  JB L7             ; loop if there are, to discard more
+  RET
+
+
+; CMP_LINES compares the SI-pointed update-file line, minus the BX-pointed
+;   master-file line.  We return A if we haven't reached the update line
+;   in the master file; E if the lines match exactly; B if we have passed
+;   the update line; i.e., the update line does not occur in the master file.
+;   We also return with CX set to the length of the update line.
+
+CMP_LINES:
+  PUSH DI           ; preserve register across call
+  MOV DI,SI         ; point DI to the update line
+  CALL LINE_LENGTH  ; set CX to the length of the update line
+  MOV AX,DX         ; point AX beyond the update file buffer
+  SUB AX,SI         ; calculate the number of available update bytes
+  CMP AX,CX         ; was the buffer truncated within this line?
+  IF B XCHG CX,AX   ; if it was then truncate the length as well
+  PUSH CX,SI        ; preserve registers
+  CMP BX,BP         ; are there any master file bytes left?
+  JAE >L1           ; return if there are no master bytes left
+  MOV DI,BX         ; there are master bytes: point DI to them
+  REPE CMPSB        ; compare the update line minus the master line
+L9:
+  POP SI,CX,DI      ; restore clobbered registers
+  RET
+
+L1:                 ; there are no master bytes left
+  MOV AH,1          ; load flags image for Carry and NZ
+  SAHF              ; set flags to Carry and NZ
+  JMP L9            ; join common exit code
+
+
+; BX_LENGTH set CX to the length of the BX-pointed master line.
+
+BX_LENGTH:
+  PUSH DI           ; preserve register across call
+  MOV DI,BX         ; point DI to the master line
+  CALL LINE_LENGTH  ; set CX to the length of the master line
+  POP DI            ; restore clobbered register
+  MOV AX,BP         ; point AX beyond the master buffer
+  SUB AX,BX         ; calculate the number of available master bytes
+  CMP AX,CX         ; was the buffer truncated within this line?
+  JAE RET           ; return if it was not truncated
+  MOV BX,BP         ; it was truncated: point BX beyond the master buffer
+  SUB CX,CX         ; return a zero length
+  RET
+
+
+; LINE_LENGTH sets CX to the length of the DI-pointed line, including
+;   the terminating linefeed.
+
+LINE_LENGTH:
+  MOV AL,0A         ; load linefeed, for scanning
+  MOV CX,0FFFF      ; load unlimited scanning length
+  REPNE SCASB       ; find the next linefeed
+  NOT CX            ; depletion amount of CX is the line length
+  RET
+
+
+
+
+

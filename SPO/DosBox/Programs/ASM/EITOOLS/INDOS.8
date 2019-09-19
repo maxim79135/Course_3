@@ -1,0 +1,26 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   INDOS                                        See EILIB.TXT for terms
+;---------------
+
+; INDOS outputs to the console the hex pointer to the InDOS flag maintained
+;   by MS-DOS.  The InDOS byte is incremented whenever MS-DOS is entered,
+;   and decremented when it is exited.  Thus InDOS is nonzero if a DOS call
+;   is in progress, zero if it isn't.
+
+INDOS:
+  MOV AH,034        ; MS-DOS function number for GET_INDOS
+  INT 021           ; set ES:BX to the InDOS pointer
+  MOV DX,DI,01000   ; point to free memory for buffering output
+  MOV AX,ES         ; fetch the InDOS segment
+  MOV ES,CS         ; restore ES to point to our own program
+  CALL HEX_AX       ; output the segment value
+  MOV AL,':'        ; load intervening colon
+  STOSB             ; output the colon
+  XCHG AX,BX        ; swap in the InDOS offset value
+  CALL HEX_AX       ; output the offset value
+  MOV AX,0A0D       ; load CRLF
+  STOSW             ; output trailing CRLF
+  CALL OWRITE_DI    ; output the accumulated buffer
+  JMP GOOD_EXIT     ; exit the program
+
+NO_DOSCHECK EQU 1   ; our MS_DOS library routines will not trap errors

@@ -1,0 +1,179 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COLOR                                        See EILIB.TXT for terms
+;---------------
+
+; COLOR sets the DOS screen to a given color, which can either be explicitly
+;    given by the decimal command-tail argument, or be set according to the
+;    current day-of-week (with exceptions for selected holidays).  I wrote
+;    this program because, as a self-employed person working on my own,
+;    I tend to work independently of the day-of-week, and needed something
+;    to remind me of the passage of time.  A few years after writing this
+;    program, and for several years now afterwards, I have also been wearing
+;    a red shirt on Fridays, and a purple shirt on Saturdays, emulating
+;    my own DOS computer screens!
+
+; You may modify the colors for each day-of-week, as well as the list of
+; holidays (adding birthdays, for example), by changing the entries in the
+; control arrays DOW_COLORS and HOLIDAYS given in this source file, and
+; then reassembling the program.
+
+; The program performs one of several actions, depending on the command tail.
+; If there is no command tail, we present a chart of possible colors, with
+; their corresponding decimal values.  If a decimal value is given, we fill
+; the screen with that color.  If the decimal value is preceded by a B, we
+; blank the screen as well as filling it with the given color.  If a W is
+; seen, we set the screen to the color of this day-of-week or holiday.
+; If a C is seen, we blank the screen and set it to the day-of-week/holiday
+; color.
+
+; We also search for an ANSI control sequence in low memory, and, if we find
+; it, we modify it to ensure that subsequent ANSI-controlled console output
+; will also have our color attributes.
+
+COLOR:
+  MOV ES,BX,0B800     ; we will output directly to the color screen
+  MOV SI,081          ; point to our invocation command tail
+L0:
+  CALL TAIL_BLANKS    ; skip any leading blanks in the command tail
+  CMP AL,0D           ; was it an empty command tail?
+  JE CHART_EXIT       ; jump if yes, to output the color chart
+  SUB AL,'0'          ; reduce decimal digit to range 0--9
+  CMP AL,9            ; was it in fact a decimal digit?
+  JBE EXPLICIT        ; jump if yes, to scan the explicit color number
+  ADD AL,'0'          ; not a digit: restore the command letter
+  AND AL,0DF          ; coerce the command letter to upper case
+  CMP AL,'W'          ; was the command letter a W?
+  JE COLOR_W          ; jump if it was a W
+  CMP AL,'B'          ; was the command letter a B?
+  JE COLOR_B          ; jump if it was a B
+  CMP AL,'C'          ; was the command letter a C?
+  JNE CHART_EXIT      ; jump if not, to display the chart
+COLOR_C:              ; C is seen
+  CALL GET_DOW_COLOR  ; get day-of-week color and drop to blank-fill
+BLANK:                ; blank-fill the screen as well as setting it to a color
+  MOV AH,AL           ; copy the color attribute byte to AH
+  MOV AL,' '          ; load AL with a blank, for the screen display
+  SUB DI,DI           ; the fill will start at offset 0 on the screen
+  MOV CX,50*80        ; allow for 50 lines on the screen
+  REP STOSW           ; fill the screen with a blank with the given color
+  JMP >L6             ; join common code to emit the ANSI color-set sequence
+
+COLOR_W:              ; W is seen
+  CALL GET_DOW_COLOR  ; set AL to the color for this day-of-week or holiday
+  JMP SHORT FILL      ; jump to fill the screen with that color
+  
+EXPLICIT:
+  CALL VERIFY_1_DEC       ; verify a single decimal command argument
+FILL:                     ; fill the screen without blanking it
+  SUB DI,DI               ; the fill will start at offset 0 on the screen
+  MOV CX,50*80            ; allow for 50 lines on the screen
+L5:                       ; loop here to change the color of each character
+  INC DI                  ; increment past the display content, preserving it
+  STOSB                   ; output our color as the high (attribute) byte
+  LOOP L5                 ; loop to output the next video word
+  MOV AH,AL               ; copy the color byte to AH
+L6:                       ; common exit code
+  MOV SI,ANSIT_STRING     ; point to our ANSI string
+  MOV BX,ANSIT_COUNT      ; load the length of the ANSI string
+  SUB DI,DI               ; searching begins at offset 0
+  MOV ES,DI               ; searching begins at segment 0 (BIOS memory area)
+  MOV CX,0FFFF            ; search a full 64K-1 bytes of bottom memory
+  CALL FIND_STRING        ; does our ANSI string exist within the BIOS memory?
+  IF Z ES MOV [DI-25],AH  ; if yes then plug our own color into the sequence
+  JMP GOOD_EXIT           ; exit back to the operating system
+
+
+JBLANK EQU (BLANK-FILL-2) BY 0EB
+
+COLOR_B:              ; B was seen
+  INC SI              ; advance the input pointer beyond the B
+  MOV FILL W,JBLANK   ; modify the FILL code so it becomes BLANKing code
+  JMP L0              ; loop back to scan the remainder of the command tail
+
+CHART_EXIT:           ; we will output a chart of colors and decimal values
+USAGE_EXIT:
+  MOV DX,24 BY 0      ; row 24, column 0
+  MOV BH,0            ; video page number 0
+  MOV AH,2            ; BIOS function code for SET_CURSOR_POSITION
+  INT 010             ; set the cursor position to ensure it's below chart
+  MOV AH,0            ; initialize the sample attribute number
+  MOV DX,'00'         ; initialize the bottom two decimal digits
+  MOV CL,'0'          ; intiailize the top decimal digit
+  MOV DI,160          ; start output at row 3, in case it rolls up on exit
+L1:                   ; loop here to output each sample for our chart
+  MOV AL,' '          ; load blank
+  STOSW               ; output a leading blank with this sample attribute
+  MOV AL,CL           ; load the top digit
+  STOSW               ; output the top digit and this sample attribute
+  MOV AL,DH           ; load the middle digit
+  STOSW               ; output the middle digit and this sample attribute
+  MOV AL,DL           ; load the bottom digits
+  STOSW               ; output the bottom digit and this sample attribute
+  MOV AL,' '          ; load blank
+  STOSW               ; output a trailing blank and this sample attribute
+  INC DL              ; increment the bottom digit
+  CMP DL,'9'+1        ; have we cycled past 9?
+  JNE >L2             ; skip if not
+  MOV DL,'0'          ; reset the bottom digit to zero
+  INC DH              ; increment the middle digit
+  CMP DH,'9'+1        ; have we cycled past 9?
+  JNE >L2             ; skip if not
+  MOV DH,'0'          ; reset the middle digit to zero
+  INC CL              ; increment the top digit
+L2:
+  INC AH              ; increment the sample attribute value
+  JNS L1              ; loop if still in 0--127 range, to output the next value
+  JMP GOOD_EXIT       ; chart is complete: exit the program
+
+
+GET_DOW_COLOR:        ; set AL to color according to holiday or day-of-week
+  MOV AH,02A          ; MS-DOS function number for GET TODAY'S DATE
+  INT 021             ; set AL to today's day of week 0=Sun 6=Sat, DX to date
+  MOV SI,HOLIDAYS     ; point to our chart of holidays
+L1:                   ; loop here to look for each holiday in the table
+  CMP DX,[SI]         ; does the current day match this table entry?
+  LEA SI,[SI+3]       ; advance the table pointer, in case it doesn't
+  JA L1               ; loop if the table entry is still before today
+  JB >L2              ; jump if the table entry has passed today
+  MOV AL,[SI-1]       ; today is a holiday: fetch its special attribute byte
+  RET
+
+L2:                   ; today is not a holiday
+  MOV BX,DOW_COLORS   ; point to translation table
+  XLATB               ; convert the day-of-week into a color
+  RET
+
+
+ANSIT_STRING:
+  DB 08B,01E,015,1,080,0E3,07,0B4,0E,0CD,010,0C3,03C,08,075,0D
+ANSIT_COUNT EQU $-ANSIT_STRING
+
+
+; Following are the colors set of each day of the week, Sunday through
+; Saturday, when "COLOR W" or "COLOR C" is specified.
+
+DOW_COLORS:
+  DB 47     ; Sun: white on green
+  DB 10     ; Mon: green on black
+  DB 11     ; Tue: blue on black
+  DB 13     ; Wed: purple on black
+  DB 12     ; Thu: red on black
+  DB 79     ; Fri: white on red
+  DB 95     ; Sat: white on purple
+
+
+; HOLIDAYS is a set of dates that will override the current day-of-week color.
+;   Each entry consists of a day number, a month number, and the attribute
+;   number.  This chart MUST be sorted according to month-and-day, or else
+;   the entries will not all be properly detected.
+
+HOLIDAYS:           ; day, month, color for each holiday
+  DB 1,1,14         ; New Year's Day: yellow on black
+  DB 14,2,76        ; Valentine's Day: red on red
+  DB 17,3,42        ; St. Patrick's Day: green on green
+  DB 30,5,75        ; Memorial Day: light blue on red
+  DB 4,7,28         ; Independence Day: blue on red
+  DB 31,10,6        ; Halloween: gold (orange?) on black 
+  DB 25,12,74       ; Christmas: green on red
+  DB 0FF,0FF        ; terminating date
+

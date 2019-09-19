@@ -1,0 +1,24 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   UCASE                                        See EILIB.TXT for terms
+;---------------
+
+; UCASE is a line filter that converts all letters in a file to upper-case.
+
+LINE_FILTER UCASE       ; this program is a line filter
+
+PROCESS_LINE:           ; process each line: CX bytes at SI
+  PUSH CX,SI            ; save the line count and pointer
+  JCXZ >L3              ; skip if the line has no contents
+L1:                     ; loop here to look at each byte of the line
+  LODSB                 ; fetch a byte
+  CMP AL,'a'            ; is it too low to be a lower-case letter?
+  JB >L2                ; skip if it is
+  CMP AL,'z'            ; is it a lower-case letter?
+  JA >L2                ; skip if it is not
+  AND B[SI-1],0DF       ; convert the letter to upper-case
+L2:
+  LOOP L1               ; loop to look at the next character in the line
+L3:
+  POP SI,CX             ; restore line pointer and count
+  JMP OUT_PROCESS_LINE  ; output the resulting line
+

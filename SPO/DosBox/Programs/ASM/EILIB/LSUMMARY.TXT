@@ -1,0 +1,384 @@
+.MODEL simulates the MASM directive of the same name, declaring a DGROUP
+   and setting a PROC size according to the model name.
+.CODE simulates the MASM directive of the same name, declaring a CODE segment.
+.DATA simulates the MASM directive of the same name, declaring a DATA segment.
+.STACK simulates the MASM directive, declaring a STACK segment.
+ATTACH_TO_TIMER attaches our program to the system's timer, so that the
+   NEAR procedure OUR_TIMER is called on every tick of the clock.
+ATTR_PALETTE places a palette of the 256 possible colors at the top of the
+   text-mode video screen.  The caller must set ES to 0B800 video memory.
+BAD_EXIT exits the program with a return code of 1.
+BIOS_KEY_AL sets AL to a single code from the keyboard, as returned by the
+   IBM-compatible BIOS.
+BIOS_KEY_AX set AX to a single 16-bit code from the keyboard.
+BX_SWITCHES scans SI-pointed memory for command-tail switches, as defined
+   by the BX-pointed switch table.
+CHECK_OBUFF checks to see if DI has overflowed the OBUFF output buffer.  If
+   it has, we flush the buffer via OWRITE.
+CLOSE_FSPRAY flushes all the output buffers, and closes all the output
+   files created by OPEN_SPRAY.
+CLOSE_OPT closes the optional file whose handle is BX.  If BX is less than
+   2, meaning we were using standard I/O, then we do nothing.
+CLUS_AX reads cluster number AX to CLUSBUFF, from the drive previously
+   specified by INIT_CLUS.  We return with DX pointing to the buffer read.
+CLUS_BIOS reads AL sectors at track CH, sector CL, head DH, of the drive
+   we are dealing with, to the ES:BX buffer.
+CLUS_FAT reads the FAT of the INIT_CLUS drive to DS:CLUSBUFF.
+COPYZ copies the null-terminated string (including the null) from DS:SI
+   to ES:DI.
+COPYZ_AX copies the CS:AX-pointed, null-terminated string to DI.
+COPY_FILE copies a disk file from DS:DX to DS:DI, using a buffer of size SI
+   at ES:0 to transfer the contents.
+COPY_FILE48 copies the file whose name is pointed to by DX, to the
+   file whose name is pointed to by DI, using a 48K buffer.
+COPY_FILE_ROOT copies the SI-pointed file name to DI, filtering out all
+   but the root part.
+COPY_LINE copies the SI-pointed line to DI.
+COPY_STRING copies the SI-pointed, null-terminated string to DI.
+COPY_TAIL copies the program's command tail from SI to our local buffer, and
+   points SI to the first character of the copy.
+CRLF_OCHECK outputs a CRLF to DI, and checks for OBUFF overflow.
+DASHES_PFNAME outputs ten dashes, a blank, the current PFILE_NAME,
+   another blank, and dashes to fill out a line.
+DECODE_DATE translates the encoded date number BXCX into a year CX, a month
+   DH, and a day DL.
+DETRAIL_CRLF retracts trailing blanks from the line just output to DI,
+   outputs a CRLF, and checks for buffer overflow.
+DIREXT_IFILE opens for reading the file whose name is pointed to by SI,
+   and whose default directory and extension is pointed to by BX.
+DISPLAY_ETIME fetches the 32-bit time encoded by ENCODE_TIME, and outputs
+   to DI the time in the format "mm/dd pm hh:mm:ss.t ".
+DISPLAY_FLOAT outputs to DI a display of the temp-real floating point number
+   pointed to by SI.  We advance DI but not SI.
+DO_MENU places a menu on the screen, waits for the coice of a letter from
+   the menu, and executes the action routine associated with the letter.
+DX_RECORDS opens the DX-pointed file, calls PROCESS_RECORDS for it, and
+   closes it.
+ECRLF outputs a carriage-return-linefeed to the error console.
+EDIT_LWINDOW allows the user to screen-edit a single-line window.  Input
+   BX points to an LWIN_PARMS structure, window's characteristics.
+EDIT_TEMPLATE conducts an edit of an entire template of line windows,
+   as defined by a master data structure pointed to by BP.
+ELAPSE sets DLAX to the number of hundredths of seconds that have
+   elapsed since the last time ELAPSE was called.
+EMESSAGE outputs the CS:AX-pointed, null-terminated message to error output.
+EMSG_USAGE_EXIT outputs the CS:AX-pointed message, followed by USAGE_MSG,
+   and then exits the program.
+EMS_ALLOC allocates BX pages (16K each) of EMS memory to our program.
+EMS_CLOSE closes out an EMS allocation.
+EMS_RESTORE restores the interrupted EMS context, in case we are a TSR.
+EMS_SAVE saves the EMS context of an interrupted program, if we are a TSR.
+EMS_SIZE sets CX to the number of available EMS pages, and AX to the segreg
+   value of the EMS page frame.
+ENCODE_CTIME calls ENCODE_TIME as applied to the current day-of-year and time.
+ENCODE_DATE translates the month DH, day DL, and year CX into an encoded
+   date BXCX.
+ENCODE_TIME encodes a day-of-year and time to the nearest tenth-second,
+   in a 32-bit space.
+EOF_FIND_ANY is an alternate, no-more-contents entry point for FIND_ANY_STR.
+ERROR_EXIT outputs the CS:AX pointed error message, and exits the program
+   with a code of 1.
+EWRITE outputs CX bytes at DX to the error console.
+EXIT exits the program with a return code of AL.
+FB_STRINGS performs FB-style, weighted-value string searching for the set
+   of files pointed to by SI.
+FILE_ARG null-terminates the SI-pointed file name, advances SI, and points
+   DX to the name.
+FILE_TAIL is called to scan a program command tail that might contain
+   escape-to-file terms, each consisting of a @ followed by a file name.
+FILL_IBUFF fills IBUFF (up to BEYOND_IBUFF if possible) with data read from
+   open file BX.  Input DI points beyond any residual bytes already in IBUFF.
+FIND_ACT_AL finds code byte AL within the BX-pointed table of 3-byte records.
+FIND_ANY searches for any of the strings from buffer SI, within the array
+   CX--ES:DI.
+FIND_ANY_STR searches for any of the BX strings at DS:SI within the array
+   CX--ES:DI.
+FIND_ENV_VAR finds the environment-variable whose name (with equals-sign)
+   is pointed to by DS:SI.
+FIND_IN_FILE finds the string of BP bytes, pointed to by DS:SI, within
+   the file whose open handle number is BX.
+FIND_MENU places a menu on the screen, waits for a keystroke letter, and 
+   returns with AX pointing to an associated action routine.
+FIND_NOCASE searches for the string BX--DS:SI within the array CX--ES:DI.
+   The search disregards the distinction between upper and lower case letters.
+FIND_STRING searches for the string BX--DS:SI within the array CX--ES:DI.
+   Return Z if found, with ES:DI pointing to the found string.
+FIND_WORD searches for the word BX--DS:SI within the array CX--ES:DI.
+   Return Z if found, with ES:DI pointing to the found word.
+FLUSH_OBUFF writes via OWRITE the buffer OBUFF--DI, resetting DI to OBUFF.
+FLUSH_OBUFF_BP flushes the output buffer from OBUFF--BP, resetting BP to OBUFF.
+FORM_ACTION filters the SI-pointed line to DI, according to the format
+   specifications gathered by FORM_SPEC.
+FORM_SPEC reads the sequence of formatting specifications in the SI-pointed
+   command tail, and encodes them into the FORM_TABLE buffer.
+FULL_PATH outputs to DI the full path name, null-terminated, of the file
+   whose root-path is pointed to by DS:DX (terminated by comma or blank).
+GATHER_LINE_PTRS gathers the pointers from lines in the buffer SI--DX.  We
+   output the pointers to the buffer at BP, limited by BX.
+GEN_NONBLANK_LINE is a GEN_SORTP routine for a simple line.  We point AX to
+   the start of the line, and advance SI to the next line.
+GET_DIRNAME processes the SI-pointed directory name.  We place the name
+   into our DIRNAME_PATH buffer, and point DIR_NAME_ROOT beyond the name.
+GET_PATH outputs to DI the full path name associated with the SI-pointed
+   file name.
+GET_PRINT_COUNT is called to fetch the optional PRINT_COUNT from the
+   end of the invocation command tail.
+GET_TIME_DLAX sets DLAX to the time-of-day, in hundredths of seconds
+   since midnight.
+GOOD_EXIT exits the program with a return code of 0.
+GOODZ resets the VGA font patterns for characters digit zero and capital O
+   to new values, such that neither has any slashes or dots in them.
+HEXDUMP outputs to DI a hex dump of the CX bytes at SI.  Input BL gives the
+   number of bytes already output on this line; BH, the next-line indentation.
+HEX_AL outputs the 2-digit hex value of AL to ES:DI.
+HEX_AX outputs the 4-digit hex value of AX to ES:DI.
+HEX_DIGIT sets NoCarry if AL is a hex digit, and converts it to its binary
+   value.
+HUGE_DECOUT outputs to DI-pointed memory the multiple-precision number
+   consisting of CX words at SI in unsigned binary, low words first.
+INHEX_AX sets AX to the value of the next hex number in the SI-pointed
+   memory stream.
+INIT_CLUS initializes variables for cluster reading on BIOS drive AL
+   (floppy drives start from 0, hard drvies from 080).
+INIT_PUT_KEY performs an initialization optimization for PUT_KEY.
+INT_HOOK points interrupt handler AL to DS:DX.  If SINGLE_INT is defined
+   we use it -- the caller need not set AL.
+INT_UNHOOK fetches the old handler from the doubleword at ES:DI, and 
+   restores interrupt handler AL to it.
+IO_CLOSE closes both the input file IHANDLE and the output file OWRITE_H.
+ISEG handles full-segment buffering for the input file whose open-file
+   handle is SS:IHANDLE.
+ISEG_LOCOUT outputs to DI the 8-digit hex file location of pointer AX,
+   given ISEG buffering with the total bytes read in ISEG_LOC.
+KEYTIME_AX returns with AX set to a BIOS keystroke code, except return Z
+   for function codes, with AL holding shift-key status bits.
+LINE_FILTER is a macro that can be included at the beginning of a program,
+   to make that program into a line filter.
+LOAD_IBUFF moves the bytes from SI up to IBUFF_ENDREAD down to the start
+   of IBUFF, then reads from file IHANDLE up to IBUFF_END.
+LSORT_IHANDLE sorts the large file whose open-file handle is IHANDLE in
+   the CS segment, and outputs the sorted results to the DX-named file.
+LSTR acts like a DB directive, allowing any number of string and/or
+   byte-constant operands, prepending a length byte to the output.
+LSTRING_AX outputs to DI-pointed memory the CS:AX-pointed string.  The
+   string consists of a length byte, followed by that number of characters.
+MAKE_DIRNAME creates the directory pointed to by DIRNAME_PATH, that needs
+   to be terminated at DI.
+MAP_EMS_PAGE assigns logical page number BL (where BL is less than the number
+   of pages allocated) to physical frame number AL (where AL is 0--3).
+MCLOSE closes the BX-handle file.
+MCLOSE_DI writes from DX up to DI to the BX-handle file, then closes the file.
+MCREAT creates a file whose path name is pointed to by DS:DX, giving the file
+   a standard set of permissions.
+MEMSORT sorts a block of memory at DS:SI up to BX, and outputs the results
+   to ES:DI.
+MERGE_21 opens two input and one output file at SI, and calls PROCESS_MERGE
+   repeatedly with SI--DX and BX--BP pointing to buffered bytes.
+MODBAK opens, reads, and buffers the SI file, calling MODBAK_REC repeatedly
+   with bytes at SI--DX, and producing a modified file with a .BAK backup.
+MOPEN opens the DX-pointed file for access coded by AL
+MOPEN_APPEND opens for writing the file whose path name is pointed to by
+   DS:DX, and seeks to the end of that file.
+MOPEN_IHANDLE opens the DX-pointed file for reading, and stores the handle
+   in IHANDLE.
+MOPEN_READ opens the DX-pointed file for reading
+MOPEN_RTRAP opens the file whose path is pointed to by CS=DS:DX, jumping
+   to MOPEN_TRAPPED if it would have gotten an "Ignore, Retry, Fail?" trap.
+MREAD reads CX bytes of the BX-handle file to DX.
+MREAD_CX reads bytes of the BX-handle file to the DX--CX buffer.
+MRENAME renames the file DS:DX to ES:DI.  If the second name already
+   exists, it is deleted.
+MWRITE writes CX byte from DX to the BX-handle file.
+MWRITE_CX writes from DX up to CX to the BX-handle file.
+MWRITE_DI writes from DX up to DI to the BX-handle file.
+NETWORK_OPEN sets the access byte for MOPEN_READ to a network-compatible
+   access.
+NEWEXT_MAKE copies the file name pointed to by SI to DI, substituting the
+   new extension pointed to by BX.
+NOLEAD_HEX_AL outputs the 1- or 2-digit hex value of AL to ES:DI.
+NONBLANK_TAIL ensures that there is a nonblank command tail at DS:081.  If
+   the command tail is blank, we exit with USAGE_MSG.
+NOT_ENOUGH_MEM is the message output by the VERIFY_MEM macro, in case of
+   failure.
+NO_MORE_ARGS ensures that there are no more command-tail arguments pointed
+   to by SI.  If there are, we abort with USAGE_MSG.
+NUMOUT outputs DLAX in base BL to DI-pointed memory.  We output at least BH
+   bytes, left-padding with character DH.
+NUMOUT_EAX outputs EAX in base BL to DI-pointed memory.  We output at least BH
+   bytes, left-padding with character DH.
+OCT_AL outputs octal AL to ES:DI, advancing DI.
+OCT_AX outputs octal AX to ES:DI, advancing DI.
+OHEX_16 outputs hexadecimal AX to ES:DI, advancing DI.
+OPEN_COPY_EXT opens two files, for filtering from one to the other.
+OPEN_FSPRAY insures that the file name pointed to by SI ends with the
+   character FSPRAY_1ST, then opens FSPRAY_CT files, with incrementing names.
+OPEN_I_ARG opens for reading the file named by the SI-pointed command tail
+   argument.
+OPEN_MODBAK opens for output a temporary file that will become the file
+   whose name is pointed to by SI.
+OPEN_OPT_IFILE opens the SI-pointed file for reading.  If there is no file
+   we return BX=0 for standard input.
+OPEN_OPT_OFILE creates and opens the SI-pointed file for writing.  If there
+   is no file we return BX=2 for standard output.
+OPEN_O_ARG creates and opens the SI-command-tail-named file, and returns
+   the open file handle in AX=BX=OHANDLE.
+OPEN_PATH opens for reading the file whose root-path is pointed to by
+   DS:DX, using the CS:AX pointed enivironment variable as a PATH.
+OUR_PROGDIR returns Z if we found our program name in the environment
+   segment, with SI pointing to the null-terminated containing directory name.
+OUTBIGCX effects a REP MOVSB, moving CX bytes from SI to DI, breaking up the
+   move if it would overflow beyond OBUFF_END.
+OUT_COM2EXE transforms the COM file consisting of BP bytes at DX, into
+   an equivalent EXE file output to DI.
+OUT_DATE_CXDX outputs date CXDX, in English, to DI-pointed memory.  CX is
+   the year, DH the month number, and DL is the day number.
+OUT_DECIMAL2 outputs AL as a string of 2 decimal digits, right-justified and
+   zero-filled, to DI-pointed memory.  DI advances beyond the output.
+OUT_DECIMAL5 outputs AX as a string of 5 decimal digits, right-justified and
+   blank-filled, to DI-pointed memory.  DI advances beyond the output.
+OUT_DECIMAL8 outputs DXAX as a string of 8 decimal digits, right-justified and
+   blank-filled, to DI-pointed memory.  DI advances beyond the output.
+OUT_DEC_AX outputs decimal AX to ES:DI, advancing DI.
+OUT_DEC_EAX outputs decimal EAX to ES:DI, advancing DI.
+OUT_FDATE outputs a human-readable display of the file date encoded into AX:
+   y-1980,m,d where the bit fields are of lengths 7,4,5.
+OUT_FOUND_LINE outputs to DI the line containing the SI-pointed byte.
+OUT_FTIME outputs a human-readable display of the file time encoded into AX:
+   h,m,2s where the bit fields are of lengths 5,6,5.
+OUT_HEX_AL outputs the 2-digit value of AL to DI.  (Same as HEX_AL, except this
+   should be called if NUMOUT is being used anyway.)
+OUT_PROCESS_LINE outputs the CX bytes from SI to BP, and drops into
+   PROCESS_LINE_EXIT.
+OUT_TODAY outputs today's date, in English, to DI-pointed memory.
+OWRITE_ARG creates and opens the SI-command-tail-named file, and plugs the
+   file handle into the OWRITE routines.
+OWRITE_DI outputs bytes buffered at DX--DI.
+OWR_CLOSE_EXIT flushes the OBUFF output buffer, closes the OWRITE_H
+   output file, and exits the program.
+O_SORRY_MSG outputs the string "Sorry, ", followed by the CS:AX-pointed,
+   null-terminated string, to the error console.
+PAGE_CAP_DI strips trailing blanks before DI, and appends a CR and formfeed.
+PAGE_HEAD_READ reads the BX-handle file into OBUFF, prepending the
+   fixed header PAGE_HEAD, of PAGE_HEAD_SIZE bytes.
+PFILE_IOARG can be jumped to, to perform the main-program processing for an
+   SI-pointed command-tail consisting of input and output file names.
+PFILE_WILD processes the SI-pointed list of files, allowing wildcards.  We
+   read and buffer each file at SI--DX, and call PFILE_REC repeatedly.
+PFOUND_WILD_HERE processes the SI-pointed list of files, calling the code
+   following its call repeatedly, with bytes buffered at SI--DX.
+PF_FIND is the PFILE_REC procedure that looks for the ES:BP string of BX bytes,
+   and calls PF_FOUND act repeatedly to process the string found at DS:SI.
+POINT_CURSOR places the screen cursor, with block style CX, to row DH and
+   column DL on the current video screen.
+POINT_VIDEO calculates and stores the number of bytes of a line in video
+   memory, as well as the segment of current video memory.
+PRINT_COPIES outputs to the printer (BX-handle 4) PRINT_COUNT copies of
+   of the file buffered from DX up to DI.
+PROCESS_CX_FILES processes CX files named at SI, calling a succession of
+   PFILE_REC routines, whose pointers are at BX.
+PROCESS_FILE processes the SS:DX-named file, reading and buffering it, and
+   calling PFILE_REC repeatedly with bytes buffered at SI--DX.
+PROCESS_HERE processes the SS:DX-named file, calling the code following its
+   CALL repeatedly, with bytes buffered at SI--DX.
+PROCESS_IOBUFF handles input and output buffering for files already opened,
+   with handles IHANDLE and OHANDLE.
+PROCESS_LINES buffers up standard input, one line at a time, into our buffer
+   THISLINE, then calls PROCESS_LINE for each line.
+PROCESS_LINE_EXIT copies the output pointer from DI back to BP, and checks
+   for buffer overflow.
+PROCESS_OBUFF_BP performs PROCESS_LINES filtering, in which the output is
+   buffered in OBUFF with an output pointer of BP.
+PROCESS_RECORDS reads and buffers standard input, and calls PROCESS_RECORD
+   repeatedly for SI--DX, with DI set to an output buffer.
+PUT_KEY puts key-code AX into the BIOS key input queue.
+PUT_KEYS places the 0FF-terminated, SI-pointed string into the BIOS's keyboard
+   input queue.  The string consists of words and 0FE-bracketed bytes.
+RANDOM_CX sets AX to a random integer in the range 0 through CX-1.
+RANDOM_DEAL "deals" to DI one randomly-selected byte from the CX bytes at SI.
+   We DEC CX and compactify the SI array, so we can be called repeatedly.
+READ_END reads the last CX bytes of the BX-handle file to memory at DX.
+RELEASE_ES_TSR releases the memory occupied by our TSR at segment ES.  We also
+   release the preceding environment segment if we find it.
+RENAME_MODBAK performs file renaming after the caller has called OPEN_MODBAK,
+   and written and closed the output file.
+RESTORE_CURSOR resets the cursor block size to the value it had before
+   the call to POINT_VIDEO.
+RESTORE_SCREEN restores the video screen previously saved by SAVE_SCREEN.
+REV_STRING reverses the string running from DS:SI through DS:DI-1.
+RMERGE is a substitute for MREAD, that handles up to 100 "open" files
+   at one time.
+ROUT_ARG reads to DI the entire file, limit CX bytes, whose name is given by
+   the SI-pointed command-tail argument.
+SAVE_SCREEN saves the contents, cursor block size, and cursor position
+   for the video screen as it existed when this program was invoked.
+SCAN_DECIMAL sets AX to the value of the decimal-number argument
+   pointed to by SI, and advances SI beyond the argument.
+SCAN_DEC_EAX sets EAX to the value of the decimal-number argument
+   pointed to by SI, and advances SI beyond the argument.
+SCAN_FDT converts the SI-pointed ASCII date and time to file-format DXCX.
+   The format is CX: H,M,2S = 5,6,5 bits  DX: Y-1980,M,D = 7,4,5 bits.
+SCAN_HDEC sets DXAX to the value of the decimal-number argument
+   pointed to by SI, and advances SI beyond the argument.
+SCAN_STRING copies the string-argument pointed to by SI, filtered, to DI.
+   We return with CX = W[DI-2] set to the number of filtered bytes.
+SEC_DXAX reads CL consecutive sectors, numbered from DXAX, to CLUSBUFF.
+SET_RECORD_P is called with DS:SI pointing somewhere within a data record.
+   We point SI to the start, and set CX to the length of the record.
+SET_SEED sets the first random-number seed to DXAX.  By calling this with a
+   previously-saved FIRST_SEED, one can duplicate a previous program run.
+SIDI_SORT sorts an array of 16-bit keys at SI up to DI+2, using the COMPARE
+   BP - [BX] routine provided by the caller.
+SI_HEX_DIGIT sees if the SI-pointed byte (SI advances) is a hex digit. We
+   return NoCarry if it is, with AL set to the corresponding binary value.
+SKIP1 and SKIP2 are macros that effect a fast version of a JMP instruction,
+   around the next 1 or 2 bytes in the program instruction stream.
+SKIP_LINE advances SI beyond the next linefeed.
+SPAWN_CHILD reduces our memory to 64K, then calls the child program whose
+   full path is pointed to by CS:DX, with a CS:SI command tail.
+SS_CALL makes a CALL to a user-supplied library routine.  If the routine is
+   is a memory variable we prepend an SS override byte.
+STR_LENGTH sets CX to the length of the null-terminated string at DS:SI.
+   The count does not include the terminating null.
+TAIL_BLANKS advances SI to the next non-blank. "Blanks" include control chars
+   other than 0D.  We return with AL set to the terminating non-blank.
+TIME_SEED sets the first seed value for the random number generator
+   according to the current date-with-year and time.
+TINY_TSR consists of program code for a small TSR capable of installing
+   via an I in the command tail, or uninstalling via U.
+TSR_TIMER substitutes an interrupt-8 timer handler from the caller,
+   and terminates-and-stays-resident.
+UL_COMPARE is a COMPARE routine, called by the LSORT module, to effect
+   case-insensitive sorting of lines.
+UNATTACH_TIMER reverses the effects of a previous call to ATTACH_TO_TIMER, so
+   that our code is no longer executed on each timer tick.
+UP_CURSOR calls the BIOS to move the screen cursor to the start of the
+   previous line.
+USAGE_EXIT outputs the null-terminated message USAGE_MSG to the error
+   console, then exits the program.
+VERIFY_1_DEC sets AX to the single decimal argument in the SI-pointed
+   command tail.  If there is no such argument, we abort the program.
+VERIFY_DEC sets AX to the SI-pointed decimal number.  If there was no
+   number we jump to USAGE_EXIT.
+VERIFY_HDEC sets DXAX to the SI-pointed decimal number.  If there was no
+   number we jump to USAGE_EXIT.
+VERIFY_HEX verifies that the next non-blank field pointed to by SI is
+   a hexadecimal number, sets AX to the number, and advances SI.
+VERIFY_MEM is a macro that should be called at the beginning of a program, to
+   verify that there are enough free memory bytes to run the program.
+VERIFY_NO_ARGS ensures that there are no command-tail arguments at the
+   PSP buffer DS:081.  If there are, we abort with USAGE_MSG.
+VERIFY_ZIPKEY ensures that ZIPKEY has been installed as a memory-resident
+   program.  If it hasn't, we issue an error message and exit the program.
+VIDEO_DX points DI to the video offset for row DH, column DL.
+VIDEO_HEXOUT outputs the two-digit hexidecimal value of AL, followed
+   by a blank, to DI-pointed video memory (preserving attribute bytes).
+VIDEO_OUT converts the DI-byte-output code following its CALL into video word
+   output (skipping over the existing attribute bytes of the video words).
+WILD_ARGS expands the SI-pointed list of wildcard names, returning SS:SI
+   pointing to CX name pointers on the stack.
+WILD_BP_ACT calls BP for each file in the SI-pointed wildcard list, with
+   DX pointing to the name of the individual file to be processed.
+WILD_MODBAK is called to transform the SI-pointed wildcard list of files using
+   the MODBAK procedure.  We call MODBAK_REC for each buffer in each file.
+W_FSPRAY copies CX bytes from SI to buffer number AX.  If the buffer fills,
+   we flush it to the appropriate file from the set opened by OPEN_FSPRAY.

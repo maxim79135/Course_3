@@ -1,0 +1,48 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   RANDFILE                                     See EILIB.TXT for terms
+;---------------
+
+; RANDFILE accepts a destination file name as the *first* argument in its
+;    command tail, and copies a random file from the remainder of the
+;    command tail to it.  The source list can be (and typically will be)
+;    a wildcard specification.
+
+; One possible use for this program would be to copy a random BMP file to the
+; file name being used for the Windows desktop wallpaper.
+
+        DATA SEGMENT
+ONAME:                ; buffer for the output file name
+  DB 256 DUP ?
+        DATA ENDS
+
+NO_DOSCHECK EQU 1     ; we will not trap errors in MSDOS.8
+
+RANDFILE:
+  CALL TIME_SEED      ; initialize the random-number seed based on current time
+  CALL NONBLANK_TAIL  ; ensure there is at least one command-tail argument
+  MOV SI,081          ; point to our command tail
+  CALL FILE_ARG       ; scan the output file name
+  XCHG AX,DX          ; swap the name pointer into AX, for output
+  MOV DI,ONAME        ; point to our holding buffer   (081 buffer will be
+  PUSH DI             ; save the output name pointe    clobbered by WILD_ARGS)
+  CALL COPYZ_AX       ; output the name to the buffer
+  STOSB               ; output the terminating null
+  SUB CX,CX           ; our stack runs to 0000
+  CALL WILD_ARGS      ; expand the wildcard specifications in the command tail
+  CALL RANDOM_CX      ; set AX to a random index number in the range of files
+  ADD AX,AX           ; convert the byte index into a word index
+  ADD SI,AX           ; advance the pointers-pointer to a random file name
+  MOV DX,[SI]         ; fetch the pointer to our random input file
+  POP DI              ; restore the pointer to the output file
+  CALL COPY_FILE48    ; copy the random input file to the output
+  JMP GOOD_EXIT       ; return to the operating system
+
+E1:                   ; there were no arguments in the command tail
+  JMP USAGE_EXIT      ; output the usage message and exit
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: RANDFILE outfile infile_list',0D,0A
+  DB '    copies a random file from infile_list to outfile',0D,0A
+  DB 0D,0A,0,01A
+

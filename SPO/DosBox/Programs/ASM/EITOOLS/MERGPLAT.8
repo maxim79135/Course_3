@@ -1,0 +1,135 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MERGPLAT                                     See EILIB.TXT for terms
+;---------------
+
+; MERGPLAT merges a template file and an instances list file, creating a new
+; file consisting of one copy of the template for each line of the instances
+; file, with the first word of the instance line substituted for each
+; occurance of %1 in the template, the second word for %2, etc.
+
+; If the template file is a batch file, and the list file is the output
+; to the WILDLIST program, the output to MERGPLAT is a large batch file
+; that replicates the contents of the single batch file, once for each
+; file from the WILDLIST list.
+
+NO_STRLEN EQU 1     ; tell SCAN_STRING not to store the length in memory
+STR_PATHWORD EQU 1  ; tell SCAN_STRING to pass backslashes as-is
+
+MERGPLAT:
+  MOV SI,081        ; point to our invocation command tail
+  CALL MERGE_21     ; call code to perfrom 2-to-1 file merging
+  JMP GOOD_EXIT     ; exit to the operating system
+
+DB 0D,0A,0A         ; makes the output of TYPE MERGPLAT.COM more legible
+
+USAGE_MSG:
+        #if LINEPLAT
+ DB 'usage: LINEPLAT template_file instances_list_file output_file',0D,0A
+ DB 0D,0A
+ DB '  repeats template file once for each line of the instances list,',0D,0A
+ DB '  substituting the line contents for each instance of %1.',0D,0A,0D,0A
+ DB '  (Created with MERGPLAT.8 source file.)',0D,0A
+ DB 0D,0A,0,01A
+        #else
+ DB 'usage: MERGPLAT template_file instances_list_file output_file',0D,0A
+ DB 0D,0A
+ DB '  repeats template file once for each line of the instances list,',0D,0A
+ DB '  substituting the first word of the line for %1, second word for %2, etc.'
+ DB 0D,0A,0,01A
+        #endif
+
+
+; PROCESS_MERGE is called once for each line of the instances file.  Input BX
+;  points to the line; SI points to and DX beyond the entire template file.
+;  we look for percent-numbers and make substitutions as we find them.
+
+L0:                 ; template line begins with a %; comment marker
+  JMP SKIP_LINE     ; skip over the line
+
+PROCESS_MERGE:
+  CMP W[SI],';%'    ; does the template line begin with a %; comment marker?
+  JE L0             ; jump if it does, to skip the template line
+  CMP BX,BP         ; is the instances file empty?
+  JAE >L6           ; jump if it is, to flush the template file as well
+  PUSH SI           ; save the pointer to the start of the template
+  CMP B[BX],0D      ; is the instance line empty?
+  JE >L4            ; jump if yes, to advance the instance-line pointer
+L1:                 ; loop here for each character in the template
+  LODSB             ; fetch a character from the template
+  CMP AL,01A        ; is it an EOF character?
+  IF NE STOSB       ; if not then output it
+  CMP AL,'%'        ; was is a template substitution marker?
+  JNE >L2           ; skip if not
+  MOV AH,[SI]       ; it was a percent marker: fetch the following digit
+  CMP AL,AH         ; is the following character also a percent sign?
+  JE >L5            ; jump if it is -- literalized percent
+        #if LINEPLAT
+  CMP AH,'1'        ; is it %1 ?
+  JNE >L2           ; skip if not: %1 is the only accepted subsitution marker
+        #else
+  SUB AH,'0'        ; reduce digits-range to zero
+  JBE >L2           ; skip if digit was zero
+  CMP AH,9          ; was it a digit?
+  JA >L2            ; skip if it was not a digit
+        #endif
+  CALL WORD_AH      ; it was a digit: output the corresponding instance-word
+L2:
+  CMP SI,DX         ; have we reached the end of the template?
+  JB L1             ; loop if not, to scan and output another character
+L4:
+  MOV SI,BX         ; end of template: point SI to the instance line
+L3:                 ; loop here to scan over each char of the instance line
+  LODSB             ; fetch a character
+  CMP AL,0A         ; is it the terminating linefeed?
+  JNE L3            ; loop if not, to scan another character
+  CALL TAIL_BLANKS  ; skip over leading blanks in the line
+  CMP AL,0D         ; is the whole line blank?
+  JE L3             ; loop if it is, to skip the line
+  MOV BX,SI         ; line is complete: point BX to the next line
+  POP SI            ; reset SI back to the start of the template
+L6:
+  CMP BX,BP         ; have we reached the end of the instances file?
+  IF AE MOV SI,DX   ; if we have then consume the template as well
+  RET
+
+L5:                 ; %% is seen
+  INC SI            ; skip over second % -- it is a literalized percent
+  JMP L2            ; join common code
+
+
+WORD_AH:            ; output the AH'th word (string) of the BX-pointed line
+  PUSH SI           ; save the template pointer
+  MOV SI,BX         ; point SI to the instance line
+        #if LINEPLAT
+  DEC DI            ; retract the output percent
+L1:                 ; loop here to copy the line
+  LODSB             ; fetch a character from the line
+  STOSB             ; output the character
+  CMP AL,0D         ; is it the terminating carriage return?
+  JNE L1            ; loop if not, to continue copying
+  DEC DI            ; retract the output carriage return
+        #else
+L1:                 ; loop here after each word skipped
+  CALL TAIL_BLANKS  ; skip over any leading blanks
+  CMP AL,0D         ; have we reached the end of the line?
+  JE >L3            ; failure exit if we have
+  DEC AH            ; count down words
+  JZ >L4            ; success exit if this is our word
+  PUSH AX           ; not our word yet: save the word count AH
+  CALL SCAN_STRING  ; skip over this word or string
+  POP AX            ; restore the word count AH
+  JMP L1            ; loop to continue scanning
+
+L3:                 ; failure exit: an instance word was not found
+  POP SI            ; restore template pointer
+  RET
+
+L4:
+  DEC DI            ; it is our word: retract the output percent
+  CALL SCAN_STRING  ; substitute the word from the instance line
+  ADD DI,CX         ; advance beyond the output string
+        #endif
+  POP SI            ; restore the template pointer
+  INC SI            ; skip past the word number we already scanned
+  RET
+

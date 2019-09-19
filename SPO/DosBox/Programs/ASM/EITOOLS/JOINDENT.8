@@ -1,0 +1,25 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  JOINDENT ,-                       ; See EILIB.DOC for terms
+        ;---------------
+
+; JOINDENT joins any indented lines to the previous line, by reducing
+;   the intervening CRLF and indentation to a single space.
+
+; This program assumes the output is small enough to fit into a
+; single buffer.  If it isn't, the CRLF-retract code might retract
+; back before the current output buffer.
+
+  DB '   joins any indented lines to the previous line',0D,0A,0
+
+PROCESS_LINE:
+  CMP B[SI],' '               ; is this line indented?
+  IF NE JMP OUT_PROCESS_LINE  ; if not then output it as-is
+  LEA DI,[BP-2]               ; line is indented: retract the previous CRLF
+  MOVSB                       ; output a single intervening space
+  CALL TAIL_BLANKS            ; skip over any other intervening spaces
+L1:                           ; loop here to copy each byte of the line
+  LODSB                       ; fetch a byte
+  STOSB                       ; output the byte
+  CMP AL,0A                   ; is it the terminating linefeed?
+  JNE L1                      ; loop if not, to copy the next byte
+  JMP PROCESS_LINE_EXIT       ; restore BP and exit

@@ -1,0 +1,37 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  JOIN2    ,-                       ; See EILIB.DOC for terms
+        ;---------------
+
+; JOIN2 joins every pair of lines from standard input, into a single line of
+;   standard output.  The second line of each pair begins at column 81 (unless
+;   the first line was too long).
+
+; This program assumes input lines are not indented -- i.e., they begin with
+; a non-blank.  Indented input lines are ignored and eliminated from output.
+
+  DB '   joins 2-line records to a single line',0D,0A,0
+
+PROCESS_LINE  DW  LINE1   ; action alternates between LINE1 and LINE2 routines
+
+LINE1:                    ; action routine for the first line of the two
+  CMP B[SI],' '           ; the first line had better not be indented
+  IF E RET                ; ignore the line if it is
+  DEC CX,2                ; eliminate the CRLF from the line count
+  MOV DX,80               ; load our fixed output count
+  SUB DX,CX               ; calculate the number of padding bytes needed
+  MOV DI,BP               ; point DI to the output buffer
+  REP MOVSB               ; output the line
+  MOV AL,' '              ; load blank
+  MOV CX,DX               ; load pad count
+  IF NC REP STOSB         ; if no overflow then pad out the line to 82 bytes
+  MOV AX,LINE2            ; load the next action routine
+L1:                       ; common exit
+  MOV PROCESS_LINE,AX     ; store the action for the next line
+  JMP PROCESS_LINE_EXIT   ; restore BP, check for output overflow, and return
+
+LINE2:                    ; action routine for the second line of the two
+  MOV DI,BP               ; point DI to the output buffer
+  REP MOVSB               ; output the line
+  MOV AX,LINE1            ; load the next action routine
+  JMP L1                  ; join common code to store the routine and exit
+

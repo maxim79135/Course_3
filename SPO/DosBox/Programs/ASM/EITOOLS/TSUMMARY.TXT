@@ -1,0 +1,204 @@
+Capsule summaries of the EITOOLS programs        July 26, 2000
+Copyright 2000 Eric Isaacson.  http://eji.com
+
+A          empty a SCRATCH diskette and copy a file to it
+AFORM      bring assembler source files to a standard format
+AGE        make a file a specified number of months older
+ASPLIT     split a huge file into 26 pieces, starting from A to Z
+AVAILMEM   display the amount of available memory
+BACKTO     truncate lines of standard input, back to a given char
+BBSCMT     replace a comment in a BBS listing file
+BEGLINES   reduce a file to a given number of beginning lines
+BELPAUSE   output a bell code (beep) and pause for a BIOS keystroke
+BINHEX     convert a file to a hex-and-ASCII dump
+BIOSTIME   sets DOS time to the current BIOS time
+BOOTSCR    reboot the system if certain text appears on the screen
+BOXHEAD    create summary-line file from a Netscape INBOX file
+C          change directory (accepts abbreviated names)
+CAPSOFF    turn capslock off
+CAPSON     turn capslock on
+CAPW       capitalize all words except embedded prepositions
+CAT        concatenate a set of files to standard output
+CATLIN     concatenate files, stripping trailing blank lines & EOFs
+CDU        change directory to d:\u\fname or c:\u\fname
+CHECK16    display the 16-bit checksum of a file
+CLUMPS     count number of lines and longest line in each clump
+CMOS       read the computer's CMOS memory
+CMTHEADS   gather the comment headers for a sequence of A86 source files
+COLOR      screen-color display and setting utility
+COLSPRAY   spray a huge file to files named by column contents
+COLSUM     display the sum of numbers in a given column of a file
+COM2EXE    convert a COM program to an equivalent EXE file
+CONSO      output all lines containing n consecutive consonants
+COPYCLUS   copy a numbered cluster to a named disk file
+COPYENV    copy the environment segment to a named disk file
+COPYFAT    copy a File-Allocation-Table to a disk file
+COPYTIME   copy the date-time stamp from one file to another
+CREG       set a given VGA color register to a given value
+CSAMP      toggle the screen through a succession of palettes
+CSORT      sort a file starting from a given column
+CSORT2     sort a file according to two columns
+DE-MIME    remove all attached-file content lines from an email archive file
+DEBRACK    eliminate all bracketed HTML records from a file
+DEFORM     remove all formatting from a text file
+DELTIF     copy TIF date-time to same-name JPGs, and delete the TIFs
+DELZ       delete files if they have zero length
+DEL_OL2    maintain a single older version of a file
+DIRDIFF    compares all the corresponding files in two directory listings
+DIRSORT    sorts a DOS directory output listing by date and time
+DISGUISE   render a source file useless, but the same to A86
+DOUBLE     set HP printer to double-spacing
+DT_STAMP   store a file's own date-time at given offset in itself
+DUPFIELD   split a file into duplicated and non-duplicated field
+ECH        echo the command tail "in place": replacing invocation
+ECHOTAIL   simple echo of command tail
+EDNEXT     edit the next available file in a numbered sequence
+ELIM       eliminate all lines that contain any of a set of strings
+EMBEDCAP   find lines with capital following a non blank-or-dash
+ESCCHECK   return with exit code 1 if Escape was the last key pressed
+EXEFIX     fix the checksum field of an EXE file
+F          find all lines with a given non-case-sensitive string
+F1COMMON   find strings that begin lines frequently in a file
+FANY       find all instances of any number of strings within a file
+FB         find the best approximation to a set of search-words
+FCOL       output all lines that (don't) contain string at a column
+FEX        output lines except those containing given string
+FHEAD      output the head of a file, up to a given string
+FIELDS     extract fields from a file: general-purpose formatting tool
+FIRSTFLD   output first line from each block in which a given field matches
+FIXDIR     fix up a Win95 DIR /S output for files only and full long path
+FIXDOS     fix the InDOS-reporting bug in DOS 3 and 4
+FLICKER    display a given memory byte constantly in hex on screen
+FMOTOR     reset the wait time for a diskette motor to shut down
+FN         find all lines containing a given non-embedded number
+FNC        find all instances of a string in file(s), case insensitive
+FPU_OFF    disable the BIOS flag for the floating-point processor
+FPU_ON     enable the BIOS flag for the floating-point processor
+FREFS      display instances of string with fnames and surrounding text
+FREQ       output a frequency list of each byte value within a file
+FSAME      verify that specified fields of two database files are the same
+FTAIL      output file tail from the first instance of a found string
+FUPDATE    update a database file, as controlled by an update file
+FW         find the instances of a word within a sequence of files
+G123       invoke the 123 program with /fr command pre-stuffed
+GD         change dir to a subdirectory of C:\D
+GIFREFS    create an HTML file for all GIFs and JPGs in the current directory
+GOODZ      fix screen font so digit 0 doesn't have a slash or dot
+GOODZERO.BIN   remove slash from 0 whenever vmode is changed to 3
+GRANDSUM   output grand total of all numbers in a given column
+HANG       loop infinitely, doing nothing until interrupted
+HARDSIZE   output the number of tracks, sectors, heads of hard drive 0
+HCHOP      chop the head of the file, through a sequence of found strings
+HEADCHOP   chop a given number of bytes from the head of a file
+HEXBIN     convert a listing of hex bytes into a binary file
+HEXDATES   output list of files, each with hex encoding of date-time stamp
+HEXOUT     output the binary values of the command-tail hex bytes
+HUGEFLOP   break up a file into floppy-sized pieces
+INDOS      display hex pointer to the system's INDOS flag
+INT        display an interrupt location and its first 8 hex bytes
+INTCHAIN   chain a special COM file to an interrupt
+INTDUMP    make a dump of all interrupt locations and their first few bytes
+ISORT      sort a file by the beginnings of each line
+JOIN2      join each pair of lines in a file into a single line
+JOINDENT   join any indented lines into previous non-indented line
+KCODES     output a display of hex codes for each keystroke typed
+KEYBUFF.BIN    expand the size of the keystrokes buffer
+KEYPLAY    play back the command tail as keystrokes
+KEYRATE    set the keystroke repeat-rate to hard-coded values
+LDIFF      compare lines from two files on a one-vs.-one basis
+LIBREFS    create listing of library-reference records from A86 console output
+LINESG     output lines than are greater than a given length
+LINESL     output lines that are less than a given length
+LNAMSORT   sort lines according to the last word on each line
+LOGFAX     record an incoming fax in PC-BOARD's last-call status
+LOSTNAMS   find all directory names in all clusters of a drive
+LOSTSTR    find a given string in every cluster of a drive
+LOW        coerce all letters to lower case
+MAKAVAIL   reduce available memory to a given number of K
+MAPKEY.BIN     remap keys on an AST notebook computer
+MARKPCT    mark PCTRANS file as if all transactions were just posted
+MARKREC    output the record at the nth marker byte on each line
+MDUMP      output hex display if given memory contents
+MEMWRITE   output binary contents of specified memory
+MERGLINS   merge all consecutive nonblank lines into single line
+MERGPLAT   merge a template file and an instances-list file
+MON21      output a display line for every DOS INT 021 call
+MONTHBAT   declare environment vars for months near current month and year
+NEEDARG    return error code 1 if a batch-file argument does not exist
+NESTCHEK   check nested subdirectories for JPG and GIF files
+NOSKIP     eliminate all blank ("skipped") lines from a file
+NOTRAIL    remove all trailing blanks from lines
+NULLINT    do-nothing program designed to be fed to INTCHAIN
+NUMLIST    output sequence of numbers 1 to N, each on a line
+OCSHOW     display to console each opened or closed file
+ODDSTAR    turn all non-vanilla chars to *
+OLDSET     set the main date-time stamp of a file to the oldest of its stamps
+OMFHEX     output hex dump of start of each record in an OBJ file
+ONEINCH    set HP printer to one-inch left margin
+ONSCROLL   turn the Scroll Lock light on, on the keyboard
+OV         change dir to the "cousin" directory ..\fname
+P          print a file, appending a formfeed if necessary
+PAGE       send a formfeed to the printer
+PAGESORT   sort an index file according to page numbers
+PAGINATE   break a continuous file into numbered pages
+PATCH      patch a COM file with contents of another file
+PIECES     combine first n bytes of f1 with all but first n of f2
+PINK       make the video screen pink
+PKEYFIX    allows TSRs to feed keystrokes with PROKEY present
+PRIMES     outputs a list of prime numbers
+PWNEXT     copy and edit a new file in a numbered name-sequence
+RANDFILE   copy a random file from a list to a given file
+RANDPICK   make list of random combinations of elements from files
+RANMEM     fill memory with random values
+RCON       return first byte of standard input as the errorlevel
+RDIFF      return zero errorlevel if two files are the same
+REG7000    dump invocation register contents to location 07000:0
+REGCHECK   verify that interrupts are not clobbering any registers
+REV        reverse all lines of standard input
+RHBOOT     read hard-drive boot sector to standard output
+RINGBOOT   boot system if excessive RINGs seen in comm port
+ROOM       display room that would be left on a 360K diskette
+RSORT      sort multi-line records within a file
+SCRABRAX   display a sequence of random Scrabble racks
+SCRAMBLE   permute the lines of a file into a random order
+SDIFF      output difference-summary of two sorted files
+SDIFFREN   convert two file lists into a renaming batch file effecting changes
+SEMSTRIP   strip all comments from an assembler source file
+SEQOUT     output sequence of constant-width numbers to lines
+SETLET     set HP printer to accept letter-sized envelopes
+SHIFCHEK   return an error code that reflects a current keyboard shift-state
+SHOW87     output a display of coprocessor floating register values
+SHOWMEM    output a display of current main memory allocation
+SHOWPORT   running display of value changes from a given input port
+SPLIT      split a file into chunks A.SPL, B.SPL... of a given size
+SUB        mass-substitute strings within a file
+SUB2       make sequential pairs of substitutions
+SUBPW      make two alternating sets of substitutions within a file
+SUBW       substitute standalone words in a file
+TAIL       output the tail end of a file
+TCOLS      format a file into multiple vertical columns
+TEXTONLY   remove all non-text characters from lines
+TIMEDIR    list all files in a directory, with a full date-time stamp
+TODAY      output today's date, optionally plus or minus a given number
+TOTAL      display the total size of all files given
+TOUCH      set the date-time stamp of files to current time
+TRAILPAD   pad out all lines to be a given length
+U          change directory to a U dir, or from a set in a hard-coded table
+UCASE      convert all letters in a file to upper case
+ULSORT     sort lines, ignoring case
+UNCOL      make multi-column file into a single column
+UNIQ       filter unique/duplicate lines in a file
+UNREN      switch the two parameters in each REN line of a batch file
+UNUMLOCK   turn numlock off
+UP         change directory to the parent
+UPDATE     update a data file using a +- control file
+VMODE      display or set the current video mode
+VREGS      reset VGA color registers to preferred values
+WHBOOT     write standard input to first 4 sectors of drive
+WILDLIST   output a list of expanded wildcard file names
+WLOST      write lost files from a summary file to a floppy
+WORDSL     output all words less than or equal a given length
+WPCONV     convert old Word Perfect format to ASCII
+WS_PW      convert WordStar format to plain ASCII
+Z28        remove slash from digit 0 and set screen to 28 lines
+ZINT       modify ZIPKEY.COM to reset the interrupt number within it

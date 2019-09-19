@@ -1,0 +1,41 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SCAN_DEC                                     See EILIB.TXT for terms
+;---------------
+
+; VERIFY_DEC verifies that the next non-blank field pointed to by SI is
+;   a decimal number, sets AX to the number, and advances SI beyond the
+;   number.  If there was no number we jump to USAGE_EXIT.
+
+; SCAN_DECIMAL sets AX to the value of the decimal-number argument
+;   pointed to by SI, and advances SI beyond the argument.
+
+        #if ref VERIFY_DEC
+L0:                 ; there was not a decimal argument at SI
+  JMP USAGE_EXIT    ; advise the user and exit the program
+
+VERIFY_DEC:
+  CALL TAIL_BLANKS  ; advance SI to the next non-blank
+  SUB AL,'0'        ; reduce digit values to binary
+  CMP AL,9          ; was the non-blank a decimal digit?
+  JA L0             ; jump if not, to abort the program
+        #endif
+SCAN_DECIMAL:
+  PUSH BX,DX        ; preserve registers across call
+  SUB BX,BX         ; initialize BX, we will accumulate value there
+L1:                 ; loop here for each digit of the number
+  LODSB             ; load the next digit
+  SUB AL,'0'        ; reduce the digit to a binary value
+  MOV DX,10         ; load multiplicand, it is also the digit-limit value
+  CMP AL,DL         ; is it in fact another decimal digit?
+  JAE >L2           ; jump if not to exit this procedure
+  CBW               ; extend value AL to AX
+  XCHG AX,BX        ; swap previous accumulation into AX, new digit into BX
+  MUL DX            ; multiply the previous accumulation by 10
+  ADD BX,AX         ; add into the new digit value
+  JMP L1            ; loop to accumulate another digit
+
+L2:                 ; non-digit was seen
+  DEC SI            ; retreat back to the non-digit
+  XCHG AX,BX        ; swap the accumulated value into AX
+  POP DX,BX         ; restore clobbered registers
+  RET

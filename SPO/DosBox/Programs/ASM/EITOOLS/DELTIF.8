@@ -1,0 +1,63 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DELTIF                                       See EILIB.TXT for terms
+;---------------
+
+; DELTIF peforms clean-up after a series of .TIF files have been converted
+;   to the more efficient JPG format.  We find all TIF files in the current
+;   directory that have a JPG file of the same name, copy the date-time stamp
+;   of each such TIF file to the JPG file, and delete each such TIF file.
+
+DELTIF:
+  CALL VERIFY_NO_ARGS   ; ensure there are no command-tail arguments
+  MOV SI,WILD_TIFS      ; point to *.TIF specification
+  MOV BP,CHECK_TIF      ; point to the action routine for each TIF file
+  CALL WILD_BP_ACT      ; perform CHECK_TIF for each TIF file
+  JMP GOOD_EXIT         ; exit the program
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: DELTIF',0D,0A
+  DB '   deletes all TIF files that have same-name JPG,',0D,0A
+  DB '   first copying the date-time stamp',0D,0A
+  DB 0,01A
+
+WILD_TIFS:              ; wildcard specification for all TIF files
+  DB '*.TIF',0D
+DOT_JPG:                ; JPG extension we will substitute for .TIF
+  DB '.JPG'
+
+
+        DATA SEGMENT
+JPG_NAME:               ; name of the associated .JPG file
+  DB 128 DUP ?
+        DATA ENDS
+
+NO_DOSCHECK EQU 1     ; our DOS library routines will not trap errors
+
+
+CHECK_TIF:
+  MOV SI,DX           ; save the TIF file name pointer in SI
+  CALL MOPEN_READ     ; open the TIF file
+  JC RET              ; return, doing nothing, if the TIF file doesn't exist
+  MOV AX,05700        ; MS-DOS function codes for GET_DATE_TIME
+  INT 021             ; set CXDX to the date-time stamp of the TIF file
+  PUSH CX,DX          ; save the date-time stamp of the TIF file
+  CALL MCLOSE         ; close the TIF file
+  MOV BX,DOT_JPG      ; point to .JPG extension
+  MOV DX,DI,JPG_NAME  ; we will output to our .JPG name buffer
+  PUSH SI             ; save the input pointer
+  CALL NEWEXT_MAKE    ; create the file name with the .JPG extension
+  POP SI              ; restore the input pointer
+  MOV AX,03D01        ; MS-DOS function codes for OPEN_FOR_WRITE
+  INT 021             ; open the JPG file for writing
+  XCHG BX,AX          ; swap the open file handle into BX
+  POP DX,CX           ; restore the date-time stamp of the TIF file
+  JC RET              ; skip the TIF delete if there was an error
+  MOV AX,05701        ; MS-DOS function codes for SET_DATE_TIME
+  INT 021             ; set the date and time of the JPG file
+  CALL MCLOSE         ; close the JPG file
+  MOV DX,SI           ; point DX to the TIF file
+  MOV AH,041          ; MS-DOS function code for DELETE_FILE
+  INT 021             ; delete the TIF file
+  RET
+

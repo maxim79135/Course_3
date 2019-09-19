@@ -1,0 +1,22 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OUTBIGCX                                     See EILIB.TXT for terms
+;---------------
+
+; OUTBIGCX is the equivalent to a REP MOVSB, moving CX bytes from SI to DI,
+;   with this embellishment: we make sure that the move does not overflow
+;   beyond OBUFF_END.  If it does, we break the move up by flushing OBUFF
+;   as needed.
+
+L1:                   ; loop here if not enough room for one output
+  XCHG CX,AX          ; swap available count into CX
+  SUB AX,CX           ; reduce the total count by the available count
+  REP MOVSB           ; output bytes to fill up available space
+  XCHG CX,AX          ; swap the remaining count back into CX
+  CALL FLUSH_OBUFF    ; flush out the output bytes
+OUT_BIG_CX:           ; output CX bytes at SI, avoiding OBUFF overflow
+  MOV AX,OBUFF_END    ; point AX beyond OBUFF
+  SUB AX,DI           ; calculate the amount of room left in OBUFF
+  CMP CX,AX           ; is there room for the current output?
+  JA L1               ; jump if not, to output what we can
+  REP MOVSB           ; output all the bytes
+  RET

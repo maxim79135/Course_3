@@ -1,0 +1,100 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OPATH                                        See EILIB.TXT for terms
+;---------------
+
+; OPEN_PATH opens for reading the file whose root-path is pointed to by
+;   DS:DX.  If the path does not itself contain any subdirectories, we
+;   try to find it in the current directory, followed by all directories
+;   given in the environment-variable whose name is pointed to by CS:AX.
+;   The variable name is terminated by an equals-sign.  We return Carry if
+;   we cannot find the file anywhere.
+
+L1:                     ; PATH strings are exhausted
+  MOV SP,BP             ; release stack storage
+L2:                     ; file not found
+  STC                   ; return Carry to signal failure
+L3:
+  POP ES,DS             ; restore clobbered segment registers
+  POP BP,DI,SI,DX,CX    ; restore clobbered general registers
+  RET
+
+OPEN_PATH:
+  PUSH AX
+  CALL MOPEN_READ       ; try the file name simply as given to us
+  POP AX
+  JNC RET               ; return if we succeeded
+  PUSH CX,DX,SI,DI,BP   ; save registers across call
+  PUSH DS,ES            ; also save segment registers
+  XCHG DI,AX            ; swap environment variable name pointer to DI
+  MOV BP,SP             ; save the stack pointer
+  MOV SI,DX             ; point to the file name given to us
+  LODSB                 ; fetch the first character of the name
+  TEST AL               ; is there a name?
+  JZ L2                 ; return failure if not
+L4:                     ; loop here to scan each character of the name
+  LODSB                 ; fetch the character
+  CMP AL,':'            ; is it a drive-specification?
+  JE L2                 ; return failure if yes-- it was already complete
+  CS CMP AL,SUBDIR_CHAR B ; is it a subdirectory character?
+  JE L2                 ; return failure if yes-- it was already complete
+  TEST AL               ; is it the terminating null?
+  JNZ L4                ; loop if not
+  MOV CX,SI             ; point CX beyond the terminating null
+  SUB CX,DX             ; calculate the name length including the null
+  SUB SP,CX             ; allocate room on the stack for the name
+  AND SP,NOT 1          ; coerce the stack pointer to an even value
+  MOV SI,DX             ; file name is the source
+  MOV DX,DI             ; save the environment variable pointer in DX
+  MOV DI,SP             ; the just-allocated space is our destination
+  MOV ES,SS             ; stack segment is the target for the string move
+  REP MOVSB             ; copy the file name to the stack
+  MOV DS,CS             ; now point DS to our program
+  MOV SI,DX             ; point SI to the environment variable name
+  CALL FIND_ENV_VAR     ; find the environment name
+  JC L1                 ; return failure if it was not found
+  DEC SI                ; retreat to "=", pseudo "previous terminator"
+L5:                     ; loop here for each string in PATH
+  LODSB                 ; fetch the terminator of the previous path
+  TEST AL               ; was it the last path?
+  JZ L1                 ; return failure if it was
+  MOV DX,SI             ; save this path's pointer in DX
+L6:                     ; loop here to scan each character of path
+  LODSB                 ; fetch the character
+  TEST AL               ; is it a terminating null?
+  JZ >L7                ; skip if yes
+  CMP AL,';'            ; is it a terminating semicolon?
+  JNE L6                ; loop if not
+L7:                     ; path terminator was scanned
+  DEC SI                ; retreat to the terminator
+  MOV AL,[SI-1]         ; fetch the last character within the path
+  MOV CX,SI             ; copy beyond-path pointer to CX
+  SUB CX,DX             ; calculate the length of the path
+  MOV BL,'\'            ; fetch the "\" or "/" subdirectory-character
+SUBDIR_CHAR EQU B[$-1]  
+  CMP AL,':'            ; does the path end with :?
+  IF NE CMP AL,BL       ; if not does it end with a subdirectory char?
+  LAHF                  ; save Z-flag setting telling if it does
+  IF NE INC CX          ; if not then make room for a tacked-on subdir char
+  SUB SP,CX             ; allocate room for the path
+  MOV DI,SP             ; the just-allocated space is the destination
+  AND SP,NOT 1          ; coerce stack pointer to an even value
+  PUSH DS,SI,CX         ; save the beyond-path pointer
+  MOV SI,DX             ; restore start-of-path pointer
+  MOV DX,DI             ; save the destination in DX, for MS-DOS
+  REP MOVSB             ; copy the path to the stack
+  SAHF                  ; restore the Z flag setting
+  IF NE ES MOV [DI-1],BL; if we made room for a subdir char then place it
+  MOV DS,SS             ; point DS to our target, for MS-DOS
+  CALL MOPEN_READ       ; try opening this file
+  POP CX,SI,DS          ; restore beyond-path pointer
+  LAHF                  ; save Carry flag returned from MS-DOS
+  ROR CX,1              ; set Carry if CX was odd
+  ADC CX,CX             ; restore CX, but keep the Carry flag set if odd
+  ADC CX,0              ; increment CX if it was odd
+  ADD SP,CX             ; release the stack storage for this path
+  SAHF                  ; restore the Carry that was returned by MS-DOS
+  JC L5                 ; loop if the open failed, to try another path
+  MOV SP,BP             ; release storage for the name passed to us
+  JMP L3                ; restore registers and return
+
+

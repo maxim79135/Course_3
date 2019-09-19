@@ -1,0 +1,39 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;     FIND                                       See EILIB.TXT for terms
+;---------------
+
+; FIND_STRING searches for the string BX--DS:SI within the array CX--ES:DI.
+;   Return Z if found, with ES:DI pointing to the found string.  Return NZ if
+;   not found; with ES:DI pointing to CX residual bytes at the end of the
+;   buffer, which should be carried over if there is another buffer.  Return
+;   CX = 0 (there are no residual bytes) if the first character of the target
+;   string does not occur in the last BX-1 bytes of the array.
+
+FIND_STRING:
+  TEST BX           ; are we looking for a null string?
+  JZ RET            ; always successful if yes
+  MOV AL,[SI]       ; fetch the first byte of the string
+L1:                 ; loop here for each match of the first byte of the string
+  ; NOTE: NZ is set in both the drop-through and loop cases at this point!
+  ;    This insures that CX = 0 will cause a correct NZ return.
+  REPNE SCASB       ; look for the first byte of the string
+  JNE RET           ; return failure if the first byte is not found
+  INC CX            ; increment count back to the matched byte
+  CMP CX,BX         ; are there enough remaining bytes to match the string?
+  JB >L2            ; return failure if not
+  PUSH CX,SI,DI     ; save the pointers to the starts of strings
+  DEC DI            ; retreat array pointer back to first matched byte
+  MOV CX,BX         ; fetch the length of the string
+  REPE CMPSB        ; compare the whole string
+  POP DI,SI,CX      ; restore pointers to pre-comparison values
+  LOOPNE L1         ; loop if no match, with a DEC CX to cancel above INC CX
+  DEC DI            ; successful match: retreat string pointer to first byte
+  INC CX            ; increment count to reflect the retreat
+  SUB AL,AL         ; Z flag signals success
+  RET
+
+L2:                 ; first character found; but not enough subsequent chars
+  DEC DI            ; retreat back to the character (CX is already incremented)
+  OR AL,0FF         ; insure NZ to signal failed find
+  RET
+

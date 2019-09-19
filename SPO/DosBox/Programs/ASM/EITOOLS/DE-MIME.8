@@ -1,0 +1,20 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER  DEMIME                            ; See EILIB.TXT for terms
+        ;---------------
+
+; DE_MIME removes all lines containing more than 70 characters, all of which
+;   are nonblank.  This effectively removes the contents of attachments
+;   from mail files.
+
+PROCESS_LINE:           ; filter CX bytes at SI--DI to BP
+  CMP CX,70             ; is the line less than 70 bytes?
+  JB >L9                ; skip if it is
+  PUSH SI,CX            ; save the pointer and count
+L1:                     ; loop here to scan each byte of the line
+  LODSB                 ; fetch the byte
+  CMP AL,' '            ; is it a blank?
+  LOOPNE L1             ; loop if not, to continue scanning
+  POP CX,SI             ; restore count and line pointer
+  IF NE RET             ; suppress the line if there were no blanks
+L9:
+  JMP OUT_PROCESS_LINE  ; output the resulting line

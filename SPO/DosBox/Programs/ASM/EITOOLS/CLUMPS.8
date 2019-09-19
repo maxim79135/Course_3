@@ -1,0 +1,53 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   CLUMPS                                       See EILIB.TXT for terms
+;---------------
+
+; CLUMPS counts the clumps of non-empty lines in standard input.  We output
+;  to standard output the number of non-empty lines in each clump, followed
+;  by the length of the longest line in each clump.
+
+CAPW:
+  CALL VERIFY_NO_ARGS  ; verify no arguments in the command tail
+  CALL INIT_COUNT      ; initialize the lines count and maximum line length
+  CALL PROCESS_LINES   ; reverse all the line of standard input
+  CALL REPORT_COUNT    ; output the final clump count
+  JMP GOOD_EXIT        ; success-- exit back to the operating system
+
+
+USAGE_MSG:
+  DB 'usage: CLUMPS <in',0D,0A
+  DB '   outputs line count and max line length of each clump of lines',0D,0A
+  DB 0,01A
+
+
+; PROCESS_LINE processes the line of CX bytes pointed to by SI (and beyond by
+;   DI), and copies the line to the output buffer.
+
+PROCESS_LINE:
+  SUB CX,2             ; does this line have content?
+  JBE REPORT_COUNT     ; jump if not, to report a clump
+  CMP CX,BP            ; does the length of this line exceed the maximum?
+  IF A MOV BP,CX       ; if yes then reset the maximum
+  INC DX               ; bump the count of lines in this clump
+  RET
+
+REPORT_COUNT:          ; we have encountered a blank line
+  TEST DX              ; we we still between clumps?
+  JZ RET               ; return if we are
+  SUB SP,80            ; make room on the stack for an output line
+  MOV DI,SP            ; point DI to the just-allocated buffer
+  XCHG AX,DX           ; swap the lines count into AX
+  CALL OUT_DEC_AX      ; output the lines count
+  MOV AX,'  '          ; load blanks
+  STOSW                ; output intervening blanks
+  XCHG AX,BP           ; swap the maximum line length into AX
+  CALL OUT_DEC_AX      ; output the maximum line length
+  MOV AX,0A0D          ; load CRLF
+  STOSW                ; output terminating CRLF
+  MOV DX,SP            ; point DX to the output
+  CALL OWRITE_DI       ; output the summary line
+  ADD SP,80            ; release the buffer from the stack
+INIT_COUNT:            ; initialize the counts
+  SUB DX,DX            ; initialize the lines count
+  SUB BP,BP            ; initialize the maximum line length
+  RET

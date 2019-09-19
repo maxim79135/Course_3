@@ -1,0 +1,51 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    PATCH                                       See EILIB.TXT for terms
+;---------------
+
+; PATCH patches a COM file with the contents of another file.  The command
+;   tail contains the name of the file to be patched, followed by the
+;   hex offset of the patch, followed by the name of the patch file.
+;   Example: PATCH MYPROG.COM 023E PATCH.COM copies the contents of PATCH.COM
+;   to location 023E within MYPROG.COM, and rewrites the result to MYPROG.COM.
+
+PATCH:
+  MOV SI,081        ; point to our command tail
+  CALL OPEN_I_ARG   ; open the first argument as an input file
+  PUSH DX           ; save the path pointer
+  MOV AX,DS         ; fetch our segment value
+  ADD AX,01000      ; advance to the next 64K segment
+  MOV DS,AX         ; point DS to the next 64K segment
+  MOV CX,0FFFE      ; the read count is the full 64K
+  SUB DX,DX         ; the read buffer starts at zero
+  CALL MREAD        ; read the entire file to be patched
+  XCHG BP,AX        ; swap the file size into BP
+  CALL MCLOSE       ; close the file to be patched
+  PUSH DS           ; save the read buffer's segment
+  MOV DS,CS         ; point DS back to our command tail
+  CALL TAIL_BLANKS  ; skip over intervening blanks
+  CALL VERIFY_HEX   ; fetch the hex offset for patching
+  PUSH AX           ; save the patch offset
+  CALL OPEN_I_ARG   ; open the patch file
+  POP DX,DS         ; restore the patch offset and segment
+  MOV CX,0FFFE      ; point to the top of the segment
+  SUB CX,DX         ; calculate the amount of room for the patch
+  CALL MREAD        ; read the patch file directly to the patch area
+  ADD DX,AX         ; point DX beyond the patched area
+  CMP DX,BP         ; did the patch extend the size of the file?
+  IF A MOV BP,DX    ; if yes then reset the file size
+  CALL MCLOSE       ; close the patch file
+  POP DX            ; restore the pointer to the patched-file path
+  PUSH DS           ; save the read buffer segment
+  MOV DS,CS         ; point DS to our command tail
+  CALL MCREAT       ; open the patched file for output
+  POP DS            ; restore the read buffer segment
+  SUB DX,DX         ; we will write from the start of the segment
+  MOV CX,BP         ; fetch the size of the patched file
+  CALL MWRITE       ; write the patched file
+  CALL MCLOSE       ; close the patched file
+  JMP GOOD_EXIT     ; exit back to the operating system
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: PATCH io_fname hex_offset patch_fname',0D,0A
+  DB '    patches io_fname at the offset with patch_fname',0D,0A,0,01A

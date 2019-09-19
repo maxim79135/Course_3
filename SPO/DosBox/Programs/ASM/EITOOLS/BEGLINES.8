@@ -1,0 +1,33 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   BEGLINES                                     See EILIB.TXT for terms
+;---------------
+
+; BEGLINES is a filter that reduces a file to a given number of beginning
+;   lines.
+
+; This program assumes that the input file is less than 48K in size.
+
+BEGLINES:
+  MOV SI,081H         ; point to our invocation command tail
+  CALL VERIFY_1_DEC   ; set AX to the single decimal argument
+  XCHG BP,AX          ; swap the lines count into BP
+  MOV DX,DI,END       ; point beyond our program, for a read buffer
+  MOV CX,48K          ; load the buffer count
+  CALL MREAD          ; read the file into the buffer
+  XCHG CX,AX          ; swap the actual count into CX, for scanning
+  MOV AL,0A           ; we will look for linefeeds
+L1:                   ; loop here for each line scanned
+  REPNE SCASB         ; advance DI beyond the current line
+  JCXZ >L2            ; exit if the bytes were exhausted
+  DEC BP              ; count down lines
+  JNZ L1              ; loop to scan the next line
+L2:
+  CALL OWRITE_DI      ; output the truncated buffer
+  JMP GOOD_EXIT       ; go back to the operating system
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: BEGLINES nnnn <in >out',0D,0A
+  DB '   chops a file down to its first nnnn lines (48KB limit)',0D,0A,0,01A
+
+NO_DOSCHECK EQU 1     ; we will not trap DOS errors

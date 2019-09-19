@@ -1,0 +1,96 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   KEYTIME                                      See EILIB.TXT for terms
+;---------------
+
+; KEYTIME_AX returns with AX set to a keystroke.  The value is as returned
+;   by the BIOS, expect when the BIOS returns a function code (AL=0).  In
+;   that case, we return with the Z flag set, but with AL reset to a byte
+;   giving shift-key status: 01 for Shift, 02 for Ctrl, and 04 for Alt.
+
+; If the variables KEY_DATE_SLOT and KEY_TIME_SLOT are declared, we have code
+; that, while waiting for the keystroke, monitors the system clock, and outputs
+; the up-to-the-minute date and time at a fixed location on the video screen.
+
+KEYTIME_AX:
+        #if KEYTIME_PREP
+  CALL KEYTIME_PREP     ; take prepartory actions specified by our caller
+        #endif
+  PUSH DS,CX            ; preserve registers across call
+  MOV DS,AX,040         ; point DS to the BIOS segment
+        #if KEY_DATE_SLOT
+  PUSH BX,DX,DI         ; preserve registers across call
+        #if EXIT_TIMEOUT; set BL=0 timeout counter as well
+  MOV BX,0FFFF          ; initial "minute" is impossible, to trigger display
+        #else
+  MOV BH,0FF
+        #endif
+L1:                     ; loop here to wait for keystroke and monitor clock
+  PUSHA                 ; save all registers
+  INT 028               ; give other tasks a chance to have computer time
+  POPA                  ; restore all registers
+  MOV AH,2              ; BIOS function code for READ_CLOCK
+  INT 01A               ; set CH=h CL=m DH=s, all BCD values
+  CMP BH,CL             ; are we still in the same minute as before?
+  JE >L2                ; skip if we are
+        #if EXIT_TIMEOUT
+  INC BX                ; bump the timeout counter
+  CMP BL,EXIT_TIMEOUT   ; have we reached a timeout?
+  JAE >L7               ; if yes then exit the program
+  PUSH BX               ; save the timeout counter across the video calls
+        #endif
+  MOV DI,KEY_DATE_SLOT  ; time has changed: point to video slot for the date
+  CALL VIDEO_OUT_DATE   ; output the date
+  MOV DI,KEY_TIME_SLOT  ; point to the video slot for the time
+  CALL VIDEO_OUT_TIME   ; output the time
+        #if EXIT_TIMEOUT
+  POP BX                ; restore the timeout counter BL
+        #endif
+  MOV BH,CL             ; save the minute-value that was displayed
+L2:
+  MOV CX,32K            ; we will monitor keyboard memory 65536 times
+L3:                     ; loop here to monitor the keyboard memory buffer
+  MOV AX,W[01A]         ; fetch the first queue pointer
+  CMP AX,W[01C]         ; does it match the other queue pointer?
+  LOOPE L3              ; loop if it does: the queue is empty
+  JE L1                 ; loop to check the time if the queue is still empty
+  POP DI,DX,BX          ; restore clobbered registers
+        #endif
+  MOV AH,0              ; function code for GET KEY
+  INT 016               ; get the keystroke from the IBM BIOS
+  CMP AH,047            ; is the key below the Numpad range?
+  JB >L4                ; jump if it is
+  CMP AH,053            ; is the key above the Numpad range?
+  JA >L4                ; jump if it is
+  TEST B[017],0F        ; Numpad key is seen: are there any shift keys?
+  JNZ >L5               ; jump if there are, to return the shift codes
+L4:
+  TEST AL               ; is it a function key?
+  JNZ >L6               ; return NZ if it is not
+L5:                     ; function key or numpad key was seen
+  MOV AL,B[017]         ; it is a function key: fetch the keyboard status byte
+  AND AL,0F             ; mask away all the lock-status bits
+  SHR AL,1              ; shift down the Right-shift bit
+  IF C OR AL,1          ; OR that bit into the remaining shift-bit
+  CMP AL,AL             ; return Z, signalling a function key
+L6:
+  POP CX,DS             ; restore clobbered registers
+  RET
+
+        #if EXIT_TIMEOUT
+L7:                     ; timeout was seen
+  MOV DS,SS             ; restore SS register
+  JMP ALL_EXIT          ; exit the program
+        #endif
+
+
+; KEYTIME_AL sets AL to a single code from the keyboard, as returned by the
+;   IBM-compatible BIOS.
+
+KEYTIME_AL:
+  CALL KEYTIME_AX   ; fetch a 16-bit keycode from the BIOS
+  JNZ RET           ; if not a function key then AL is our return code
+  MOV AL,AH         ; it is a function key: AH determines the return code
+  ADD AL,080-16     ; shift the values into a range not seen directly in AL
+  RET
+
+

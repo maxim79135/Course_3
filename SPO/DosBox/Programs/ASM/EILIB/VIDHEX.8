@@ -1,0 +1,30 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    VIDHEX                                      See EILIB.TXT for terms
+;---------------
+
+; VIDEO_HEXOUT outputs the two-digit hexidecimal value of AL, followed
+;   by a blank, to DI-pointed video memory (the distinction of video
+;   memory is that we must skip the attribute byte after each display
+;   character).
+
+VIDEO_HEXOUT:
+  AAM 16              ; unpack the value into hex digits AH and AL
+  CALL >L1            ; output hex digit AH
+  CALL >L1            ; output hex digit AL
+  MOV AL,' '          ; load blank
+  STOSB               ; output an intervening blank
+  INC DI              ; advance beyond the attribute byte of the video word
+  RET
+
+L1:                 ; swap AH into AL, then output it as a hex digit
+  XCHG AL,AH        ; swap the digit value into AL
+  ADD AL,090H       ; these 4 lines convert AL into an ASCII hex digit,
+  DAA               ;    in an outrageously clever and incomprehensible
+  ADC AL,040H       ;    fashion!!!
+  DAA               ;
+  STOSB             ; output the hex digit
+  INC DI            ; advance beyond the attribute byte in video memory
+  RET
+
+
+

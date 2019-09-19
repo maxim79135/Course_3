@@ -1,0 +1,49 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;     CDU                                        See EILIB.TXT for terms
+;---------------
+
+; CDU changes the directory to \U\operand on the D drive if it exists;
+;   else it changes the directory to \U\operand on the C drive.
+
+CDU:
+  CALL GET_PATH     ; get the subdirectory name
+  MOV DL,3          ; load number for D drive
+  CALL CHDIR        ; try to change to the D drive
+  MOV DL,2          ; load number for C drive
+  IF C CALL CHDIR   ; if the D drive failed, change to the C drive
+L1:
+  MOV AX,04C00      ; MS-DOS function codes for GOOD_EXIT
+  INT 021           ; exit the program
+
+
+GET_PATH:
+  MOV SI,081        ; point to our command tail
+  CALL TAIL_BLANKS  ; advance to the operand
+  CMP AL,0D         ; are there no operands?
+  JE RET            ; skip if there are
+  MOV DI,NEWDIR     ; operand seen: point to surdirectory slot
+L2:                 ; loop here to copy the operand
+  LODSB             ; fetch byte
+  STOSB             ; output byte
+  CMP AL,' '        ; terminating blank seen?
+  JA L2             ; loop if not, to copy another byte
+  DEC DI            ; retreat to terminator
+  MOV AL,0          ; load null
+  STOSB             ; null-terminate the path
+  RET
+
+
+CHDIR:
+  MOV AH,0E         ; MS-DOS function code for SET_DRIVE
+  INT 021           ; change the current drive to drive C
+  MOV AH,03B        ; MS-DOS function code for CHANGE_DIR
+  MOV DX,PATH       ; point to the new current directory
+  INT 021           ; change the current directory
+  RET
+
+include             ; ensure all library files are assembled before NEWDIR
+
+PATH:               ; path string that we will CHANGE_DIR to
+  DB '\U\'
+NEWDIR:             ; command-tail argument is plugged into this slot
+  DB 0

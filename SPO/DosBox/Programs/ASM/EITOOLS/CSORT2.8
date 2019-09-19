@@ -1,0 +1,94 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   CSORT2                                       See EILIB.TXT for terms
+;---------------
+
+; CSORT2 sorts the file whose name is given as the fourth argument in the
+;   command tail.  We do the fastest possible sort, with a simple lexicographic
+;   ordering of lines, sorting first on a field X bytes from the start
+;   of the line, and Y bytes long; then on a field Z bytes from the start
+;   of the line.  Decimal X, Y, and Z are the first three arguments in
+;   our invocation command tail.
+
+CSORT2:
+  MOV SI,081          ; point to our invocation command tail
+  MOV BX,FLIPCODE     ; point to the first flipcode, in case column is flipped
+  CALL GET_SORTCOL    ; scan the first column number
+  MOV COL1,AL         ; store the first column number
+  MOV COL12,AL        ; column number is stored in two places
+  CALL VERIFY_DEC     ; fetch the first field size
+  MOV COUNT1,AX       ; store the first field size 
+  MOV BX,FLIPCODE2    ; point to second flipcode, in case column is flipped
+  CALL GET_SORTCOL    ; scan the second column number
+  MOV COL2,AL         ; store the second column number
+  MOV COL22,AL        ; column number is stored in two places
+  PUSH SI             ; save file pointer, in case only one name is given
+  CALL OPEN_I_ARG     ; open the input file
+  CALL TAIL_BLANKS    ; skip over intervening blanks
+  CMP AL,0D           ; is there a second file name?
+  POP AX              ; restore first pointer, in case there isn't
+  IF E XCHG SI,AX     ; swap in the first pointer if there was no input name
+  CALL FILE_ARG       ; scan the SI-pointed file argument
+  CALL LSORT_IHANDLE  ; sort the file
+  JMP GOOD_EXIT       ; exit our program
+
+
+USAGE_MSG:
+  DB 'usage: CSORT2 col1 count1 col2 infile [outfile]',0D,0A
+  DB 0
+
+GEN_SORTP EQU GEN_NONBLANK_LINE   ; we are sorting nonblank lines
+COPY_SORTREC EQU COPY_LINE        ; record output is a simple line-copy
+
+GET_SORTCOL:
+  CALL TAIL_BLANKS    ; skip over leading blanks
+  CMP AL,'!'          ; do we see our special flip-operator?
+  JNE >L1             ; skip if not
+  INC SI              ; flip-operator seen: advance beyond it
+  MOV B[BX],090       ; enable the reversal of COMPARE results in this field
+L1:
+  JMP VERIFY_DEC      ; there had better be a decimal argument: get it
+
+
+; COMPARE is the comparison routine we provide to satisfy SIDI_SORT and LSORT.
+;   We do a simple lexicographic comparison of BP-[BX] for the first field;
+;   if there is a match, we compare the second field.
+
+COMPARE:
+  LEA SI,[BP+1]       ; point SI to the first string
+COL1 EQU B[$-1]       ; column number is plugged into the above imm value
+  ES MOV DI,[BX]      ; point DI to the second string
+  ADD DI,2            ; advance DI by the column number
+COL12 EQU B[$-1]      ; column number is plugged into the above imm value
+  MOV CX,0            ; fetch the count for the first field
+COUNT1 EQU W[$-2]     ; count is plugged into the above imm value
+L1:                   ; loop here for each byte of the comparison
+  LODSB               ; fetch a byte
+  CMP AL,0D           ; is it a line-ending carriage return?
+  IF E MOV CX,1       ; if yes then make this the last byte of the compare
+  SCASB               ; compare the byte to the second buffer's byte
+  LOOPE L1            ; loop if the bytes matched and there are more bytes
+  JE >L2              ; jump if it matched, to compare the second field
+FLIPCODE:
+  RET                 ; return if we are not doing a reverse sort
+;
+; Reverse sort drops through to the following:
+;
+  CMC                 ; we are NZ so we just reverse the result of the compare
+  RET
+
+L2:                   ; the first field was a match
+  LEA SI,[BP+1]       ; point SI to the first string
+COL2 EQU B[$-1]       ; column number is plugged into the above imm value
+  ES MOV DI,[BX]      ; point DI to the second string
+  ADD DI,2            ; advance DI by the column number
+COL22 EQU B[$-1]      ; column number is plugged into the above imm value
+  MOV CH,1            ; load count of at least 256
+  REPE CMPSB          ; compare the strings
+FLIPCODE2:
+  RET                 ; return if we are not doing a reverse sort
+;
+; Reverse sort drops through to the following:
+;
+  IF NE CMC           ; if not equal then reverse the comparison result
+  RET
+

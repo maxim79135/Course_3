@@ -1,0 +1,221 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FORMSPEC                                     See EILIB.TXT for terms
+;---------------
+
+; This module contains the command-tail scanning and action routines for
+; the data-formatting programs LINEFORM and FIXFORM.  The command tails to
+; these programs contain a sequence of formatting control records, that
+; specify the format of the output.  Each control record is identified by its
+; starting (non-blank) character:
+;
+;   num1 num2  output the field with offset num1 and size num2
+;
+;   #nc        output a serial number, n digits, right-justified, pad with c
+;
+;   $          retract trailing blanks from the output
+;
+;   " or '     output the fixed string enclosed by the quotes
+;
+;   !          output CRLF
+;
+;   ^          output a blank
+;
+;     NOT IMPLEMENTED YET:
+;   =num1 num2 str   continue output for this record only if the given fixed
+;   >num1 num2 str   string has the indicated relation ( = > or < ) to the
+;   <num1 num2 str   fixed field of offset num1 and size num2.
+
+        DATA SEGMENT
+FORM_TABLE:
+          DB 200 DUP ?  ; control stream for our formatting specification
+        DATA ENDS
+
+
+; FORM_SPEC reads the sequence of format specifications from the SI-pointed
+;   command tail, and outputs them in an encoded format to our FORM_TABLE
+;   buffer.  The sequence is terminated by the carriage return at the end
+;   of the line.
+
+; The specification scanning and encoding is controlled by the following
+; table L0 of action routines.  Each table entry consists of the command-tail
+; character that will cause this action routine to be invoked, a special
+; information character for this case, and the pointer to the _FORMSPEC
+; action routine.  The special character will be loaded into both the AL and
+; CL registers before calling the action routine.  For the "output single
+; byte" actions, it is the byte to be output.  For the "compare" actions,
+; it is the opcode (JE, JB, JA) defining the comparison condition to be tested.
+; For cases requiring no other distinguishing information, it is the case
+; number for output action.
+ 
+L0:                                 ; table of scanning action routines
+  DW '!' BY 0D,  RET_FORMSPEC       ; output a carriage return
+  DW '^' BY ' ', CHAR_FORMSPEC      ; output a blank
+  DW '$' BY 2,   CASE_FORMSPEC      ; retract trailing blanks
+  DW '#' BY 4,   SERIAL_FORMSPEC    ; output a serial number
+  DW '"' BY 6,   STRING_FORMSPEC    ; output a fixed string
+  DW "'" BY 6,   STRING_FORMSPEC    ; output a fixed string
+  DW '=' BY 074, CMP_FORMSPEC       ; continue if field = fixed string
+  DW '>' BY 072, CMP_FORMSPEC       ; continue if field > fixed string
+  DW '<' BY 077, CMP_FORMSPEC       ; continue if field < fixed string
+  DW 0D  BY 0A,  END_FORMSPEC       ; end of control specification
+L9:                                 ; marker for end of this table
+  DW '0' BY 0,   NUM_FORMSPEC       ; output a field from the record
+
+
+FORM_SPEC:
+  MOV DI,FORM_TABLE       ; we will output to our configuration buffer
+L1:                       ; loop here to gather each control specification
+  CALL TAIL_BLANKS        ; skip over leading blanks
+  MOV BX,L0-4             ; point to our table, pre-decrementing
+L2:                       ; loop here to scan each table entry looking for spec
+  ADD BX,4                ; advance BX to the next table entry
+  CMP BX,L9               ; have we reached the last entry?
+  IF NE CMP AL,B[BX+1]    ; if not then does our character match this entry?
+  JNE L2                  ; loop if not, to look at the next table entry
+  INC SI                  ; we have a match: advance beyond the input character
+  MOV CL,AL,B[BX]         ; set both AL and CL to the content byte from table
+  CALL W[BX+2]            ; call the action routine for this table entry
+  JMP L1                  ; loop to scan another control specification
+
+  
+CHAR_FORMSPEC:      ; output a single character
+  MOV AX,0106       ; case code is 6 for "fixed string", length is 1
+  STOSW             ; output the case code and length
+  XCHG AX,CX        ; swap the character into AL for output
+CASE_FORMSPEC:      ; jump here if somple control case
+  STOSB             ; output the control case number
+  RET
+
+
+SERIAL_FORMSPEC:    ; output a serial number
+  STOSB             ; output the case code for "output serial number"
+  LODSW             ; fetch the number's width and padding byte
+  SUB AL,'0'        ; reduce the width from ASCII to binary
+  STOSW             ; output the width and padding byte
+  RET
+
+
+CMP_FORMSPEC:         ; compare record field to a fixed string
+  MOV AL,8            ; load the case number for "compare"
+  STOSB               ; output the case number
+  XCHG AX,CX          ; fetch the opcode byte for this compare
+  STOSB               ; output the opcode byte
+  CALL VERIFY_STOSW2  ; fetch and output the offset and size of the field
+  DB 03D              ; skip over the following DEC SI and STOSB instructions
+STRING_FORMSPEC:      ; jump here to scan the "output string" case
+  DEC SI              ; retreat the scan pointer to the quote mark
+  STOSB               ; output the case code for "output string"
+  INC DI              ; advance the output pointer beyond the length
+  LEA BX,[DI-2]       ; save SCAN_STRING's length pointer in BX
+  PUSH [BX]           ; save the word that will be clobbered by the length
+  CALL SCAN_STRING    ; scan the input string specification
+  ADD DI,CX           ; advance DI beyond the string scanned
+  POP [BX]            ; restore the memory word clobbered by the length
+  MOV B[BX+1],CL      ; plug the length into our byte-sized slot
+  RET
+
+
+RET_FORMSPEC:         ; output a CRLF
+  MOV AX,0206         ; case code 6 for "output fixed string", length is 2
+  STOSW               ; output the case code and length
+  MOV AX,0A0D         ; load CRLF
+  STOSW               ; output CRLF
+  RET
+
+
+END_FORMSPEC:         ; end of output specification stream
+  STOSB               ; output the "end of controls" case code
+  POP AX              ; discard our return pointer
+  RET
+
+
+; VERIFY_STOSW2 requires SI to point to at least 2 decimal numbers.  We read
+;   the numbers, and output their word-values to DI.
+
+NUM_FORMSPEC:               ; output a data field
+  DEC SI                ; retreat to the start of the first number
+  STOSB                 ; output the case case of "output data field"
+VERIFY_STOSW2:
+  CALL VERIFY_STOSW     ; gather and output the first number
+VERIFY_STOSW:           ; drop here to gather and output the second number
+  CALL VERIFY_DEC       ; gather the number
+  STOSW                 ; output the number
+  RET
+
+
+
+; FORM_ACTION is called to filter the SI-pointed data record, according to
+;   the specification control sequence stored at FORM_TABLE.  The formatted
+;   output goes to DI.
+
+L0:                          ; table of action routines for formatted output
+  DW FORM_OUT_FIELD          ; output a data field from the record
+  DW FORM_RETRACT_BLANKS     ; retreat any trailing blanks from the output
+  DW FORM_OUT_SERIAL         ; output a serial number
+  DW FORM_OUT_FIXED          ; output a fixed string
+  DW FORM_COMPARE_STR        ; compare a field to a fixed string
+  DW FORM_END_OUT            ; end of output for this record
+
+FORM_ACTION:
+  MOV BP,SI             ; BP will point to our record
+  MOV BX,FORM_TABLE     ; BX will point to our control stream
+L1:                     ; loop here for each element in the control stream
+  MOV AL,[BX]           ; fetch a control index number
+  INC BX                ; advance the control stream pointer
+  CBW                   ; extend the control index AL to AX
+  XCHG SI,AX            ; swap the control index into SI, for addressing
+  CALL L0[SI]           ; call the control function
+  JMP L1                ; loop to process another control element
+
+
+FORM_COMPARE_STR:
+  nop                   ; NOT IMPLEMENTED YET!
+FORM_END_OUT:           ; end of output for this record
+  POP AX                ; discard the return to our control loop
+  RET
+
+
+FORM_OUT_FIELD:         ; output a fixed field from the data record
+  MOV SI,[BX]           ; load the offset of the field
+  MOV CX,[BX+2]         ; load the size of the field
+  ADD BX,4              ; advance the control stream pointer
+  ADD SI,BP             ; point SI to the field within the record
+  REP MOVSB             ; copy the field to our output buffer
+  RET
+
+
+L0:                     ; loop here each time the output pointer is retreated
+  DEC DI                ; retreat the output pointer to the blank
+FORM_RETRACT_BLANKS:    ; retract any trailing blanks from the output stream
+  CMP B[DI-1],' '       ; was the last byte a blank?
+  JE L0                 ; loop if it was
+  RET
+
+
+FORM_OUT_SERIAL:        ; output a serial number
+  MOV SI,BX             ; point SI to our control stream
+  MOV BL,10             ; the base of the serial number is decimal
+  LODSW                 ; load number width AL, padding byte AH
+  MOV BH,AL             ; copy the number width to BH
+  XCHG DX,AX            ; swap the padding byte to DH
+  MOV DL,0              ; high byte of serial number is zero
+  MOV AX,0              ; load the serial number
+L1 EQU W[$-2]           ; serial number is maintained in the above immediate w
+  INC L1                ; increment the serial number for the next time
+  CALL NUMOUT           ; output the serial number to DI
+  MOV BX,SI             ; restore BX beyond the control stream
+  RET
+
+
+
+FORM_OUT_FIXED:         ; output a fixed string
+  MOV SI,BX             ; point SI to the control stream
+  LODSB                 ; fetch the length of the fixed string
+  MOV AH,0              ; the high byte of the length is always zero
+  XCHG CX,AX            ; swap the length into CX
+  REP MOVSB             ; copy the fixed string to our output buffer
+  MOV BX,SI             ; restore the control stream pointer beyond the string
+  RET
+
+
+

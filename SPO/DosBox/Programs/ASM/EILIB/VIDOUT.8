@@ -1,0 +1,39 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   VIDOUT                                       See EILIB.TXT for terms
+;---------------
+
+; VIDEO_OUT is called with DI pointing to an offset within video memory,
+;   to which text is to be output.  The code following the CALL VIDEO_OUT
+;   instruction is a subroutine that is ignorant of video memory, and
+;   outputs bytes to DI-pointed ordinary memory.  We set up a local buffer
+;   of 256 bytes on the stack, call the code following our CALL, copy the
+;   buffer to video memory (at VIDEO_SEG, set by a previous call to
+;   POINT_VIDEO), and return to our grandcaller.
+
+VIDEO_OUT:
+  POP AX                ; pop the pointer beyond our CALL instruction
+  PUSH DS,ES,CX,SI      ; save registers across call
+  MOV ES,SS             ; caller will output to our stack
+  SUB SP,256            ; make room on our stack for the output
+  PUSH DI               ; save the video offset
+  MOV DI,SP             ; point DI to our stack
+  INC DI,2              ; advance beyond the value just pushed, to the buffer
+  CALL AX               ; call the subroutine following our CALL instruction
+  MOV CX,DI             ; point beyond the bytes output
+  POP DI                ; restore the video offset
+  CS MOV ES,VIDEO_SEG W ; point ES to the video segment
+  MOV SI,SP             ; point SI to the buffered output bytes
+  JMP >L2               ; jump into loop
+
+L1:                     ; loop here to copy each byte from stack to video
+  SS MOVSB              ; copy the byte
+  INC DI                ; increment beyond the attribute byte
+L2:
+  CMP SI,CX             ; have we reached the end of the buffered bytes?
+  JB L1                 ; loop if not, to output another byte
+  ADD SP,256            ; output complete: release the stac buffer
+  POP SI,CX,ES,DS       ; restore clobbered registers
+  RET
+
+
+

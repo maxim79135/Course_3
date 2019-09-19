@@ -1,0 +1,647 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  LSORT                                         See EILIB.TXT for terms
+;---------------
+
+; LSORT_IHANDLE sorts the large file whose open-file handle is IHANDLE in
+;   the CS segment, and outputs the sorted results to the file whose name
+;   is pointed to by CS:DX.  The size and format of the units being sorted
+;   and the sorting algorithm are determined by the following routines, which
+;   must be provided by the caller:
+;
+; GEN_SORTP must define the extent of the record pointed to by the input
+;   stream at SI (buffered up to BX), by advancing SI beyond the record,
+;   and by returning in AX a pointer suitable for passing to COMPARE. 
+;   GEN_SORTP must return NoCarry and Z to signal this normal case. 
+;   GEN_SORTP must return NoCarry and NZ if the input stream contained
+;   material that is to be skipped over and ignored, and beyond which
+;   GEN_SORTP has advanced SI.  GEN_SORTP must return Carry if the input
+;   stream contains an incomplete record, requiring more of the file to
+;   be read.  We call GEN_SORTP with the NZ flag set if there is file
+;   content beyond the currently-buffered bytes.  Most implementations
+;   of GEN_SORTP do not use this information, but it is there in case
+;   it is needed.
+;
+;   COPY_SORTREC must copy to ES:DI the record pointed to by DS:SI.
+;
+;   COMPARE must compare records BP - [BX]; its interface is defined in the
+;   module SIDISORT.8, except that we add the embellishment that [BX] and
+;   its associated record come from the ES segment.  (When SIDI_SORT is
+;   called, DS and ES will be the same; but when we call COMPARE from our
+;   merging code they will be different.)
+
+        DATA SEGMENT
+L55:                ; offset within the output file of each buffer
+  DD 200 DUP ?
+W100         DW ?   ; the open-file handle of the current output file
+        DATA ENDS
+
+; The sorting is a two-stage process.  In the first stage, we read from the
+; input file, filling all available memory with blocks of the file.  For each
+; block, we make (within the block's segment) an array of pointers to records
+; in the block.  We sort the pointers of each block, then we use the sorted
+; arrays to create a merged output file.  If there is too much input for
+; available memory, we repeat the first stage process, creating a different
+; output file for each memory-full of input data.
+
+; The second stage consists of merging the temporary output files into the
+; single final output stream.  At the end, we rename the output file to its
+; final name, and delete all the temporary files.
+
+
+; LSB_REC is the structure maintained at the start of each memory block
+;   (segment) during the first phase.  The block consists of the following
+;   structure, followed by some file contents, followed by an array of
+;   pointers to each record within this block's contents.  The buffer contains
+;   complete records only-- partial records are carried to the next buffer.
+
+; Note that the C88 routine, that reads LS_PTR, is called during both the
+; block-merge and the file-merge stages.  So the location of LS_PTR within
+; its segment *must* be the same within both the LSB_REC and LSF_REC
+; structures.
+
+LSB_REC STRUC       ; the structure stored at the start of a memory block
+  LS_PP      DW ?   ; pointer to the next sorted-array pointer
+  LS_PTR     DW ?   ; [LS_PP] = pointer to next record to be merged
+                    ; note LS_PTR must be the same offset as within LSF_REC!
+  LS_ENDPP   DW ?   ; pointer beyond the pointers array
+        #if PRE_LF_NEEDED
+  LSB_PRE_LF DB ?   ; pre-terminating linefeed, in case it is needed
+        #endif
+B00:                ; beginning of the buffer
+ENDS
+
+
+; LSF_REC is the structure maintained at the start of each temporary
+;   buffer (each a separate segment) during the second phase.  The buffer
+;   consists of the following structure, followed by buffered contents of
+;   one output buffer written in the first phase, and read in this phase.
+;   The buffer can be cut off in the middle of a record-- the second-phase
+;   code checks for this and refills the buffer when the incomplete record
+;   is reached.
+
+LSF_REC STRUC
+  DW ?       ;;;; placeholder
+  LS_PTR     DW ?   ; pointer to the next record to be merged
+                    ; note LS_PTR must be the same offset as within LSB_REC!
+  LS_ENDP    DW ?   ; pointer beyond the buffered file contents
+  LS_LIMIT   DW ?   ; number of bytes allocated in this segment
+  LS_OFFSET  DW ?,? ; seek position of this input (moves during second stage)
+  LS_REMAIN  DW ?,? ; number of remaining bytes of this input
+        #if PRE_LF_NEEDED
+  LS_PRE_LF  DB ?   ; pre-terminating linefeed, in case it is needed
+        #endif
+  LS_IBUFF:
+ENDS
+
+I805         DB 0   ; (EOF) NZ if we have reached the end of the input file
+N55          DW 0   ; the number of temporary output buffers we have created
+LS_OSIZE     DW 0,0 ; size of the first output file (running total in phase 1)
+P55          DW L55 ; moving pointer for M22 reading of buffer offsets
+
+N1:                   ; pointer to the name of our first, merged-buffers file
+  DB 'TMPSORT1.TMP',0
+N2:                   ; pointer to temporary name of the final output file
+  DB 'TMPSORT2.TMP',0
+
+LSORT_IHANDLE:
+  PUSH DX           ; save the output file name pointer
+  MOV DX,N1         ; point to TMPSORT1.TMP temporary file name
+  CALL >C8          ; create and open the first temporary output file
+  CALL >D11         ; divide remaining memory into <64K blocks
+  PUSH AX           ; save the available-paragraphs count
+  MOV DI,B00        ; we start with no residual bytes
+L1:                 ; loop here for each memory-full of input data
+  PUSH CX,BP        ; save the number of blocks and the first block
+  MOV ES,BP         ; point ES to the first block
+L2:                 ; loop here for each memory block
+  CALL >G11         ; gather text and sorted pointers for this block
+  CALL >B805        ; set NZ if there is more content to be sorted
+  JZ >L3            ; break the loop if there is no more content
+  LOOP L2           ; loop if there is more input to be sorted
+  INC CX            ; memory full: cancel the following DEC CX
+L3: 
+  DEC CX            ; count down the block just gathered
+  XCHG AX,CX        ; swap the unused blocks count into AX
+  POP BP,CX         ; restore the first block pointer and total blocks count
+  CALL >M11         ; merge the memory blocks together
+  CALL >B805        ; set NZ if there is more content to be sorted
+  JNZ L1            ; loop if there is more content to be sorted  
+  CALL >C1199       ; first pass is complete: close the input and output files
+  POP CX,DI         ; restore available-count and output file name pointer
+  CS CMP N55,1      ; was there only one output buffer created?
+  MOV DX,N1         ; point to the temporary name for that file
+  JE >R99           ; jump if there was, to rename the output file
+  PUSH DX           ; save the first temporary output file name pointer
+  CALL >M22         ; merge the output buffers, and rename the final file
+  POP DX            ; restore the first temporary output file name pointer
+  MOV DS,CS
+  MOV AH,041        ; MS-DOS function number for DELETE
+  INT 021           ; delete the first temporary output file
+  RET
+
+R99:                ; rename the output file to the final name DI
+  MOV DS,ES,CS      ; point all segments to CS
+  JMP MRENAME       ; rename the temporary output name to the permanent one
+
+
+; B805 returns NZ if there is more content to be sorted: either DI is beyond
+;   the start of the output buffer, or the end of the input file has not been
+;   reached.
+
+B805:
+  CMP DI,B00        ; is the output pointer beyond the buffer start?
+  JA RET            ; return NZ if it is
+  CS CMP I805,0FF   ; are we at the end of the file?
+  RET               ; return NZ if we are not, Z if we are
+
+
+
+; G11 reads input for a single <64K block of memory, constructs the
+;   record pointers for that block, and sorts the pointers.  We are called with
+;   ES pointing to the block.  We return with DS pointing to the block,
+;   and ES pointing to the next segment, into which we have placed DI bytes
+;   of residual input.  We set up the structure LSB_REC at DS:0, which provides
+;   the location of the input text and the following pointers.
+
+;   Note that when we copy residual text, we sometimes copy the LSB_REC image
+;   as well, just for convenience.  That copied image is always ignored, as
+;   a template is always completely rebuilt after new data is read in.
+
+G11:
+  PUSH BX,CX,DX     ; preserve registers across call
+  MOV BP,ES         ; point BP to the new segment
+  MOV DS,BP         ; also point DS to the new segment
+  ADD BP,BX         ; advance BP to the following segment
+  MOV ES,BP         ; point ES to the following segment
+  MOV CX,DX         ; set CX to the number of bytes in a block
+  MOV DX,DI         ; point DX beyond the residual bytes
+  CS MOV BX,IHANDLE ; fetch the open-file handle for the input stream
+  SUB CX,DX         ; calculate the number of bytes we can read
+  CALL MREAD        ; read more input into this new memory block
+  MOV BX,AX         ; save in BX the actual number of bytes read
+  CMP AX,CX         ; set NoCarry if we filled the buffer with bytes
+  SBB AX,AX         ; AX=0 if we filled, AX=0FFFF if we didn't (end of file)
+  CS MOV I805,AL    ; set the End-Of-File variable
+  ADD BX,DI         ; advance BX beyond the bytes actually read
+        #if PRE_LF_NEEDED
+  MOV B[BX],0FF     ; delimit the bytes read
+        #endif
+  ADD CX,DI         ; set CX to the limit address of this block
+  MOV DI,B00        ; we start out with no residual bytes from this buffer
+  MOV SI,DI         ; set the initial input scanning point
+  SUB BP,BP         ; initial pointers-output pointer is zero
+L1:                 ; loop here to create the pointer for each record
+  CMP SI,BX         ; have we exhausted the input?
+  JAE >L5           ; jump if yes, to do exit processing
+  PUSH SI           ; save the pointer for the record we are about to try
+  CS MOV AL,I805    ; fetch the End-Of-Flag flag
+  NOT AL            ; set NZ if there is content beyond the current buffer
+  CALL GEN_SORTP    ; scan past the SI record
+  JC >L3            ; jump if there was an incomplete record
+  JNZ >L2           ; jump if there was material to be ignored
+L6:
+  MOV [BP],AX       ; record was complete: store the pointer
+  LEA AX,[SI+4]     ; fetch the pointer beyond the record, plus a few more
+  ADD AX,BP         ; add in the number of bytes of pointers
+  JC >L4            ; overflow jump if more than 64K   
+  CMP AX,CX         ; does the memory-plus-pointers exceed the block size?
+  JA >L4            ; jump if it does
+  INC BP,2          ; advance the pointers-pointer
+L2:
+  POP AX            ; we have not exceeded the block size--discard old pointer
+  JMP L1            ; loop to scan the next record
+
+L3:                 ; an incomplete record was seen
+;  CS TEST I805     ; are we at the end of the input?
+;  JNZ L6
+  MOV SI,BX         ; advance SI beyond the input
+  CS TEST I805      ; are we at the end of the input?
+  POP AX
+  JNZ >L5           ; skip if we are, to ignore the trailing bytes
+  PUSH AX
+L4:                 ; records plus pointers will overflow this block
+  POP SI            ; restore the pointer to the overflow record
+L5:
+  PUSH SI           ; save the input pointer across the copy
+  MOV CX,BX         ; fetch the pointer beyond the input
+  SUB CX,SI         ; calculate the number of overflow bytes
+  REP MOVSB         ; copy these residual bytes to the next segment
+  POP AX            ; restore the input pointer
+  PUSH ES,DI        ; save the pointer beyond the residual bytes
+  MOV ES,DS         ; point ES to the memory block just scanned
+  XCHG DI,AX        ; point DI beyond the last scanned record
+        #if PRE_LF_NEEDED
+  MOV AL,0FF        ; load a record-terminator marker
+  STOSB             ; store a record-terminator marker
+        #endif
+  MOV AX,1          ; load mask
+  AND AX,DI         ; set AX=1 if DI was odd
+  ADD DI,AX         ; insure that DI pointer is even, for word alignment
+  MOV LS_PP,DI      ; set the current pointers-pointer
+  MOV DS,SS         ; point DS to the stack, where the pointers were gathered
+  MOV CX,BP         ; set CX to the number of bytes of pointers
+  SUB SI,SI         ; point to location 0, where the first pointer is
+  PUSH DI           ; preserve the pointer to the first output pointer
+  REP MOVSB         ; copy the pointers to the memory block
+  MOV DS,ES         ; restore DS to the memory block
+  POP SI            ; restore SI to point to the first pointer
+  MOV LS_ENDPP,DI   ; store the beyond pointer in the block record
+  DEC DI,2          ; retreat DI to the last pointer
+        #if PRE_LF_NEEDED
+  MOV LSB_PRE_LF,0A ; place the pre-terminating linefeed
+        #endif
+  PUSH SI           ; save the pointer to the first pointer
+  CALL SIDI_SORT    ; sort the pointers
+  POP SI            ; restore the pointer to the first pointer
+  LODSW             ; fetch the pointer to the first record
+  MOV LS_PTR,AX     ; store the pointer, for the initial I96 (INSERT_BP) call
+  POP DI,ES         ; restore the pointer beyond the residual bytes
+  POP DX,CX,BX      ; restore memory-block management registers
+  RET
+
+
+; M11 merges all the blocks currently gathered in memory, and outputs the
+;   sorted and merged data to a buffer of the temporary output file.  The
+;   buffer is numbered by N55 (which we increment after using).  There are
+;   (CX - AX) blocks, size BX paragraphs, starting at BP.  After merging the
+;   blocks, we copy the residual bytes from the residual area (DI bytes at ES)
+;   down to the first segment in memory (pointed to by BP).
+
+M11:
+  PUSH BX,CX,DX       ; preserve registers across call
+  PUSH BP,ES,DI       ; also preserve first segment and residual pointer
+  SUB CX,AX           ; subtract the blocks we didn't use
+  MOV DX,SP           ; point DX beyond where the ranked list will be
+  DEC DX,2            ; retreat DX to what will be the last element
+L1:                   ; loop here to insert each element of ranked list
+  MOV SI,SP           ; current ranked list is on the stack
+  PUSH AX             ; make room on the stack for another element
+  CALL >I96           ; insert the element into the list
+  ADD BP,BX           ; advance BP to the next block's segment value
+  LOOP L1             ; loop to insert BP into the ranked list
+  PUSH DX             ; preserve pointer to the last ranked element
+  CALL >O55           ; output the current file offset to the L55 slot
+  INC N55             ; increment the number of output files created
+  POP DX              ; restore pointer to the last ranked element
+  SUB DI,DI           ; initialize the output buffer pointer
+  JMP >L3             ; jump into loop
+
+L2:                   ; loop here after output, when block is still non-empty
+  MOV BP,DS           ; point BP to the block
+  MOV SI,SP           ; point SI to the current start of the ranked list
+  PUSH AX             ; make room for the new ranked element
+  CALL >I96           ; insert this block into the ranked list
+L3:                   ; we are ready to output another record
+  POP DS              ; pop the top record from the ranked list
+  MOV SI,LS_PTR       ; point SI to the next record in this block
+  MOV ES,AX,SS        ; point ES to our stack, for output
+  CALL COPY_SORTREC   ; copy the record to our output buffer
+  CMP DI,0E000        ; is the output buffer almost full?
+  IF A CALL >F11      ; if it is then flush it
+  MOV BX,LS_PP        ; fetch this block's pointers pointer
+  INC BX,2            ; advance it to the next pointer
+  MOV LS_PP,BX        ; store the pointers pointer
+  MOV AX,[BX]         ; fetch the pointer to the next sorted record
+  MOV LS_PTR,AX       ; store the record pointer
+  CMP BX,LS_ENDPP     ; have we scanned through all the pointers?
+  JNE L2              ; loop if not, to reinsert this block into ranked list
+  CMP SP,DX           ; this block done-- have we exhausted the ranked list?
+  JBE L3              ; loop if not, to continue with the remaining blocks
+  CALL >F11           ; all blocks are exhausted-- flush the output
+  CALL >O55           ; write the final offset to the last L55 slot
+  POP CX,DS,ES        ; pop registers so that we copy copy residual bytes
+  SUB SI,SI           ; point to the start of the residual segment
+; SUB DI,DI           ; DI already points to 0 from final F11 flush call
+  REP MOVSB           ; copy the residual bytes to the first memory block
+  MOV BP,ES           ; reset BP to point to the first segment
+  POP DX,CX,BX        ; restore clobbered registers
+  RET
+
+; O55 outputs to the N55-numbered slot within the L55 table the currently-
+;    gathered output total, which will serve as the file offset of the N55th
+;    buffer within the first output file.
+
+O55:
+  MOV DS,ES,CS        ; point DS and ES to our code segment
+  PUSH DI             ; save DI across the call
+  MOV DI,L55          ; point to our array of buffer locations
+  MOV AX,N55          ; fetch the current buffer's index number
+  ADD AX,AX           ; double the index
+  ADD AX,AX           ; double again, for doubleword indexing
+  ADD DI,AX           ; advance DI to this buffer's slot
+  MOV AX,LS_OSIZE     ; fetch the low word of the current file total
+  STOSW               ; output the low word to the L55 slot
+  MOV AX,LS_OSIZE[2]  ; fetch the high word of the current file total
+  STOSW               ; output the high word to the L55 slot
+  POP DI              ; restore clobbered register
+  RET
+
+
+; M22 uses the CX paragraphs of available memory at segment address BP to merge
+;   together the N55 output-file buffers, to a second output file TMPSORT2.TMP.
+;   Then we rename TMPSORT2.TMP to the final name, whose pointer is given to us
+;   in the DI register.
+
+M22:
+  PUSH DI               ; save the output name pointer
+  MOV DS,CS             ; point DS to our code segment, for opening file
+  MOV DX,N1             ; point to the name of the first temp file
+  CALL MOPEN_IHANDLE    ; open the temp file for reading
+  MOV DX,N2             ; point to the name of the second (final) temp file
+  CALL >C8              ; open for output the temporary file TMPSORT2.TMP
+  MOV AX,N55            ; fetch the buffers count
+  CWD                   ; set DX to zero-- high word of paragraphs count is 0
+  XCHG AX,CX            ; swap paragraphs count to AX, buffers count to CX
+  DIV CX                ; divide the paragraphs by the number of files
+  XCHG BX,AX            ; swap the segment increment to BX
+  MOV AX,0FFF           ; load maximum segment increment
+  CMP BX,AX             ; is there more than 64K available for each segment?
+  IF AE MOV BX,AX       ; if so then reduce segment size to 64K
+  MOV AX,16             ; load multiplier for conversion to byte count
+  MUL BX                ; calculate the byte count of each segment
+  MOV DX,SP             ; point DX beyond where the ranked list will be
+  DEC DX,2              ; retreat DX to what will be the last element
+L1:                     ; loop here to initialize each stage-two buffer segment
+  PUSH AX,CX,DX         ; save limit, buffers count and ending array pointer
+  MOV DS,CS             ; point DS to the main segment, for reading L55 data
+  MOV ES,BP             ; also point ES to this segment
+  MOV DI,OFFSET LS_PTR  ; point to structure starting at LS_PTR
+  STOSW                 ; garbage to LS_PTR
+  STOSW                 ; same garbage to LS_ENDP ensures no residual bytes
+  STOSW                 ; output the segment size to LS_LIMIT
+  MOV SI,P55            ; fetch the current moving pointer within the L55 table
+  MOVSW 2               ; copy this file's offset to the LS_OFFSETG slot
+  MOV P55,SI            ; update the moving pointer
+  LODSW                 ; fetch the next offset's low word
+  SUB AX,[SI-6]         ; subtract this offset's low word, for the buffer size
+  STOSW                 ; output the low word of the buffer size
+  LODSW                 ; fetch the next offset's high word
+  SBB AX,[SI-6]         ; carry the buffer-size calculation into the high word
+  STOSW                 ; store the buffer-size high word
+        #if PRE_LF_NEEDED
+  MOV AL,0A             ; load linefeed
+  STOSB                 ; place the pre-terminating linefeed
+        #endif
+  MOV DS,BP             ; point DS to this segment
+  CALL >R22             ; read the first buffer-full into the segment
+  POP DX,CX,AX          ; restore clobbered registers
+  MOV SI,SP             ; current ranked list is on the stack
+  PUSH AX,AX            ; make room on stack for another element, & save limit
+  CALL >I96             ; insert the element into the list
+  POP AX                ; restore the segment limit
+  ADD BP,BX             ; advance BP to the next block's segment value
+  LOOP L1               ; loop to initialize the next BP segment
+  SUB DI,DI             ; initial output pointer is zero
+  JMP >L3               ; jump into the outputting loop
+
+E1:
+  int 0
+
+L2:                     ; loop here after output, when end of file not reached
+  MOV AX,LS_REMAIN      ; load remaining byte count
+  OR AX,LS_REMAIN[2]    ; set NZ if the remaining byte count is nonzero
+  CALL GEN_SORTP        ; verify that the entire next record is in memory
+  JC >L6                ; jump if the record is not in memory
+  JNZ L2                ; loop if the record is to be ignored
+L7:
+  MOV BP,DS             ; point BP to the block
+  MOV SI,SP             ; point SI to the current start of the ranked list
+  PUSH AX               ; make room for the new ranked element
+  CALL >I96             ; insert this block into the ranked list
+L3:                     ; we are ready to output another record
+  POP DS                ; pop the top record from the ranked list
+  MOV SI,LS_PTR         ; point SI to the next record within that block
+  MOV ES,AX,SS          ; point ES to our stack, for output
+  CALL COPY_SORTREC     ; copy the record to our output buffer
+  CMP DI,0E000          ; is the output buffer almost full?
+  IF A CALL >F11        ; if it is then flush it
+  MOV LS_PTR,SI         ; store the pointer to the next record
+  MOV BX,LS_ENDP        ; fetch the pointer beyond the buffered bytes
+  CMP SI,BX             ; have we reached the end of the buffered bytes?
+  JB L2                 ; loop if not, to scan another record
+L6:
+  MOV AX,LS_REMAIN      ; end of buffered bytes: fetch low word of remaining ct
+  OR AX,LS_REMAIN[2]    ; set Z if it is the end of the buffer
+  JZ >L8                ; jump if it is the end of the buffer
+  MOV ES,DS             ; not the end of buffer: point ES for residual bytes
+  CALL >R22             ; copy residual bytes and read more bytes
+  JMP L7                ; loop to insert the record into the ranked list
+
+L8:
+  CMP SP,DX             ; this block done: have we exhausted the ranked list?
+  JBE L3                ; loop if not, to continue with the remaining blocks
+  CALL >F11             ; all blocks are exhausted-- flush the output
+  CALL >C1199           ; close the input and output files
+  POP DI                ; restore the output name pointer
+  MOV DX,N2             ; point to the second temporary output file name
+  JMP R99               ; rename the second output file to the final name
+
+
+; R22 refills the file buffer pointed to by DS.  The LSF_REC structure
+;   at the start of the buffer gives us the file number, segment size, and
+;   residual bytes.
+
+R22:
+  PUSH BX,CX,DX,SI,DI   ; preserve registers across call
+  MOV SI,DI,LS_IBUFF    ; point SI and DI to the bottom of the read-buffer
+  XCHG LS_PTR,SI        ; fetch the residual pointer, and set the next-read ptr
+  MOV CX,LS_ENDP        ; point CX beyond the residual bytes
+  SUB CX,SI             ; calculate the number of residual bytes
+  REP MOVSB             ; copy the residual bytes down to the buffer start
+  CS MOV BX,IHANDLE     ; fetch the open-file handle for the input file
+  MOV DX,LS_OFFSET      ; load the low word of this buffer's offset
+  MOV CX,LS_OFFSET[2]   ; load the high word of this buffer's offset
+  MOV AX,04200          ; MS-DOS function codes for SEEK_FROM_START
+  INT 021               ; seek to the next bytes to be read from this buffer
+  MOV AX,LS_LIMIT       ; load the limit point for this segment
+  SUB AX,DI             ; calculate the number of bytes we can read
+  TEST LS_REMAIN[2] W   ; are there more than 64K bytes left to be read?
+  JNZ >L1               ; skip if there are -- we will read the whole buffer
+  CMP AX,LS_REMAIN W    ; is the buffer less than the remaining bytes
+  JB >L1                ; skip if it is -- we will read the whole buffer
+  MOV AX,LS_REMAIN W    ; reduce the read count to the remaining byte count
+L1:
+  XCHG CX,AX            ; swap the read count into CX
+  MOV DX,DI             ; copy the read pointer into DX
+  CALL MREAD            ; read more bytes into our buffer
+  ADD DI,AX             ; advance DI beyond the bytes just read
+  MOV LS_ENDP,DI        ; store the pointer beyond the bytes read
+  SUB BX,BX             ; load zero, for the high-word calculations
+  ADD LS_OFFSET,AX      ; advance the buffer's offset by the bytes read
+  ADC LS_OFFSET[2],BX   ; carry the addition into the high word
+  SUB LS_REMAIN,AX      ; reduce the remaining byte count by the read count
+  SBB LS_REMAIN[2],BX   ; carry the subtraction into the high word
+        #if PRE_LF_NEEDED
+  MOV B[DI],0FF         ; delimit the bytes read
+        #endif
+  POP DI,SI,DX,CX,BX    ; restore clobbered registers
+  RET 
+
+
+; I96 (INSERT_BP) places BP within the array of ranked pointers SI--DX.  The
+;   array grows downward, so that the new array will be (SI-2)--DX (but SI is
+;   clobbered, so the caller needs to keep track of the array's size).
+
+I96:
+  CMP DX,SI         ; is the list currently empty?
+  JB >L5            ; jump if it is, to place BP as the only element
+  PUSH BX,CX        ; preserve registers across call
+  MOV BX,SI         ; point BX to the first pointer in the ranked array
+  CALL >C88         ; is BP below the first pointer?
+  JB >L4            ; jump if it is, to place BP at the start
+  PUSH DI,SI        ; preserve DI across call, SI across binary search
+  MOV DI,DX         ; point DI to the last element of the list
+L1:                 ; loop here if BP was in the second half
+  INC SI,2          ; set SI=BX+2, leave DI the same
+  MOV BX,SI         ; point BX to the start of the current interval
+L2:                 ; loop here for each iteration of the binary search
+  CMP SI,DI         ; have the endpoints met yet?
+  JA >L3            ; return if they have
+  ADD BX,DI         ; add the two endpoints together
+  RCR BX,1          ; divide by 2 to get the midpoint
+  AND BL,0FE        ; coerce the midpoint pointer to an even value
+  CALL >C88         ; compare BP with the midpoint entry
+  XCHG SI,BX        ; swap BX into SI, in case it's the second half
+  JA L1             ; loop if BP is in the second half
+  LEA DI,[SI-2]     ; BP is in the first half: set DI to the old BX-2
+  MOV SI,BX         ; restore SI as it was
+  JMP L2            ; loop to binary-search on the first half
+
+L3:                 ; the endpoints of the ranked list have met
+  POP SI            ; restore the starting array pointer
+  LEA DI,[SI-2]     ; point DI two bytes lower, for downward growth
+  MOV AX,SS         ; we are copying from and to the stack segment
+  MOV DS,AX         ; point DS to stack
+  MOV ES,AX         ; point ES to stack
+  MOV CX,BX         ; point CX to the insertion point
+  SUB CX,SI         ; calculate the number of bytes to insertion
+  SHR CX,1          ; convert into a number of words
+  REP MOVSW         ; move the pre-insertion words down one slot
+  MOV [DI],BP       ; place BP into the ranked list
+  POP DI,CX,BX      ; restore clobbered registers
+  RET
+
+L4:                 ; BP precedes the first element
+  POP CX,BX         ; restore clobbered registers
+L5:                 ; jump here if the list was empty
+  SS MOV [SI-2],BP  ; place BP at the new head of the list
+  RET
+
+
+; C88 (LS_COMPARE) performs the comparison BP - SS:[BX], where the two keys
+;   are segment register values.  We convert the segment register values into
+;   record keys appropriate for COMPARE, then we call COMPARE to obtain
+;   our result.
+
+C88:
+  PUSH BX,SI,DI,BP        ; preserve registers across call
+  MOV DS,BP               ; BP value goes to DS
+  MOV BP,LS_PTR           ; replace BP with the record pointer
+  SS MOV ES,[BX]          ; [BX] value goes to ES
+  MOV BX,OFFSET LS_PTR    ; point BX to the record pointer
+  CALL COMPARE            ; compare the records
+  POP BP,DI,SI,BX         ; restore clobbered registers
+  RET
+
+
+; F11 outputs to the W100 file the contents of SS:0 up to DI, and resets DI.
+
+E1:
+  DB  'output failed.',0D,0A,0
+E2:
+  DB 'not enough memory',0D,0A,0
+
+F11:
+  PUSH BX,CX,DX,DS      ; preserve registers across call
+  MOV DS,SS             ; point DS to the stack, where the output buffer is
+  MOV CX,DI             ; load the number of bytes output
+  SUB DI,DI             ; reset DI to the start of the stack
+  SUB DX,DX             ; point DX to the bytes to be output
+  CS MOV BX,W100        ; fetch the open-file handle for the output file
+  CS ADD LS_OSIZE,CX    ; add the write count into the running total
+  CS ADC LS_OSIZE[2],DX ; carry the addition into the high word
+  CALL MWRITE           ; write the buffered bytes to the output file
+  JC >E3                ; jump if error
+  POP DS,DX,CX,BX       ; restore clobbered registers
+  RET
+
+
+; C8 creates and opens the output file whose name is pointed to by DX.
+;   We abort the program is there was an error.
+
+C8:
+  CALL MCREAT       ; create the file
+  JC >E3            ; jump if error
+  MOV W100,AX       ; save the open-file handle
+  RET
+
+E3:                 ; there was an error attempting to output
+  MOV AX,E1         ; point to message
+E4:
+  CALL O_SORRY_MSG  ; output the error message
+  JMP BAD_EXIT      ; exit the program
+
+
+; D11 (DIVIDE_MEMORY) resets the stack to the 64K segment immediately beyond
+;   this program, then subdivides memory beyond the new stack.  We determine
+;   the fewest number of memory blocks such that each block is less than 64K,
+;   and that there are 32K bytes beyond the blocks, for any residue bytes.
+;   We set AX to the number of available paragraphs beyond the stack, CX to
+;   the number of 64K blocks, BX to the segment increment of each block, and
+;   DX = BX*16 = the number of bytes in each block.  There must be at least
+;   224K bytes available, or else we abort the program. 
+
+E5:                 ; there is not enough memory to run this program
+  MOV AX,E2         ; point to message
+  JMP E4            ; output the message and exit the program
+
+D11:
+  MOV BP,CS         ; fetch the current segment value
+  ADD BP,>E99       ; advance the value to the end of our data area
+  MOV BX,BP         ; this will be SS -- save in BX until we know there's room
+  ADD BP,01000      ; advance beyond the stack segment
+  MOV AX,W[2]       ; point beyond available memory
+  SUB AX,BP         ; compute the number of available paragraphs
+  JC E5             ; error if there are no paragraphs whatever
+  CMP AX,03800      ; is there at least 224K available for buffers?
+  JB E5             ; error if not, this program isn't appropriate
+  MOV ES,BX         ; point ES to the new SS
+  MOV SI,DI,SP      ; point to the items pushed on the stack
+  SUB CX,CX         ; point CX beyond the hardware stack
+  SUB CX,SI         ; calculate the number of bytes on the stack
+  REP MOVSB         ; copy the stack below the template
+  MOV SS,BX         ; point SS to the new stack segment
+  PUSH AX           ; save the number of paragraphs beyond SS
+  SUB AX,0800       ; make room for 32K bytes of residue at the end
+  MOV CX,AX         ; copy the available count into CX
+  ROL CX,1          ; rotate the upper 4 bits into the bottom
+  ROL CX,1          ; second bit
+  ROL CX,1          ; third bit
+  ROL CX,1          ; fourth bit
+  AND CX,0F         ; now CX has the number of full 64K blocks available
+  INC CX            ; increment, to insure each block is less than 64K
+  SUB DX,DX         ; zero out the upper word of the DXAX divisor
+  DIV CX            ; calculate the number of paragraphs of each block
+  MOV BX,AX         ; copy the number of paragraphs into BX, for return
+  MOV DX,16         ; load multiplier for conversion to bytes
+  MUL DX            ; calculate the number of bytes in each block
+  XCHG DX,AX        ; swap the number of bytes into DX
+        #if PRE_LF_NEEDED
+  DEC DX
+        #endif
+  POP AX            ; restore the number of paragraphs beyond SS
+  RET
+
+
+C1199:
+  CS MOV BX,IHANDLE   ; fetch the input file handle
+  CALL MCLOSE         ; close the input file
+  CS MOV BX,W100      ; fetch the output file handle
+  JMP MCLOSE          ; close the output file
+
+INCLUDE
+
+        DATA SEGMENT
+E99 EQU ($+15)/16   ; segment increment for available memory
+        DATA ENDS
+

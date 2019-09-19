@@ -1,0 +1,26 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  COPYTAIL                                      See EILIB.TXT for terms
+;---------------
+
+; COPY_TAIL copies the program's command tail from SI to our local buffer, and
+;   points SI to the first character of the copy.  We assume DS=ES=CS.  We
+;   clobber CX and DI.
+
+; This routine is provided to protect against the possibility of the command
+; tail getting clobbered by DOS.  In reality, there are very few DOS functions
+; that actually use that space.
+
+        DATA SEGMENT
+EVEN
+L1:                 ; buffer containing our copy of the command tail
+   DB 128 DUP ?
+        DATA ENDS
+
+COPY_TAIL:
+  MOV CX,63         ; we'll move one byte plus 63 words
+  MOV DI,L1         ; point to our buffer, for output
+  PUSH DI           ; save the output pointer
+  REP MOVSW         ; move the 63 words
+  MOVSB             ; move the one byte
+  POP SI            ; restore our buffer's pointer to SI
+  RET

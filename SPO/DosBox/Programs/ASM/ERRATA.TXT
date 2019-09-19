@@ -1,0 +1,40 @@
+On page 36 of the printed manual, I refer to files EFF86.DOC
+and EFF386.DOC, containing opcode mappings for effective
+address bytes.  I have renamed these files from the .DOC
+extension to the .TXT extension, because they are in fact
+plain text files.
+
+On page 46 of the printed manual, there are three PREFETCH
+instructions with incorrect mnemonics: there should be an
+extra T before the ending digits 0,1,2: i.e., the correct
+mnemonics are PREFETCHT0, PREFETCHT1, PREFETCHT2.
+
+On page 45 of the printed manual, the line MOVZX rw,seg
+should instead be MOVZX rd,seg .  This is an undocumented
+feature of the 386-or-later processor, in which MOV rw,seg
+instruction with an O4 override will move the segreg value
+into the 32-bit register, with zero-extend.  The O4
+override is ignored if the segreg MOV has a memory operand
+as its destination.
+
+Chapter 16 of the A86 printed manual, there are numerous
+symbols listed as "P6 Instruction".  These are instruction
+mnemonics added with the Pentium Pro but not in the Pentium
+MMX, and retained in the Pentium 2 and beyond.  I now
+refer to these as P2 instructions.
+
+I have added a .DOSSEG command which is ignored in COM mode,
+and produces a comment-record in OBJ mode, identical to the
+one that MASM produces.  This will presumably tell the
+Microsoft linker to arrange program segments in a particular
+order.
+
+Also for compatibility, I have relaxed the syntax of the
+SEGMENT directive so that a preceding segment name is not
+required.  If a segment name is not given, the defualt outer
+segment is used.  In COM mode, this is the CODE SEGMENT;
+in OBJ mode, this is a segment named _TEXT or modname_TEXT,
+as described in Chapter 10.  This new syntax form is used
+to implement the .CODE macro, given in the file COMPAT.8.
+
+

@@ -1,0 +1,215 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    SUBPW                                       See EILIB.TXT for terms
+;---------------
+
+; SUBPW accepts 4 string arguments in its invocation command tail. We search
+;  for the first instance of the first string in standard input, and substitute
+;  the second string.  We then search for the next instance of the third string
+;  within the same line, and substitute the fourth string.  If the third string
+;  is not seen in the line, the fourth string is inserted at the start of the
+;  following line. Then we repeat the process, until standard input is
+;  exhausted.  We output the resulting filtered text to standard output.
+
+;  The reason why SUBPW was written was to make substituions for PC-Write
+;  control codes, which surround the text they apply to.  We wish to substitue
+;  different values for the left-codes than for the right-codes; and SUBPW lets
+;  us do so.
+
+;  The string arguments can contain control characters, as determined by the
+;  filtering mechanism in SCAN_STRING, described in the procedure-level
+;  documentation.
+
+        DATA SEGMENT
+BUFFSIZE EQU 08000             ; input buffer size
+
+STRING_SIZE EQU 64
+
+STRING1:
+S1_LEN  DW ?                   ; first string length
+        DB STRING_SIZE DUP ?   ; first string content buffer
+STRING2:
+S2_LEN  DW ?                   ; second string length
+        DB 64 DUP ?            ; second string content buffer
+STRING3:
+S3_LEN  DW ?                   ; third string length
+        DB STRING_SIZE DUP ?   ; third string content buffer
+STRING4:
+S4_LEN  DW ?                   ; fourth string length
+        DB 64 DUP ?            ; fourth string content buffer
+OBUFF:                         ; output buffer
+        DB 04000 DUP ?
+IBUFF:                         ; input buffer
+        DB 08000 DUP ?
+        DATA ENDS
+
+
+MAIN:
+SUBPW:
+  MOV SI,081        ; point to our invocation command-tail
+  MOV DI,STRING1+2  ; destination for the first string scanned
+  CALL SCAN_STRING  ; scan the first substitution-string
+  MOV DI,STRING2+2  ; destination for the second string-operand
+  CALL SCAN_STRING  ; scan the second substitution-string
+  MOV DI,STRING3+2  ; destination for the third string-operand
+  CALL SCAN_STRING  ; scan the third substitution-string
+  MOV DI,STRING4+2  ; destination for the fourth string-operand
+  CALL SCAN_STRING  ; scan the fourth substitution-string
+  MOV DI,IBUFF      ; point DI to input buffer, where FETCH_INPUT expects it
+  SUB CX,CX         ; we start out with no residual bytes
+L1:                 ; loop here to process each buffer-full of input
+  CALL FETCH_INPUT  ; input another buffer-full of bytes
+  JZ >L2            ; jump if there were no more bytes
+  CALL SUB_STRINGS  ; process buffer-full, except for residual bytes
+  CALL FLUSH_OUTPUT ; flush buffered output, and copy residual bytes
+  JMP L1            ; loop to process another buffer-full
+
+L2:                 ; no more input was taken
+  MOV SI,DI         ; point SI to the residual bytes
+  MOV DI,OBUFF      ; destination for the residual bytes is OBUFF
+  REP MOVSB         ; copy the bytes to the output buffer
+  MOV DX,DI         ; move beyond-buffered-bytes pointer back to DX
+  CALL FLUSH_OUTPUT ; output the residual bytes
+  JMP GOOD_EXIT
+
+
+; SUB_STRINGS finds all instances of the target string (BX bytes at SI) in the
+;   input buffer (CX bytes at DI), and substitutes the new string.  The
+;   substituted text is output to OBUFF.  We return with DX pointing beyond the
+;   buffered output bytes; and DI pointing to CX residual bytes, needed for
+;   the start of the next input buffer.
+
+SUB_STRING  DW  SUB_FIRST
+
+SUB_STRINGS:
+  MOV DX,OBUFF      ; point to the start of the output buffer
+L1:                 ; loop here after each substitution
+  CALL SUB_STRING   ; find string, substitute new string
+  JZ L1             ; loop if we succeeded in finding a string
+  RET
+
+
+SUB_FIRST:
+  MOV SI,STRING1            ; the first program argument is our target
+  CALL COPY_FIND            ; find target, and copy text up to the target
+  JNZ RET                   ; return if the target was not found
+  MOV SUB_STRING,SUB_THIRD  ; next time the third argument will be the target
+  MOV SI,STRING2            ; advance to the new string
+L1:                         ; common code for copying the new string
+  PUSH CX           ; preserve register
+  LODSW             ; load the new string's size
+  XCHG CX,AX        ; swap into CX, for copying
+  XCHG DI,DX        ; swap output pointer into DI
+  REP MOVSB         ; output the second string in place of the first
+  XCHG DX,DI        ; swap the output pointer back to DX
+  POP CX            ; restore clobbered register
+  ADD DI,BX         ; advance input pointer beyond the found string
+  SUB CX,BX         ; reduce remaining count by the size of the advance
+  CMP AL,AL         ; Z signals success, caller can look for another string
+  RET
+
+
+SUB_THIRD:
+  PUSH CX,DI        ; preserve input buffer count and pointer
+  MOV AL,0A         ; we will look for the end of this line
+  REPNE SCASB       ; do we see the end of this line in the buffer?
+  XCHG AX,DI        ; swap beyond-line pointer into AX
+  POP DI,CX         ; restore input buffer pointer and count
+  JNE RET           ; return failure if this line is cut off in the buffer
+  SUB AX,DI         ; calculate the number of remaining bytes in this line
+  PUSH DX           ; save register
+  XCHG DX,AX        ; swap remianing line count into DX
+  MOV SI,STRING3    ; the third program argument is our target
+  LODSW             ; load the count for this target string
+  XCHG BX,AX        ; swap the target count into BX, for FIND_STRING
+  PUSH CX,DI        ; preserve input buffer count and pointer
+  MOV CX,DX         ; we only need look on this line for the string
+  CALL FIND_STRING  ; find the next instance of the target string
+  XCHG AX,DI        ; swap beyond-string pointer into AX
+  POP DI,CX         ; restore input buffer pointer and count
+  JNE >L3           ; use end-of-line if the string was not found
+  SUB AX,DI         ; string was found: calculate the distance to it
+  JMP >L4           ; join common code
+
+L3:                 ; string was not found on this line
+  SUB BX,BX         ; load zero length, there will be no old string deleted
+  XCHG AX,DX        ; swap the distance to the end of the line into AX
+L4:                 ; the distance to the new-string insert is in AX
+  SUB CX,AX         ; decrement input buffer count by the distance
+  XCHG CX,AX        ; save updated count in AX, swap distance into CX
+  MOV SI,DI         ; current buffer pointer is the output source pointer
+  POP DI            ; restore the output pointer to DI instead of DX
+  REP MOVSB         ; copy the intervening buffer bytes to output
+  MOV DX,DI         ; move output pointer back to DX
+  MOV DI,SI         ; update the buffer pointer beyond the copied bytes
+  XCHG CX,AX        ; swap the updated buffer count back into CX
+  MOV SI,STRING4            ; point to the new string we are plugging in
+  MOV SUB_STRING,SUB_FIRST  ; next time the first argument will be the target
+  JMP L1                    ; join common code to copy in the new string
+
+
+COPY_FIND:
+  LODSW             ; load the count for this target string
+  XCHG BX,AX        ; swap the target count into BX, for FIND_STRING
+  PUSH DI           ; save the start of the remaining input buffer
+  CALL FIND_STRING  ; find the next instance of the target string
+  POP AX            ; restore remaining-input pointer to AX
+  PUSHF             ; save find-result: Z if target was found
+  PUSH CX,SI        ; save registers across output operation
+  XCHG SI,AX        ; swap remaining-input pointer into SI
+  MOV CX,DI         ; point CX beyond the skipped-over input
+  SUB CX,SI         ; compute the number of input bytes skipped over
+  XCHG DI,DX        ; swap output pointer into DI
+  REP MOVSB         ; output the skipped-over input bytes
+  XCHG DX,DI        ; swap output pointer back into DX
+  POP SI,CX         ; restore clobbered registers
+  POPF              ; restore find-result
+  RET
+
+
+; FETCH_INPUT assumes that the CX residual bytes returned by FIND_STRING
+;   have been copied to DI-pointed memory.  We input another buffer-full of
+;   bytes to [DI+CX]; and compute CX = the size of the new buffer-full
+;   (including the residual bytes).  We return Z if no new input was read.
+
+FETCH_INPUT:
+  PUSH BX                ; preserve register across call
+  SUB BX,BX              ; handle number of standard input is zero
+  MOV DX,DI              ; point DX to the start of the buffer
+  ADD DX,CX              ; advance DX beyond the residual bytes
+  MOV CX,IBUFF+BUFFSIZE  ; point CX beyond the input buffer
+  SUB CX,DX              ; compute the number of bytes we can input this time
+  MOV AH,03F             ; MSDOS function number for READ
+  INT 021                ; read a buffer-full of standard input
+  MOV CX,DX              ; point CX to the start of this last read
+  ADD CX,AX              ; add in the number of bytes actually read
+  SUB CX,DI              ; compute the number of bytes now in the buffer
+  POP BX                 ; restore clobbered register
+  TEST AX                ; return Z if no more bytes were read
+  RET
+
+
+; FLUSH_OUTPUT flushes the output bytes, from OBUFF up to the output pointer
+;   DX; and resets DX to OBUFF.  We also copy the CX residual bytes from the
+;   end of the previous input buffer, down to IBUFF; and leave DI pointing to
+;   IBUFF, and the CX residual count preserved.
+
+FLUSH_OUTPUT:
+  PUSH AX,BX,SI,CX  ; preserve registers across call
+  MOV BX,1          ; handle number of standard output is 1
+  MOV CX,DX         ; point CX beyond the buffered output bytes
+  MOV DX,OBUFF      ; point DX to the start of the bytes
+  SUB CX,DX         ; compute the number of bytes buffered
+  MOV AH,040        ; MSDOS function number for WRITE
+  INT 021           ; write the buffered bytes
+  MOV SI,DI         ; point SI to the residual bytes
+  MOV DI,IBUFF      ; set up the destination for the residual bytes
+  POP CX            ; restore the residual byte count
+  PUSH CX,DI        ; save residual count and destination
+  REP MOVSB         ; copy the residual bytes down to the start of IBUFF
+  POP DI,CX,SI,BX,AX; restore clobbered registers
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: subpw <in >out old1 new1 old2 new2',0D,0A,0
+

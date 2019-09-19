@@ -1,0 +1,87 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COLSUM                                       See EILIB.TXT for terms
+;---------------
+
+; COLSUM calculates and outputs the sum of decimal numbers starting in
+;   the column number given in the command tail, from the file named
+;   in the command tail.  Whenever a line is encountered that does not
+;   contain a decimal number in the indicated column, the sum is output
+;   and cleared, and the line is output.
+
+; This program was written to help plan the creation of cassette tapes
+; of selected songs from my CD collection.  Each side of a tape was listed
+; in a text file, as a sequence of lines from my music database.  Each line
+; has the song's length as a decimal number in a given column.  This program
+; tells me the total length of each side of a tape.
+
+        DATA SEGMENT
+OBUFF:                  ; output buffer
+  DB 32K DUP ?
+OBUFF_LIMIT:            ; overflow buffer for output
+  DB 4K DUP ?
+        DATA ENDS
+
+COLSUM:
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_DEC       ; read the column number
+  XCHG DX,AX            ; save the column number in DX
+  CALL NO_MORE_ARGS     ; insure no more command-tail arguments
+  SUB BX,BX             ; initial sum is zero
+  SUB BP,BP             ; initial sum is zero
+  MOV BP,OBUFF          ; initialize the output buffer to empty
+  CALL PROCESS_LINES    ; filter all lines of standard input
+  CALL OUT_NZ_SUM       ; output the final sum if it is nonzero
+  CALL FLUSH_OBUFF_BP   ; flush the output buffer
+  JMP GOOD_EXIT         ; exit the program
+  
+SUM:                    ; we will hold the sum here
+  DW 0,0
+
+
+; PROCESS_LINE processes the line of CX bytes pointed to by SI (and beyond by
+;   DI), and copies the line to the output buffer.
+
+PROCESS_LINE:
+  CMP CX,DX             ; is the line too short for our column?
+  JBE >L1               ; jump if yes, to output the sum and the line
+  ADD SI,DX             ; advance SI to our column
+  CALL TAIL_BLANKS      ; skip over leading blanks
+  SUB AL,'0'            ; reduce digits range to zero
+  CMP AL,10             ; was it a decimal digit?
+  JAE >L1               ; jump if not, to output the sum and the line
+  PUSH DX               ; it was a digit: save the column number
+  CALL SCAN_HDEC        ; fetch the number
+  ADD SUM W,AX          ; add the number into the sum
+  ADC SUM W[2],DX       ; carry the addition into the high word
+  POP DX                ; restore the column number
+  RET
+
+L1:                     ; there is not a number in our column
+  CALL OUT_NZ_SUM       ; output the sum so far
+  JMP OUT_PROCESS_LINE  ; output the line also
+
+
+OUT_NZ_SUM:             ; output the sum if it is nonzero
+  PUSH CX,DX,SI         ; preserve registers across call
+  SUB CX,CX             ; load zero low word
+  SUB DX,DX             ; load zero high word
+  XCHG CX,SUM W         ; reset the low word and swap in its old value
+  XCHG DX,SUM W[2]      ; reset the high word and swap in its old value
+  MOV AX,CX             ; fetch the low word
+  OR CX,DX              ; is the total sum zero?
+  JZ >L9                ; do nothing if it is
+  MOV DI,BP             ; there is a sum: point DI to the output buffer
+  CALL OUT_DECIMAL8     ; output the sum
+  MOV AX,0A0D           ; load CRLF
+  STOSW                 ; output CRLF
+  MOV BP,DI             ; restore the updated output pointer
+L9:
+  POP SI,DX,CX          ; restore clobbered registers
+  RET
+
+
+USAGE_MSG:
+  DB 'usage: COLSUM colnum <fname ',0D,0A
+  DB '   adds up numbers in a column within a file',0D,0A,0
+
+

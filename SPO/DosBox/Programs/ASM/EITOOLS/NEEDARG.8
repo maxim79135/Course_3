@@ -1,0 +1,19 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   NEEDARG                                      See EILIB.TXT for terms
+;---------------
+
+; NEEDARG exits to DOS with an error code of 0 if there is a command-tail
+;   argument; of 1 if there is no argument.  You can put NEEDARG into a
+;   .BAT, if the file requires an argument, as follows:
+;
+;   NEEDARG %1
+;   if ERRORLEVEL 1 return
+
+NEEDARG:
+  MOV SI,081          ; point to our invocation command tail
+  CALL TAIL_BLANKS    ; skip over any leading blanks
+  CMP AL,0D           ; is the command tail blank?
+  MOV AX,04C00        ; load zero return codes, in case it is not blank
+  IF E INC AX         ; increment the return code to 1 if it is blank
+  INT 021             ; return the error code to the command console
+

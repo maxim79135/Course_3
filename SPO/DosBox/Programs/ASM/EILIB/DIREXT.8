@@ -1,0 +1,105 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DIREXT                                       See EILIB.TXT for terms
+;---------------
+
+; DIREXT_IFILE opens for reading the file whose name is pointed to by SI,
+;   and whose default directory and extension is pointed to by BX.  If
+;   successful we return with BX set to the handle; if we failed we jump
+;   to USAGE_EXIT.
+;
+;   The structure pointed to by BX consists of a null-terminated directory
+;   path (with its trailing \) followed by a null-terminated extension
+;   (with its leading period).  If the SI-pointed string starts with
+;   \ or . it overrides the default directory.  If the SI-pointed string
+;   has an extension it overrides the default extension.  Also, we check
+;   all combinations of the default/current directory and the default/null
+;   extensions before giving up.
+;
+;   If the flag EXT_ONLY is set, we handle only the default extension, and
+;   not the default directory.
+;
+;   This code assumes CS=DS=ES=SS at all times.
+
+        DATA SEGMENT
+        #if !IHANDLE
+IHANDLE DW ?                ; input file handle
+        #endif
+        #if !IFILE_NAME
+IFILE_NAME: DB 128 DUP ?    ; buffer for constructing the input file name
+        #endif
+        DATA ENDS
+
+DIREXT_IFILE:
+  PUSH CX,DX,DI,BP  ; preserve registers across call
+  MOV DI,IFILE_NAME ; point to input file name buffer
+  CALL DIREXT_MAKE  ; construct the file name
+L4:                 ; we loop here if default extension failed, to try null
+        #if !EXT_ONLY
+  MOV DX,IFILE_NAME ; point to the full path name
+  MOV AX,03D00      ; MS-DOS function codes for OPEN FILE
+  INT 021           ; try to open the file
+  JNC >L5           ; jump if we succeeded
+        #endif
+  MOV DX,DI         ; point to the name root, without the default directory
+  MOV AX,03D00      ; MS-DOS function codes for OPEN FILE
+  INT 021           ; try to open the file
+  JNC >L5           ; jump if we succeeded
+  MOV AL,0          ; load null, to replace the period
+  XCHG AL,[BP]      ; swap in the null, to try a null extension
+  CMP AL,'.'        ; had it been the default extension?
+  JE L4             ; loop if it had, to try a null extension
+E1:                 ; all tries exhausted
+  MOV B[BP],'.'     ; restore the default extension
+  JMP OPEN_FAILED   ; output failure message and exit program
+
+L5:                 ; we successfully opened the file
+  MOV BX,AX         ; copy the open-file handle to BX
+  POP BP,DI,DX,CX   ; restore clobbered registers
+  RET
+
+
+DIREXT_MAKE:
+        #if !EXT_ONLY
+  XCHG BX,SI        ; swap in the defaults pointer
+L1:                 ; loop here to copy the default directory
+  LODSB             ; fetch a directory character
+  STOSB             ; output the character to the buffer
+  TEST AL           ; is it the terminating null?
+  JNZ L1            ; loop if not, to copy another character
+  DEC DI            ; retreat output back to the null
+  XCHG SI,BX        ; swap the file name back into SI
+        #endif
+  PUSH DI           ; save the root pointer
+  CALL TAIL_BLANKS  ; skip leading blanks
+  CMP AL,0D         ; is there a file name?
+  JE >E1            ; error if not
+        #if !EXT_ONLY
+  CMP AL,'\'        ; does the file name start with '\'?
+  IF NE CMP AL,'.'  ; or '.'?
+  IF E MOV DI,SP    ; if it does it's a full path: cancel default directory
+        #endif
+  MOV CL,080        ; set CL-flag to NZ = "extension not seen"
+  INC SI            ; advance SI beyond the already-scanned AL
+L2:                 ; loop here to output each name character scanned
+  STOSB             ; store the character
+  CMP AL,'.'        ; is it a period?
+  IF E SUB CX,CX    ; if yes then set flag to Z = "extension seen"
+  CMP AL,'\'        ; is it a subdirectory-character?
+  IF E INC CX       ; if yes then set flag to NZ = "extension not seen"
+  LODSB             ; fetch the next character
+  CMP AL,' '        ; is it a delimiting character?
+  JA L2             ; loop if not, to continue scanning the name
+  DEC SI            ; delimiter seen: retreat back to it
+  MOV BP,DI         ; save the extension pointer in BP
+  JCXZ >L3          ; skip if the file-name extension was seen
+  XCHG BX,SI        ; swap the defaults pointer into SI again
+  MOVSW 2           ; copy the default extension to our buffer
+  XCHG SI,BX        ; swap the file name source back to SI
+L3:
+  MOV AL,0          ; load terminating null
+  STOSB             ; output terminating null
+  POP DI            ; restore the pointer to the name root
+  RET
+
+E1:                 ; a file name was not found
+  JMP USAGE_EXIT    ; exit the program

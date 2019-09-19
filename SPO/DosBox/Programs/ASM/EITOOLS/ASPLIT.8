@@ -1,0 +1,46 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ASPLIT                                       See EILIB.TXT for terms
+;---------------
+
+; ASPLIT is a tool that splits a list of words into 26 files, according
+;    to the first letter of the word.  The single argument to ASPLIT is the
+;    pathname of the file to receive all words beginning with "a".  The path
+;    must end with the letter "a".  The 25 other files, ending with "b"
+;    through "z" instead of "a", are also created.  Input is taken from
+;    standard input, so that you can pipe to ASPLIT.
+
+FSPRAY_CT EQU 26      ; we are creating 26 files
+FSPRAY_1ST EQU 'A'    ; the first file had better end with "A"
+FSPRAY_INC EQU 1      ; file names increment by 1
+
+ASPLIT:
+  MOV SI,081          ; point to our command tail
+  CALL OPEN_FSPRAY    ; scan name and open the 26 output files
+  CALL NO_MORE_ARGS   ; insure that there are no more arguments
+  CALL PROCESS_LINES  ; process the entire input file
+  CALL CLOSE_FSPRAY   ; close all the output files
+  JMP GOOD_EXIT       ; go back to the operating system
+
+
+; PROCESS_LINE is called by PROCESS_LINES for each line received.  We
+;   copy the line to the appropriate buffer, depending on the first
+;   letter of the line.
+
+PROCESS_LINE:
+  MOV AL,[SI]               ; fetch the first letter of the line
+  OR AL,020                 ; coerce the letter to lower-case
+  SUB AL,'a'                ; reduce lower-case letters range to 0
+  CBW                       ; extend index value AL to AX
+  CMP AL,26                 ; was it in fact a lower case letter?
+  IF B JMP W_FSPRAY         ; jump if it was, to copy the line
+  MOV AX,NON_WORD_MSG       ; bad line seen: point to message
+  JMP ERROR_EXIT            ; report the error and exit
+
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: | ASPLIT path_ending_with_a',0D,0A
+  DB '  splits a list of words into 26 files',0D,0A,0,01A
+
+NON_WORD_MSG:
+  DB 'ASPLIT: input is not a word.',0D,0A,0

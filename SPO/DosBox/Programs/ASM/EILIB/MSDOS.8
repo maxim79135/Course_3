@@ -1,0 +1,217 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MSDOS                                        See EILIB.TXT for terms
+;---------------
+
+; This module contains the file input and output functions common to most
+; programs.  If the calling program does not declare NO_DOSCHECK EQU 1,
+; we trap all errors and report them, exiting the program after doing so.
+
+; If the calling program declares the flag LONG_FNAMES, we open files using
+; the newer Win95-or-later function codes, that recognize long file names.
+
+; The OWRITE routines output to standard output, unless the file-handle
+; variable OWRITE_H is used: then they output to the open file with that
+; handle.  Similarly, EWRITE writes to the error console, unless the handle
+; EWH is used.
+
+; MOPEN_READ opens the DX-pointed file for reading
+; MOPEN opens the DX-pointed file for access coded by AL
+
+; MREAD reads CX bytes of the BX-handle file to DX.
+; MREAD_CX reads bytes of the BX-handle file to the DX--CX buffer.
+
+; OWRITE_DI outputs bytes buffered at DX--DI.
+; OWRITE_CX outputs bytes buffered at DX--CX.
+; OWRITE outputs CX bytes from DX.
+; EWRITE outputs CX bytes from DX to error output.
+; MWRITE_SI_FILE writes DX up to DI to the file named by SI.
+; MCLOSE_DI writes from DX up to DI, and closes the BX-handle file.
+; MCLOSE closes the open-file numbered BX.
+; MWRITE_DI outputs the buffer DX--DI to open-file BX
+; MWRITE_CX outputs the buffer DX--CX to open-file BX
+; MWRITE outputs CX bytes at DX to open-file BX
+
+; GOOD_EXIT exits the program with error code 0.
+; BAD_EXIT exits the program with error code 1.
+; EXIT exits the program with error code AL.
+
+OWRITE_DI:                ; standard output of DX up to DI
+  MOV CX,DI               ; point CX beyond the bytes to be output
+OWRITE_CX:                ; standard output of DX up to CX
+  SUB CX,DX               ; calculate the number of bytes to be output
+OWRITE:                   ; alternate entry point for standard output
+  PUSH BX                 ; preserve BX across the call
+        #if def OWRITE_H
+  SS MOV BX,OWRITE_H      ; load the file handle for OWRITEs
+        #else
+  MOV BX,1                ; load the open-file handle for standard output
+OWRITE_H EQU W[$-2]       ; allow for the substitution of a different handle
+        #endif
+  JMP >L1                 ; jump to output the bytes
+
+EWRITE:                   ; alternate entry point for error-console output
+  PUSH BX                 ; preserve BX across the call
+        #if def EWH
+  MOV BX,EWH              ; load the file handle for error writes
+        #else
+  MOV BX,2                ; load the open-file handle for error output
+        #endif
+EWRITE_HANDLE EQU B[$-2]  ; allow for the substitution of a different handle
+L1:
+  CALL MWRITE             ; output the bytes
+  POP BX                  ; restore clobbered register
+  RET
+
+
+; EXIT exits the program back to the invoking process, with a status of AL.
+
+GOOD_EXIT:          ; exit the program with return code 0
+  MOV AL,0          ; zero value indicates successful program execution
+EXIT:
+  MOV AH,04CH       ; MSDOS function number for EXIT
+  JMP >L4           ; jump to call the operating system
+
+BAD_EXIT:           ; exit the program with return code 1
+  MOV AL,1          ; load the return code, signalling a failure
+  JMP EXIT          ; jump to common code
+
+
+; MWRITE_SI_FILE writes DX up to DI to the file named by SI.
+
+; MCLOSE_DI writes from DX up to DI, and closes the BX-handle file.
+
+; MCLOSE closes the open-file numbered BX.
+
+        #if ref MWRITE_SI_FILE
+MWRITE_SI_FILE:
+  XCHG DX,SI        ; swap the file name pointer into DX
+  CALL MCREAT       ; create and open the file
+  XCHG DX,SI        ; swap the buffer pointer back into DX
+       #endif
+MCLOSE_DI:          ; write from DX up to DI, then close the file
+  CALL MWRITE_DI    ; write the buffered bytes from DX up to DI
+MCLOSE:
+  MOV AH,03EH       ; MSDOS function number for CLOSE
+L4:
+  INT 021           ; all MSDOS calls go through this interrupt
+  RET
+
+
+; MREAD reads from the open-file numbered BX, to the CX bytes at DX.  Return
+;   with AX set to the number of bytes actually read.
+
+MREAD_CX:               ; alternate entry reads up to delimiter CX
+  SUB CX,DX             ; calculate the number of bytes we have room for
+MREAD:
+  MOV AH,03FH           ; MSDOS function number for READ
+        #if NO_DOSCHECK
+  JMP L4                ; jump to invoke INT 021 and return
+        #else
+  INT 021               ; call DOS to make the read
+  JNC RET               ; return if there was no error
+  MOV CX,>L7            ; point to "read " message
+DOS_SORRY:
+  SUB BX,5              ; reduce the handles-range to zero
+  CMP BX,2              ; is the failed handle within our table?
+  MOV DX,>L10           ; point to generic "file." in case not
+  JA >L5                ; skip if we do not have a table entry for the handle
+  ADD BX,BX             ; within table limits: convert offset to a word index
+  MOV BX,OPEN_FNAME[BX] ; fetch the file name from our table
+  TEST BX               ; was there an entry in the table?
+  IF NZ MOV DX,BX       ; if yes then use the file name from the table
+L5:                     ; common code with failed MOPEN call
+  MOV AX,>L6            ; point to "failed to"
+DX_SORRY_EXIT:          ; output "Sorry, ", AX-msg, CX-msg, and DX file name
+  CALL O_SORRY_MSG      ; output "Sorry, " and the AX-pointed message
+  XCHG AX,CX            ; swap in the CX pointer
+  CALL EMESSAGE         ; output that message
+  XCHG AX,DX            ; swap in the DX file name pointer
+  CALL EMESSAGE         ; output the file name
+  MOV AX,CRLF2Z         ; load pointer to two CRLFs
+  CALL EMESSAGE         ; output the CRLFs
+        #if def USAGE_MSG
+  JMP USAGE_EXIT        ; output usage message and exit the program
+        #else
+  JMP BAD_EXIT          ; if no usage message simply exit the program
+        #endif
+        #endif
+
+
+; MWRITE writes SI bytes from CX to the open-file numbered BX.  Return Carry if
+;   the write failed, with AX set to an error number.
+
+MWRITE_DI:          ; output DX up to DI to open-file BX
+  MOV CX,DI         ; point CX beyond the output buffer
+MWRITE_CX:          ; output DX up to CX to open-file BX
+  SUB CX,DX         ; calculate the number of bytes to output
+MWRITE:
+  MOV AH,040H       ; MSDOS function number for WRITE
+        #if NO_DOSCHECK
+  JMP L4            ; jump to invoke INT 021 and return
+        #else
+  INT 021           ; perform the write operation
+  JNC RET           ; return if there was no error
+  MOV CX,>L8        ; error on write: point to "write " message
+  JMP L5            ; jump to common code to report the error
+        #endif
+
+
+; MOPEN opens the file whose name is pointed to by DS:DX, with the open-mode
+;   given by the value of AL: 0 for reading, 1 for writing, 2 for both.  Return
+;   Carry if the open failed. Return NoCarry if successful; with AX set to the
+;   open-file number.
+
+MOPEN_READ:
+  MOV AL,0
+MOPEN_ACCESS EQU B[$-1]
+MOPEN:
+        #if LONG_FNAMES
+  PUSH DX,SI        ; save registers across call
+  MOV BL,AL         ; copy the file-open attribute to BL
+  MOV BH,0          ; zero-extend the value to BX
+  MOV SI,DX         ; point SI to the file name to be opened
+  MOV DX,1          ; error if the file doesn't exist
+  MOV AX,0716C      ; MSDOS function number for LONG_OPEN
+  INT 021           ; call MSDOS to do the creation
+  POP SI,DX         ; restore clobbered registers
+        #else
+  MOV AH,03DH           ; MSDOS function number for MOPEN
+  INT 021               ; all MSDOS calls go through this interrupt
+        #endif
+        #if !NO_DOSCHECK
+  JC OPEN_FAILED        ; jump if error, to report the failed open
+  PUSH AX               ; success: save the file handle
+  SUB AX,5              ; reduce the normal handle range to zero
+  CMP AX,2              ; is the handle 5,6, or 7?
+  JA >L4                ; skip if not
+  ADD AX,AX             ; handle is within table range: convert to word index
+  XCHG BX,AX            ; swap the index into BX
+  MOV OPEN_FNAME[BX],DX ; store the file name in our table
+L4:
+  POP AX                ; restore the open-file handle
+        #endif
+  MOV BX,AX             ; copy file handle to BX, for convenience
+  RET
+
+        #if !NO_DOSCHECK
+OPEN_FAILED:            ; the open-file operation failed
+  MOV CX,>L9            ; point to "open "
+  JMP L5                ; jump to common code to report the error
+
+CRLF2Z:
+  DB 0D,0A
+CRLFZ:
+  DB 0D,0A,0
+L10:
+  DB 'file.',0
+L6:
+  DB 'failed to ',0
+L7:
+  DB 'read ',0
+L8:
+  DB 'write ',0
+L9:
+  DB 'open ',0
+
+OPEN_FNAME  DW 0,0,0
+        #endif

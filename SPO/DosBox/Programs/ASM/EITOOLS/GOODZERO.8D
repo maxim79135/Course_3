@@ -1,0 +1,73 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   GOODZERO                                     See EILIB.TXT for terms
+;---------------
+
+; GOODZERO is a CONFIG.SYS device driver that hooks to the BIOS function
+;   for Set Video Mode, and resets the dot pattern for the digit zero
+;   whenever the BIOS is called to set the mode to 3.
+
+ORG 0
+
+      DD -1          ; slot for pointer to the next driver in the chain
+      DW 08000       ; character device with no special attributes
+      DW STRATEGY    ; pointer to the parm block pointer store routine
+      DW INTERRUPT   ; pointer to the service routine
+      DB 'GOODZ+++'  ; garbage name: we are not really a device
+
+
+L0:                       ; jump here if we are not taking action ourselves
+  JMP 0:0                 ; jump to old handler
+OLD_HANDLER EQU $-4       ; old handler's address is plugged into above slot
+
+OUR_HANDLER:
+  CMP AX,3              ; are the function codes "set video mode to 3"?
+  JNE L0                ; jump to the old BIOS service routine, if not
+  STI                   ; reenable interrupts
+  PUSHF                 ; push flags, to emulate an INT instruction
+  CS CALL D[L0+1]       ; invoke the old BIOS service routine
+  PUSHF                 ; save the BIOS's returned flags
+  PUSHA                 ; save the BIOS's returned register values
+  PUSH DS               ; save the current DS segment value
+  MOV DS,CS             ; point DS to our code
+  CALL GOODZ            ; reset the dot patterns for digit 0 and letter O
+  POP DS                ; restore clobbered segment register
+  POPA                  ; restore clobbered general regsiters
+  POPF                  ; restore clobbered flags
+  RETF 2                ; return to our INT caller, discarding stacked flags
+
+CHARHT EQU 14           ; we will provide dot patterns of height 14
+include                 ; GOODZ library code should be in this resident area
+
+RES_LIMIT:              ; this is the end of the resident part of the driver
+
+  RH_OFFSET  DW ?       ; parameter block offset is stored here
+  RH_SEG     DW ?       ; parameter block segment is stored here
+
+STRATEGY:               ; parameter-passing procedure
+  CS MOV RH_SEG,ES      ; store the parameter block's segment
+  CS MOV RH_OFFSET,BX   ; store the parameter block's offset
+  RETF
+
+INTERRUPT:                  ; initialization procedure
+  PUSHA                     ; preserve general registers across call
+  PUSH DS,ES                ; preserve segment registers across call
+  MOV ES,CS                 ; we will output to this program segment
+  MOV DI,OLD_HANDLER        ; load the offset to our far JMP to old handler
+  SUB AX,AX                 ; load zero
+  MOV DS,AX                 ; source segment is the low-memory interrupt table
+  MOV AX,OUR_HANDLER        ; load the program offset for our handler
+  CLI                       ; disable interrupts while we modify the table
+  XCHG AX,W[040]            ; swap our offset with the old INT 010 offset
+  STOSW                     ; output the old handler's offset in our JMP
+  MOV AX,CS                 ; fetch our program segment value
+  XCHG AX,W[042]            ; swap our segment with the old INT 010 segment
+  STOSW                     ; output the old handler's segment in our JMP
+  STI                       ; we can turn interrupts back on, again
+  CS LDS SI,RH_OFFSET       ; fetch the caller's parameter block pointer
+  MOV W[SI+14],RES_LIMIT    ; store the allocation offset
+  MOV [SI+16],CS            ; store the allocation segment
+  MOV W[SI+3],0100          ; return code for DONE
+  POP ES,DS                 ; restore clobbered segment registers
+  POPA                      ; restore clobbered general registers
+  RETF
+

@@ -1,0 +1,62 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   TINY_TSR                                     See EILIB.TXT for terms
+;---------------
+
+; TINY_TSR consists of program code for a small TSR capable of installing
+;   via an I in the command tail, or uninstalling via U.  The caller must
+;   supply the following symbols:
+;
+; * Messages USAGE_MSG for general syntax errors, ALREADY if I is attempted
+;   when the TSR was already installed, WASNT if U is attempted when the
+;   TSR wasn't installed, INSTALLING for successful I, and UNINSTALLING for
+;   successful uninstall.  All are null-terminated.
+;
+; * A resident portion of the program, size TSR_BYTES, beginning at SIG_SRC,
+;   which points to a signature string of SIG_SIZE bytes.  If it is OK to copy
+;   this portion downwards (05E is a good destination), the caller should 
+;   supply SIG_DEST equated to the destination; otherwise, it should declare
+;   SIG_DEST EQU SIG_SRC.
+;
+; * A handler OUR_HANDLER for the single interrupt driver to be taken over,
+;   whose interrupt number is SINGLE_INT, and whose old-handler doubleword
+;   pointer is to be stored at OLD_INT.
+
+T1 EQU (TSR_BYTES+SIG_DEST+15)/16  ; total number of resident paragraphs
+
+TINY_TSR:
+  CALL TAIL_BLANKS      ; scan to the first nonblank in the command tail
+  AND AL,0DF            ; coerce the character to upper case
+  CMP AL,'U'            ; is it U for uninstall?
+  JE >U1                ; jump if it is
+  CMP AL,'I'            ; is it I for install?
+  IF NE JMP USAGE_EXIT  ; output usage message if it isn't
+  CALL LOAD_OLD_INT     ; fetch and store the old keyboard service routine
+  MOV AX,ALREADY        ; point to "Already installed" message
+  JE >E1                ; jump if our handler was already installed
+        #if SIG_DEST NE SIG_SRC
+  MOV ES,CS             ; we will install: restore ES to our segment
+  MOV CL,TSR_BYTES      ; load the number of bytes we will copy
+  REP MOVSB             ; copy our TSR code down to 05E
+        #endif
+  MOV AX,INSTALLING     ; point to "Installing..." message
+  CALL EMESSAGE         ; tell the user we are installing the driver
+  MOV DX,OUR_HANDLER    ; point to our handler
+  CALL INT_HOOK         ; point the interrupt to our handler
+  MOV DX,T1             ; load the number of paragraphs we are preserving
+  MOV AH,031            ; MS-DOS function number for terminate-stay-resident
+  INT 021               ; terminate and stay resident
+
+E1:                     ; installed status is not what it should be
+  JMP ERROR_EXIT        ; output the AX-pointed message and exit
+
+U1:                         ; U seen in command tail
+  CALL LOAD_OLD_INT         ; fetch and store the old keyboard service routine
+  MOV AX,WASNT              ; point to "Driver wasn't installed" message
+  JNE E1                    ; jump if our handler wasn't installed
+  MOV AX,UNINSTALLING       ; point to "Uninstalling..." message
+  CALL EMESSAGE             ; tell the user we are uninstalling the driver
+  CALL INT_UNHOOK           ; unhook ourselves from the interrupt
+  CALL RELEASE_ES_TSR       ; release the memory we had occupied
+  JMP GOOD_EXIT             ; go back to operating system
+
+

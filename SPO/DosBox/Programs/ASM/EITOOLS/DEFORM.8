@@ -1,0 +1,45 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    DEFORM                                      See EILIB.TXT for terms
+;---------------
+
+; DEFORM eliminates all spacing and line-formatting for the input file, and
+;   outputs a file whose only word-breaks are single blanks.
+
+; The purpose of this program is to prepare each of two files for comparison,
+; independent of their formatting.
+
+DEFORM:
+  MOV SI,081            ; point to the command tail
+  JMP PFILE_IOARG       ; process the files
+
+USAGE_MSG:
+  DB 'usage: DEFORM infile outfile',0D,0A
+  DB '   eliminates all spacing and line breaks, replacing all',0D,0A
+  DB '   word breaks with a single blank',0D,0A
+  DB 0
+
+PFILE_REC:
+  PUSH DX             ; save the buffer limit
+  MOV AX,32K          ; load an increment that will fit the output buffer
+  ADD AX,SI           ; calculate a limit based on that increment
+  CMP AX,DX           ; is this limit below the buffer limit?
+  IF B XCHG DX,AX     ; if yes then lower the buffer limit to match it
+  SKIP1               ; skip over STOSB to scan the first byte
+L1:                   ; loop here to store each byte within a word
+  STOSB               ; output the byte
+L2:
+  LODSB               ; scan the next byte
+  CMP AL,' '          ; is it a blank?
+  JA L1               ; loop if not, to output the byte
+  MOV AL,' '          ; load blank
+  STOSB               ; output a single blank
+L3:                   ; loop here to skip over consecutive blanks
+  LODSB               ; fetch a byte
+  CMP AL,' '          ; is it a blank?
+  JBE L3              ; loop if it is, to scan the next byte
+  CMP SI,DX           ; another word begins: are we beyond the input limit?
+  JB L1               ; loop if not, to output this next word
+  DEC SI              ; limit reached: retract the first byte of the next word
+  POP DX              ; restore the main buffer limit
+  JMP FLUSH_OBUFF     ; flush the output buffer
+

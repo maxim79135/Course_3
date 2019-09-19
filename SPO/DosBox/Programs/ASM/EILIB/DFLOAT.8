@@ -1,0 +1,399 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   DFLOAT                                       See EILIB.TXT for terms
+;---------------
+
+; DISPLAY_FLOAT outputs to DI a display of the temp-real floating point number
+;   pointed to by SI.  We advance DI but not SI.
+
+DF_INF_MSG:         ; display string for an infinity value
+  DB 'Infinity',0
+DF_DEN_MSG:         ; display string for a Denormal value
+  DB 'Den\',0
+DF_NAN_MSG:         ; display string for a Not-a-Number value
+  DB 'NaN',0
+DF_PSZ_MSG:         ; display string for a Pseudo Zero value
+  DB 'Pseudo 0 ',0
+DF_UNN_MSG:         ; display string for an Unnormal value
+  DB 'Unn\',0
+
+L9:                 ; jump here if the number can be unpacked as-is
+  CALL UNPACK_ST0   ; push 18 unpacked ASCII digits onto the stack
+  ADD SI,CX         ; advance beyond the leading zeroes
+  MOV DX,CX         ; save the leading-zeroes count
+  CMP CX,5          ; can we subtract 5 leading blanks?
+  IF A SUB CX,5     ; if yes then do so
+  CALL DF__SIGN     ; output the leading blanks, and the sign
+  MOV CL,18         ; load maximum possible digits
+  CALL CK_SINGSIZE  ; cut the count in half if single-precision display
+  SUB CX,DX         ; calculate the number of digits in the number
+  REP MOVSB         ; copy the string
+  MOV AL,'.'        ; load trailing decimal point
+  STOSB             ; output the decimal point
+L18:
+  ADD SP,18         ; release the digits buffer
+  POP SI,DS         ; restore source pointer
+  RET
+
+
+DISPLAY_FLOAT:
+  FLD T[SI]         ; load T[SI] onto the 87 stack
+DISPLAY_ST0:
+  MOV BP,0FFFF      ; we start out allowing leading zeroes
+  PUSH SI           ; save pointer
+  MOV CX,8          ; there are 8 bytes in the significand
+  MOV BX,080 BY 0   ; BH = sign-mask, BL = initial zero low-zero count
+L1:                 ; loop here for each low-zero byte seen
+  ADD BL,8          ; add to bit count
+  LODSB             ; fetch another low byte
+  TEST AL           ; is the byte all zeroes?
+  LOOPZ L1          ; loop if yes, to count another low byte
+  JZ >L3            ; skip if all 8 byte zero-- bit count is 64
+  SUB BL,9          ; subtract last byte's count, also cancel first INC BX
+L2:                 ; loop here for each zero bit in low non-zero byte
+  INC BL            ; increment the bit count
+  ROR AL,1          ; shift out another low bit
+  JNC L2            ; loop if the bit was zero
+L3:                 ; BL is now set to the low-zero bit count
+  POP SI            ; restore the pointer to the number
+  MOV AX,[SI+8]     ; fetch the high word (sign and exponent) of the number
+  AND BH,AH         ; set BH to 080 if number is negative, 0 if positive
+  XOR AH,BH         ; mask out sign bit, AX is now the exponent field value
+  SUB AX,16383      ; subtract the bias from the exponent field
+  CMP AX,16384      ; does AX have the maximum possible exponent field?
+  JE >L6            ; jump if yes
+  CMP AX,-16383     ; does AX have the minimum possible exponent field?
+  JZ >L7            ; jump if yes
+  TEST B[SI+7],080  ; does the number have a zero to left of implicit binary pt?
+  JZ >L8            ; jump if yes
+  MOV DX,63         ; load the total number of bits to right of binary point
+  SUB DL,BL         ; calculate the number of needed bits to right of binary pt.
+  CMP AX,DX         ; is the binary point shifted that many bits?
+  JL >L2            ; jump if not-- number has a fractional part
+  CMP AX,59         ; is the number small enough to simply unpack?
+  JL L9             ; jump if yes
+L2:
+  SUB CX,CX         ; normal non-integer: there is no normalization bias
+  JMP DF_FRAC_OUT   ; output the number as a non-integer
+
+L8:                 ; unnormal is seen (top bit zero, non-extreme exponent)
+  CMP BL,64         ; is the number a pseudo-zero?
+  JNE >L5           ; jump if not
+  PUSH AX           ; save the biased exponent across the message output
+  CALL OUT_SIGN_BH  ; output the sign of our number
+  MOV AX,DF_PSZ_MSG ; point to "Pseudo 0" message
+  CALL COPYZ_AX     ; output the message
+  POP DX            ; restore the exponent
+DF_OUT_EXPO:        ; output an exponent whose value is DX
+  MOV AL,'E'        ; load the "E"
+  STOSB             ; output the "E" part of the exponent-identifier
+  TEST DX           ; set the S flag according to the sign of the exponent
+  CALL OUT_SIGN_SF  ; output "+" or "-" according to the S flag
+  IF S NEG DX       ; insure we have the absolute value of the exponent
+  MOV AX,DX         ; fetch the exponent value
+  JMP OUT_DEC_AX    ; output the value as a decimal number
+
+L7:                 ; denormal or zero is seen
+  CMP BL,64         ; is the number zero?
+  MOV CX,DF_DEN_MSG ; load denormal message, in case it is nonzero
+  JNE >L4           ; jump if nonzero-- it is a denormal
+  MOV CL,12         ; if we are indenting then we have 12 leading blanks
+  CALL CK_SINGSIZE  ; cut the count in half if single-precision display
+  CALL DF__SIGN     ; output indentation and the number's sign
+  MOV AX,'.0'       ; load "0." display
+  STOSW             ; output "0." (the 8086 reverses the bytes)
+  RET
+
+L6:                 ; infinity or NaN is seen (maximum exponent field)
+  CMP BL,63         ; is it a NaN?
+  JB >L3            ; jump if yes
+  CALL OUT_SIGN_BH  ; it is an infinity: output the sign
+  MOV AX,DF_INF_MSG ; point to "Infinity" message
+  JMP COPYZ_AX      ; output the message
+
+L3:                 ; NaN is seen (maximum exponent, nonzero significand)
+  CALL OUT_SIGN_BH  ; output the sign of our NaN
+  MOV AX,DF_NAN_MSG ; point to the "NaN" message
+  CALL COPYZ_AX     ; output the message
+  MOV BX,6          ; the first word we output has index 6
+L1:                 ; loop here to output each word of the significand
+  MOV AL,' '        ; load a space
+  STOSB             ; output a leading (separating) space
+  MOV AX,[BX+SI]    ; fetch this word of the significand
+  CALL OHEX_16      ; output the word as a 4-digit hex number
+  DEC BX,2          ; reduce the index to the next-lower word in significance
+  JNS L1            ; loop if we haven't gone below the lowest word
+  RET
+
+L5:                 ; unnormal is seen, not a pseudo-zero
+  MOV CX,DF_UNN_MSG ; point to the "Unn\" message
+L4:                 ; jump here if denormal (minimum exponent, NZ significand)
+  CALL DF_NORMALIZE ; normalize the number, set CX to number of bits shifted
+  JMP DF_FRAC_OUT    ; output the number
+
+
+; UNPACK_ST0 pushes an array of 18 ASCII decimal digits onto the caller's
+;   stack.  The array is the value returned by FBSTP applied to the floating-
+;   point number ST(0).  We also return with CX set to the number of leading
+;   zeroes in the array.
+
+UNPACK_ST0:
+  POP CX            ; pop our return address
+  PUSH DS,SI        ; save the caller's source pointer
+  SUB SP,28         ; push room for both the BCD output and the ASCII array
+  PUSH CX           ; push our return address, before the arrays
+  PUSH ES,BP,DI,DX  ; preserve registers across call
+  MOV BP,SP         ; point BP to 10 bytes before the BCD array
+  MOV ES,SS         ; point ES to the stack, for array output
+  LEA DI,[BP+20]    ; point DI to the final array
+  MOV DS,SS         ; point DS to the array's segment, for return
+  MOV SI,DI         ; save array pointer in SI
+  FBSTP T[BP+10]    ; output the number to the BCD array
+  MOV CX,9          ; there are 9 BCD bytes in the BCD array
+  FWAIT             ; we need to wait until the BCD array is written
+L1:                 ; loop here to unpack each BCD byte
+  MOV AL,[BP+18]    ; fetch the most siginificant byte left
+  DEC BP            ; retreat BCD-2 pointer
+  AAM 16            ; unpack the byte into nibbles
+  ADD AX,'00'       ; convert the nibbles into ASCII digits
+  XCHG AH,AL        ; swap the digits so the high digit will be first
+  STOSW             ; output the digits to the ASCII array
+  LOOP L1           ; loop to process the next BCD byte
+  MOV DI,SI         ; restore DI to the start of the ASCII array
+  MOV AL,'0'        ; we will scan for leading zeroes
+  DEC CX            ; load high CX value; we know we'll find a non-zero digit
+  REPE SCASB        ; scan across the leading zeroes
+  DEC DI            ; retreat back to the terminating non-zero
+  SUB DI,SI         ; calculate the number of leading zeroes
+  MOV CX,DI         ; value will be returned in CX
+  POP DX,DI,BP,ES   ; restore clobbered registers
+  RET 10            ; return, releasing the BCD array but not the ASCII array
+
+
+DF__SIGN:
+  AND CX,BP         ; no leading blanks if BP is zero
+  MOV AL,' '        ; load blank, for leading output
+  REP STOSB         ; output leading blanks, to right-justify the number
+OUT_SIGN_BH:
+  TEST BH           ; is the number negative?
+OUT_SIGN_SF:
+  MOV AL,'+'        ; if no then sign is plus
+  IF S MOV AL,'-'   ; if yes then sign is minus
+  STOSB             ; output blank or minus, according to sign of number
+  RET
+
+
+; DF_FRAC_OUT outputs the normal number ST(0)/(2**CX) to DI.  The biased
+;   exponent has already been calculated and is in AX.  The sign is the
+;   top bit of BH.
+
+TEN DW 10
+TEN_E17 DT
+  DW 0FFF9,0C4FF,0BC2E,0B1A2,04037
+TEN_E18 DT
+  DW 0FFF7,0763F,06B3A,0DE0B,0403A
+
+DF_FRAC_OUT:
+  PUSH CX           ; save the normalization factor
+  SUB AX,CX         ; alter the biased exponent by the normalization
+  CS FLD TEN_E18    ; 0=E18  1=num
+  CS FLD TEN_E17    ; 0=E17  1=E18  2=num
+  FLD 2             ; 0=num  1=E17  2=E18  3=num
+  FABS              ; 0=+num 1=E17  2=E18  3=num
+  CS FILD TEN       ; 0=10.0 1=+num 2=E17  3=E18  4=num
+  FST 4             ; 0=10.0 1=+num 2=E17  3=E18  4=10.0
+  MOV DX,AX         ; copy the biased exponent to DX
+  MOV CL,3          ; we will be shifting the exponent by 3
+  SAR DX,CL         ; signed divide the bias by 8
+  ROR AX,CL         ; also rotate the bottom 3 bits into the top bits of AX
+  AND AX,0E000      ; now DXAX is the signed exponent, multiplied by 8192
+  MOV CX,27213      ; load adjustment factor for logs 2-to-10
+  IDIV CX           ; now AX is (approximately) a base-10 bias
+  MOV DX,AX         ; copy the base-10 bias to DX
+  SUB AX,17         ; calculate the displacement from our goal of 10**17
+  JNS >L3           ; jump if we are above our goal
+  NEG AX            ; we are below the goal-- convert the bias to positive
+L1:                 ; loop here for each bit of the negative base-10 bias
+  SHR AX,1          ; rotate the bottom bit into the carry flag
+  IF C FMUL 1,0     ; if the bit was 1 then we bolster (+num) by a power of ten
+  JZ >L4            ; are there any nonzero bits left in the bias?
+  FMUL 0,0          ; there are: square our power-of-ten (doubling its exponent)
+  JMP L1            ; loop to make more scale-adjustments to (+num)
+
+L2:                 ; loop here for each bit of the positive base-10 bias
+  FMUL 0,0          ; square our power-of-ten (doubling its exponent)
+L3:
+  SHR AX,1          ; rotate the bottom bias-bit into our Carry flag
+  IF C FDIV 1,0     ; if the bit was 1 then we reduce (+num) by a power of ten
+  JNZ L2            ; loop if there are more nonzero bits in the bias
+L4:                 ; our number is now scaled by 10**(17-DX) to be near 10**17
+  FSTP 0            ; 0=scaled num   1=E17   2=E18   3=10.0
+  POP CX            ; restore the normalization factor
+  JCXZ >L1
+  PUSH BP           ; save our indentation flag
+  SUB SP,10         ; make room on the stack for our number
+  MOV BP,SP         ; point to the buffer we just made
+  FSTP T[BP]        ; store our number in the buffer
+  FWAIT             ; wait for the number to get there
+  SUB W[BP+8],CX    ; subtract our bias from the exponent
+  FLD T[BP]         ; reload the adjusted number
+  ADD SP,10         ; release the buffer from the stack
+  POP BP            ; restore the indentation flag
+L1:                 ; loop here if the scaled number is still below 10**17
+  FCOM 0,1          ; is the scaled number below 10**17?
+  CALL F_FLAGS      ; transfer the answer into the 8086 flags
+  JAE >L5           ; jump if the number is not below 10**17
+  FMUL 3            ; it was below 10**17: adjust upward by a factor of 10
+  DEC DX            ; the base-10 exponent is 1 less then it would have been
+  JMP L1            ; loop to see if yet another adjustment is necessary
+
+L5:                 ; the scaled number is now at least as big as 10**17
+  FCOM 0,2          ; is it as big as 10**18?
+  CALL F_FLAGS      ; transfer the answer to the 8086 flags
+  JB >L6            ; jump if the scaled number is below 10**18
+  FDIV 3            ; it was above 10**18: adjust downward by a factor of 10
+  INC DX            ; the base-10 exponent is 1 more than it would have been
+  JMP L5            ; loop to see if yet another adjustment is necessary
+
+L6:                 ; the scaled number is now between 10**17 and 10**18
+  CALL UNPACK_ST0   ; push the 18 significant digits onto our stack
+  MOV AX,DX         ; fetch the power-of-ten exponent for this number
+  CMP AX,-5         ; is the number too small to represent as a simple fraction?
+  JGE >L8           ; jump if not
+L7:                 ; we are using scientific notation to display the number
+  MOV CL,10         ; if we are indenting then we'll use ten blanks
+  CALL CK_SINGSIZE  ; cut the count in half if single-precision display
+  CALL DF__SIGN     ; output indentation and the number's sign
+  MOVSB             ; copy the first digit to the display
+  MOV AL,'.'        ; load the decimal point
+  STOSB             ; output the decimal point
+  MOV CL,17         ; there are 17 digits beyond the decimal point
+  CALL CK_SINGSIZE  ; cut the count in half if single-precision display
+  CALL DF_FRAC_DIGS ; output those digits (without trailing blanks)
+  MOV AL,' '        ; load intervening blank
+  STOSB             ; output the blank
+  CALL DF_OUT_EXPO  ; output the DX exponent
+L9:                 ; common exit
+  JMP L18           ; release the 18 bytes on the stack, and return
+
+L8:                 ; the number is not to small to represent simply
+  TEST AX           ; is the number in fact purely a fraction?
+  JNS >L4           ; jump if not
+  MOV CL,12         ; it is a pure fraction-- we'll indent by 12 if at all
+  CALL CK_SINGSIZE  ; cut the count in half if single-precision display
+  CALL DF__SIGN     ; output indentation and the number's sign
+  MOV AX,'.0'       ; load "0." to denote a pure fraction
+  STOSW             ; output "0." (8086 reverses the bytes)
+  MOV CX,-1         ; exponent's offset from -1 tells how many more zeroes
+  SUB CX,DX         ; calculate the number of zeroes after the decimal point
+  REP STOSB         ; output those zeroes
+  MOV CL,18         ; there are 18 significant digits to output
+  CALL CK_SINGSIZE  ; cut the count in half if single-precision display
+L5:
+  CALL DF_FRAC_DIGS ; output the fraction-digits (suppressing leading zeroes)
+  JMP L9            ; jump to common exit
+
+L4:                 ; the number is not a pure fraction
+  MOV CL,17         ; load the digits limit for simple representation
+  CALL CK_SINGSIZE  ; cut the count in half if single-precision display
+  CMP AX,CX         ; is the number too big to represent simply?
+  JG L7             ; jump if it is, to use scientific notation
+  INC DX            ; the number of leading digits is one more than exponent
+  MOV CL,13         ; the leading digits are right-justified in a 13-space field
+  CALL CK_SINGSIZE  ; cut the count in half if single-precision display
+  SUB CX,DX         ; calculate the number of leading blanks needed for this
+  IF B ADD CX,5     ; if there isn't enough room then use an 18-space field
+  CALL DF__SIGN     ; output indentation and the number's sign
+  MOV CX,DX         ; fetch the number of leading digits
+  REP MOVSB         ; copy the leading digits to the output field
+  MOV AX,'.'        ; load the decimal point
+  STOSB             ; output the decimal point
+  MOV CL,18         ; there were a total of 18 digits in our buffer
+  CALL CK_SINGSIZE  ; cut the count in half if single-precision display
+  SUB CX,DX         ; calculate the number of remaining digits
+  JMP L5            ; jump to output the remaining digits and exit
+
+
+; DF_FRAC_DIGS copies CX digits (already in ASCII) from SI to DI.  We suppress
+;   any trailing zeroes.
+
+DF_FRAC_DIGS:
+  JCXZ RET          ; do nothing if there are no digits
+  PUSH SI           ; preserve starting pointer while we scan for blanks
+  ADD SI,CX         ; advance SI beyond the digits
+L1:                 ; loop here for each trailing blank found
+  DEC SI            ; retreat back to a candidate
+  CMP B[SI],'0'     ; do we have a trailing blank?
+  LOOPE L1          ; loop if we do, to check for more blanks
+  LEA CX,[SI+1]     ; point CX to the first trailing blank
+  POP SI            ; restore the pointer to the first digit
+  SUB CX,SI         ; calculate the number of digits to output
+  REP MOVSB         ; output those digits
+  RET
+
+
+; DF_NORMALIZE is called when an unnormal or a denormal is seen.  We output
+;   the CS:CX-pointed message identifying which it is, followed by the number
+;   of bits of denormalization found in the number.  We shift the significand
+;   of the number (on the 87 stack) so that the number becomes a normal number
+;   whose value is 2**CX times the value of the original non-normal, where
+;   the returned value CX is the number of bits shifted.
+
+DF_NORMALIZE:
+  PUSH AX           ; preserve the biased exponent of the number
+  XCHG AX,CX        ; swap the message pointer into AX
+  CALL COPYZ_AX     ; output the message identifying Den or Unn
+  SUB SP,10         ; make room on our stack for the number
+  MOV BP,SP         ; point BP to the room we just made
+  FSTP T[BP]        ; output the number from the 87 to our buffer
+  FWAIT             ; wait for the number to get there
+  SUB CX,CX         ; bit count starts out zero
+L1:                 ; loop here for each bit shifted
+  INC CX            ; increment the count
+  RCL W[BP],1       ; shift the low word
+  RCL W[BP+2],1     ; shift-with-carry the second word
+  RCL W[BP+4],1     ; shift-with-carry the third word
+  MOV AX,W[BP+6]    ; fetch the uppmost word
+  ADC AX,AX         ; shift the word, setting the S flag also
+  MOV W[BP+6],AX    ; now the entire significand is shifted
+  JNS L1            ; loop if the top bit is still zero
+  MOV AX,CX         ; fetch the number of bits that we shifted
+  CALL OUT_DEC_AX   ; output the number to the display
+  MOV AX,'  '       ; load two intervening blanks
+  STOSW             ; output the blanks
+  TEST W[BP+8]      ; do we have a minimum exponent?
+  IF Z INC W[BP+8]  ; if yes then convert it to the lowest normal exponent
+  FLD T[BP]         ; load the normalized number back onto the 87 stack
+  ADD SP,10         ; release the stack buffer we used for the number
+  SUB BP,BP         ; we can no longer output leading blanks
+  POP AX            ; restore the biased exponent
+  RET
+
+
+; F_FLAGS copies the 87 flags to the 86.
+
+L9 DW 0FFFF
+
+F_FLAGS:
+  CS FSTSW L9       ; store the flags in a special word reserved for purpose
+  FWAIT             ; wait for the storage to be complete
+  CS MOV AX,L9      ; fetch the flags as they were stored
+  SAHF              ; transfer the 87 flags to our 86 flags register
+  RET
+
+
+CK_SINGSIZE:
+  MOV CH,0          ; high byte of count is always zero
+SINGSIZE_OP DB      ; set to D0 for SHR CL,1 instruction
+  CMP AL,0E9        ; do-nothing instruction in case SINGSIZE is not in effect
+  RET
+
+
+DISPLAY_SINGLE:           ; display SI-pointed, single-precision number
+  FLD D[SI]               ; fetch the number
+DISPLAY_SINGLE_ST0:
+  CS MOV SINGSIZE_OP,03C  ; enable halving of all field sizes
+  CALL DISPLAY_ST0        ; display the number
+  CS MOV SINGSIZE_OP,0D0  ; disable halving of field sizes
+  RET
+
+

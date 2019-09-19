@@ -1,0 +1,78 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   BOOTSCR                                      See EILIB.TXT for terms
+;---------------
+
+; BOOTSCR is a memory-resident program that checks for a certain video
+;   memory contents every 5 seconds.  If the contents are found, we reboot
+;   the system.  The program was written for an unattended BBS system
+;   that tends to "hang" with network error messages at the console.
+;
+;   The invocation line contains the hex segment and hex offset of video
+;   memory to be checked, followed by the string to look for.  The string
+;   must be at the exact indicated location.  We ignore the attribute bytes
+;   of the video memory.
+
+; This program is intended to be run in DOS-only mode.  If the reboot code
+; is invoked in a DOS-within-Windows box, the result will usually be simply
+; that the DOS box is closed by Windows.  Some other process would then
+; need to detect that, and restart the DOS program.
+
+BOOTSCR:
+  JMP INIT              ; jump past resident code, to initialization code
+
+STRUC 05E               ; our variables will be placed in low PSP
+  OUR_COUNT DB ?        ; number of 1/18th-second ticks until we check again
+    VIDEO_PTR DW ?,?    ; pointer to the video memory we are to check
+              DW ?      ; target string count, plugged in by SCAN_STRING
+  TARGET:               ; the string to be searched for
+ENDS
+
+
+; OUR_TIMER is jumped to every 18th of a second.  We check to see if a
+;   full five seconds has elasped; if it has, we look at video memory to see
+;   if the fatal message has occurred.  If it hasn't, we jump to the
+;   previous timer handler.
+
+OUR_TIMER:
+  CS DEC OUR_COUNT      ; count down ticks until the next five seconds
+  JZ >L1                ; jump if the count is exhausted
+L0:
+  JMP 0:0               ; jump to the previous timer handler
+OLD_TIMER EQU D[$-4]    ; old address is plugged into the above immediate value
+
+L1:                     ; 5-second count is exhausted: time to check the video
+  CS MOV OUR_COUNT,91   ; reset the counter to the full 5 seconds
+  PUSH CX,SI,DI,ES      ; preserve registers across the call
+  CS LES DI,VIDEO_PTR   ; point ES:DI to the video memory to be checked
+  MOV SI,TARGET         ; point SI to the string to be searched
+  MOV CX,0              ; load the size of the string to be searched
+TARGSIZE EQU W[$-2]     ; string size is plugged into the above imm value
+L2:                     ; loop here to scan each byte of the video array
+  INC DI                ; skip over the attribute byte
+  CS CMPSB              ; compare the video contents to the string
+  LOOPE L2              ; loop if they matched, to check another byte
+  POP ES,DI,SI,CX       ; restore clobbered registers
+  JNE L0                ; if we didn't see the string then jump to old handler
+  JMP 0FFFF:0           ; fatal string is seen: reboot the computer
+
+TSR_SIZE EQU ($+15)/16  ; number of paragraphs in our TSR portion
+
+INIT:                   ; initialization code
+  MOV OUR_COUNT,91      ; initial count is 91 for a 5-second wait
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_HEX       ; fetch the video segment value
+  MOV VIDEO_PTR[2],AX   ; store the video segment value
+  CALL VERIFY_HEX       ; fetch the video offset value
+  DEC AX                ; pre-decrement it to the previous "attribute" byte
+  MOV VIDEO_PTR,AX      ; store the video offset value
+  MOV DI,TARGET         ; we will output to our TARGET buffer
+  CALL SCAN_STRING      ; scan and store the string to be searched
+  MOV TARGSIZE,CX       ; store the size of the string to be searched
+  JMP TSR_TIMER         ; take over the timer and go memory-resident
+
+  DB 0D,0A,0A  
+USAGE_MSG:
+DB 'usage: BOOTSCR hex_seg hex_offset string',0D,0A
+DB '   goes memory-resident, and will reboot the machine whenever string',0D,0A
+DB '   is seen at the indicated video memory location',0D,0A,0,01A
+

@@ -1,0 +1,18 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    LSTR                                        See EILIB.TXT for terms
+;---------------
+
+; LSTR acts like a DB directive, allowing any number of string and/or
+;    byte-constant operands.  The difference is, LSTR prepends a length
+;    byte to the output.
+
+LSTR MACRO
+  DB >M1        ; output the length byte, with value plugged in at the end
+M2:             ; base value for calculating the length
+#RX1L           ; loop here for each operand in the macro call
+  DB #1         ; output the data for this operand
+#ER             ; loop to process the next operand
+M1 EQU $-M2     ; calculate the total length, and plug into the first byte
+#EM
+
+

@@ -1,0 +1,18 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   UP_CURS                                      See EILIB.TXT for terms
+;---------------
+
+; UP_CURSOR calls the BIOS to move the screen cursor to the start of the
+;   previous line.
+
+UP_CURSOR:
+  MOV AH,0F         ; BIOS function code for GET_DISPLAY_MODE
+  INT 010           ; set BH to the active display page
+  MOV AH,03         ; BIOS function code for READ_CURSOR_POSITION
+  INT 010           ; set DH to the row, DL to the column
+  DEC DH            ; retreat to the previous cow (our invocation line)
+  MOV DL,0          ; retreat to the left margin
+  MOV AH,2          ; BIOS function code for SET_CURSOR_POSITION
+  INT 010           ; reset the cursor to the start of our invocation line
+  RET
+

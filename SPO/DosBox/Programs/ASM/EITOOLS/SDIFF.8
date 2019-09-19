@@ -1,0 +1,135 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   SDIFF                                        See EILIB.TXT for terms
+;---------------
+
+; SDIFF compares the first two files named in its invocation command tail,
+;   and outputs a summary to the third named file.  The input files must
+;   be sorted into lexicographical order.  The output file will have a
+;   minus sign - prepended to lines from the first file only, and a
+;   plus sign + prepended to lines from the second file only.
+
+  JMP SDIFF         ; jump around the following messages
+
+  DB  0D,0A
+SIGNON:
+  DB 'SDIFF comparison tool, V1.3  Copyright 1997 Eric Isaacson',0D,0A,0
+USAGE_MSG:
+  DB 'usage: SDIFF [colcount] [-skipct] [+] old_file new_file summary_file'
+  DB 0D,0A
+  DB '  plus-flag causes output of differing lines from second file only'
+  DB 0D,0A
+  DB 0,01A
+
+SDIFF:
+  MOV AX,SIGNON     ; point to the signon message
+  CALL EMESSAGE     ; output the signon message
+  MOV SI,081        ; point to our invocation command tail
+L1:
+  CALL TAIL_BLANKS  ; skip over leading blanks
+  CMP AL,'+'        ; is it a plus flag
+  JE >L4            ; jump if yes, to switch into plus mode
+  MOV BX,COL_COUNT  ; load pointer to column-count, in case it's a digit
+  SUB AL,'0'        ; reduce digits-range to zero
+  CMP AL,10         ; was the first argument a number?
+  JB >L3            ; jump if it is, to scan the column count
+  CMP AL,'-'-'0'    ; does the first argument begin with a minus sign?
+  JNE >L2           ; jump if not, to scan the file names
+  INC SI            ; advance beyond the minus sign
+  MOV BX,SKIP_COUNT ; following number will be the number of cols skipped
+L3:
+  CALL VERIFY_DEC   ; fetch the number
+  MOV W[BX],AX      ; plug the number into COL_COUNT or SKIP_COUNT
+  JMP L1            ; loop to fetch another possible number
+
+L4:                 ; plus-sign flag is seen
+  MOV JLOC W,JCODE  ; insert JMP instruction to suppress minus-record output
+  MOV STOSLOC B,090 ; insert NOP to suppress the plus sign in plus records
+  INC SI            ; advance the input pointer beyond the plus sign
+  JMP L1            ; loop to continue scanning the command arguments
+
+L2:
+  CALL MERGE_21     ; merge the two files into the output summary
+  JMP GOOD_EXIT     ; return to the operating system
+
+
+
+; PROCESS_MERGE is called by MERGE_21 to perform a single merge operation.
+;   We are called with SI pointing to and DX beyond the first file's bytes,
+;   BX pointing to and BP beyond the second file's bytes, and DI pointing
+;   to where we should output.  We compare the lines and take appropriate
+;   action: if the lines are the same we skip past them both.  Otherwise
+;   we output whichever line comes first.
+
+PROCESS_MERGE:
+  CMP SI,DX         ; is the first file exhausted?
+  JAE >L2           ; jump if yes, to output from the second file
+  LODSB             ; first file not exhausted: fetch a character from it
+  CMP AL,' '        ; was it a control character?
+  JB RET            ; return if so, to ignore it
+  DEC SI            ; not a control character: retreat back to it
+  CMP BX,BP         ; is the second file exhausted?
+  JAE >L1           ; jump if yes, to output from the first file
+  MOV AL,[BX]       ; fetch the first character in the second file's line
+  INC BX            ; advance the second-file input pointer
+  CMP AL,' '        ; was it a control character?
+  JB RET            ; return if so, to ignore it
+  DEC BX            ; not a control character: retreat back to it
+  PUSH SI,BX        ; preserve input registers during comparison
+  MOV CX,0          ; load the skip count
+SKIP_COUNT EQU $-2  ; skip count is plugged into above imm value
+  ADD SI,CX         ; add the skip count to the first-file pointer
+  ADD BX,CX         ; add the skip count to the second-file pointer
+  MOV CX,0          ; load the columns count for the comparison
+COL_COUNT EQU $-2   ; count is plugged into the above immediate value
+L0:                 ; loop here to compare each byte of the two files
+  LODSB             ; fetch the next byte from the first file
+  CMP AL,[BX]       ; compare it to the byte from the second file
+  JNE >L5           ; jump if they differ, to output a difference line
+  INC BX            ; bytes match: advance the second file pointer
+  CMP AL,0A         ; have we completed an entire matching line?
+  JE >L7            ; jump if we have, to return without output
+  LOOP L0           ; not end-of-line: loop for the next byte
+  CALL SKIP_LINE    ; columns count exhausted with match: advance beyond line
+L6:                 ; find LF in the second file
+  INC BX            ; advance the second input pointer
+  CMP AL,[BX-1]     ; did we just scan past the terminating linefeed?
+  JNE L6            ; loop if not, to scan another byte
+L7:                 ; the two lines match
+  POP AX,AX         ; discard the starting pointers-- both pointers advance
+  RET
+
+SKIP_LINE:
+  LODSB             ; fetch a byte
+  CMP AL,0A         ; is it the terminating linefeed?
+  JNE SKIP_LINE     ; loop if not, to scan another byte
+  RET
+
+L5:                 ; the two lines do not match
+  POP BX,SI         ; restore the pointers to the start of the lines
+  JA >L2            ; jump if the first file was greater, to output second line
+L1:                 ; first file's line was less: we will output it now
+JLOC DW             ; "+" option skips all output of minus-records
+  MOV AL,'-'        ; minus sign denotes a first-file line
+JCODE EQU (SKIP_LINE-$) BY 0EB
+  STOSB             ; output the minus sign
+L9:                 ; loop here to output each byte from the first file
+  LODSB             ; fetch a byte from the first file
+  STOSB             ; output the byte
+  CMP AL,0A         ; is it the terminating linefeed?
+  JNE L9            ; loop if not, to copy another byte
+  RET
+
+L2:                 ; we will output from the second file
+  MOV AL,'+'        ; plus-sign denotes a second-file line
+STOSLOC DB          ; "+" option suppresses output of the plus sign
+  STOSB             ; output the plus sign
+L8:                 ; loop here to output each byte from the second file
+  MOV AL,[BX]       ; fetch a byte from the second file
+  INC BX            ; advance the second file's input pointer
+  STOSB             ; output the byte
+  CMP AL,0A         ; is it the terminating linefeed?
+  JNE L8            ; loop if not, to copy another byte
+  RET
+
+
+

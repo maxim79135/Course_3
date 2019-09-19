@@ -1,0 +1,49 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FIND_ENV                                     See EILIB.TXT for terms
+;---------------
+
+; FIND_ENV_VAR finds the environment-variable whose name (with equals-sign)
+;   is pointed to by DS:SI.  We return NoCarry if found, with DS:SI pointing to
+;   the equals-sign.  We return Carry if not found, with DS:SI pointing to a
+;   null string.
+
+FIND_ENV_VAR:
+  MOV CX,SI         ; save the name-pointer in CX
+L1:                 ; loop here to scan each byte of the name
+  LODSB             ; fetch a byte
+  CMP AL,'='        ; is it the terminating equals-sign?
+  JNE L1            ; loop if not
+  XCHG CX,SI        ; swap starting pointer back into SI, beyond-ptr to CX
+  SUB CX,SI         ; calculate the number of bytes in the name-string
+  PUSH ES           ; preserve register across call
+  MOV AL,0          ; we search for nulls within the environment-buffer
+        #if def POINT_ENV
+  CALL POINT_ENV    ; point ES:DI to the environment string
+  INC DI            ; cancel the initial INC DI
+        #else
+  CS MOV ES,W[02C]  ; fetch the environment segment pointer
+  MOV DI,1          ; the following DEC DI will start us at zero within segment
+        #endif
+L2:                 ; loop here for each null-terminated string in buffer
+  DEC DI            ; retreat scan-pointer back to start of string
+  PUSH CX,SI        ; save registers across scan
+  REPE CMPSB        ; does the buffer string match the SI-target string?
+  POP SI            ; restore pointer to the target string
+  JE >L3            ; jump if there is a match (NoCarry is set to signal it)
+  DEC DI            ; the non-matching byte might have been null, retreat to it
+  MOV CH,0FF        ; the null-search count is effectively unlimited
+  REPNE SCASB       ; find the null-terminator to this non-matching string
+  SCASB             ; is it a double-null?
+  POP CX            ; restore target-string count
+  JNE L2            ; loop if it is not a double-null: more strings in buffer
+  DEC DI            ; buffer is exhausted: retreat back to double-null
+  STC               ; Carry flag signals failure
+  PUSH CX           ; cancel the following POP CX
+L3:                 ; common exit
+  POP CX            ; restore target string count
+  LEA SI,[DI-1]     ; point SI to the found string
+  MOV DS,ES         ; point DS also
+  POP ES            ; restore clobbered register
+  RET
+
+

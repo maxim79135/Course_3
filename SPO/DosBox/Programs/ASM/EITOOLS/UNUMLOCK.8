@@ -1,0 +1,10 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   UNUMLOCK                                     See EILIB.TXT for terms
+;---------------
+
+; UNUMLOCK turns off the NumLock light on the keyboard.
+
+  SUB AX,AX             ; load zero
+  MOV DS,AX             ; set DS to 0, to access the BIOS memory area
+  AND B[0417],0DF       ; turn off the NumLock bit in the BIOS memory area
+  RET                   ; return to the operating system

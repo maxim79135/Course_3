@@ -1,0 +1,83 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    PFWILD                                      See EILIB.TXT for terms
+;---------------
+
+; PFILE_WILD is called with SI pointing to a list of file names, possibly
+;   containing wildcard characters.  We will read and buffer every file
+;   on the list, calling PFILE_REC repeatedly, with bytes buffered at
+;   SI--DX, as described in PFILE.8.  Our caller can optionally supply
+;   a WILD_EOF_ACT routine, that we will call at the end of every file's
+;   processing.
+
+; If the caller does not provide a PFILE_REC routine, we equate PFILE_REC
+;   to PF_FIND.  In that case, our caller also must point BP to a
+;   string of BX bytes, to be searched in every file.  We will read and
+;   buffer every file in the list, and search for instances of the string
+;   in each file, calling PF_FOUND_ACT every time the string is found,
+;   with SI pointing to the found string within the generously-buffered
+;   file.  See PF_FIND.8 for details on how to define the string-searching
+;   routine that will be used.
+
+; PFOUND_WILD_HERE is a variation that sets PF_FOUND_ACT to the code
+;   following the CALL PFOUND_WILD_HERE instruction.  This allows the
+;   caller to use a very terse, slick, and tricky implementation:
+;
+;      ;;; set SI,BP,BX as indicated above
+;      CALL FIND_EVERY_INSTANCE
+;      ;;; this code is reached after all strings in all files are processed
+;
+;      ....
+;
+;    FIND_EVERY_INSTANCE:
+;      CALL PFOUND_WILD_HERE
+;      ;;; place code here that will process the found string pointed to by SI
+;      ;;; this code will be called for every found string in every file
+;
+;-------------------------------------------
+
+
+        #if !def PFILE_REC
+EXTRN PF_FIND:NEAR
+PFILE_REC EQU PF_FIND
+        #endif
+
+        DATA SEGMENT
+L0   DW ?           ; temporary storage for our return stack pointer
+        #if ref PFOUND_WILD_HERE
+PF_FOUND_ACT  DW ?
+        #endif
+        DATA ENDS
+
+        #if ref PFOUND_WILD_HERE
+PFOUND_WILD_HERE:
+  SS POP PF_FOUND_ACT W  ; use the code following our CALL, for PF_FOUND_ACT
+  ; from here we drop into PFILE_WILD, so that PFILE_WILD will return
+  ;    to our grandcaller
+        #endif
+PFILE_WILD:
+  PUSH DX           ; preserve register across call
+  MOV L0,SP         ; store our stack pointer, for our return
+  MOV CX,SP         ; have WILD_ARGS move only the stack beneath us
+  CALL WILD_ARGS    ; expand the wildcard specifications in the command tail
+  JCXZ >L9          ; return if there were no arguments
+L1:                 ; loop here for each file name to be output
+  PUSH CX           ; save the file counter
+  LODSW             ; fetch the file name pointer
+  XCHG DX,AX        ; swap the file name pointer into DX, for processing
+pfw1:               ; handy trap-point label for debugging
+  CALL PROCESS_FILE ; process the file
+        #if def WILD_EOF_ACT
+  CALL WILD_EOF_ACT ; perform end-of-file processing
+        #endif
+  POP CX            ; restore the file count
+        #if ONE_FOUND_ACT
+  TEST DX           ; was a found-action taken?
+  LOOPNZ L1         ; loop if not, to process the next file
+        #else
+  LOOP L1           ; loop to process the next file
+        #endif
+L9:
+  MOV SP,L0         ; restore SP, releasing storage
+  POP DX            ; restore clobbered register
+  RET
+

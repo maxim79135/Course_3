@@ -1,0 +1,35 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   GEN_NONB                                     See EILIB.TXT for terms
+;---------------
+
+; GEN_NONBLANK_LINE is a GEN_SORTP routine, called by the LSORT module to
+;    define the bounds of the SI-pointed record, by advancing SI beyond
+;    the record, and by returning AX set to a key for the record, suitable
+;    for feeding to COMPARE.  In this case, a record is a simple line,
+;    terminated by a linefeed (0A).  If the line begins with a control
+;    character (e.g. EOF or blank line), we advance beyond the character
+;    and return NC/NZ signalling LSORT to ignore it.  Otherwise if SI
+;    reaches BX without a linefeed being seen, we return Carry to signal
+;    an incomplete record.
+
+GEN_NONBLANK_LINE:
+  PUSH SI           ; save the starting record pointer
+  LODSB             ; fetch the first character
+  CMP AL,' '        ; is it a control character?
+  JAE >L3           ; skip if not, for normal scanning
+  OR AL,0FF         ; control character: set NC/NZ so it is ignored
+  POP AX            ; discard the starting pointer
+  RET
+
+L1:                 ; loop here to scan each succeeding character of the line
+  LODSB             ; fetch the character
+L3:
+  CMP AL,0A         ; is it the terminating linefeed?
+  JE >L2            ; skip if it is
+  CMP SI,BX         ; have we reached the end of the buffer?
+  JB L1             ; loop if not, to scan another character
+  STC               ; incomplete record: set Carry to signal it
+L2:
+  POP AX            ; return the pointer to the start of the line
+  RET
+

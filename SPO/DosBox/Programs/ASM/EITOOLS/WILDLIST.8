@@ -1,0 +1,34 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   WILDLIST                                     See EILIB.TXT for terms
+;---------------
+
+; WILDLIST expands the wildcard specifications in the command tail, and
+; outputs each resulting file, one per line, to console output.
+
+NO_DOSCHECK EQU 1   ; we will not trap errors in MSDOS.8
+
+WILDLIST:
+  SUB CX,CX         ; our stack runs to 0000
+  MOV SI,081        ; point to our command tail
+  CALL WILD_ARGS    ; expand the wildcard specifications in the command tail
+  MOV DX,DI,02000   ; point DX and DI to our output buffer
+  JCXZ >E1          ; output error message if there were no arguments
+  POP AX            ; there were arguments: discard leading null pointer
+L1:                 ; loop here for each file name to be output
+  POP AX            ; pop the pointer to the name
+  CALL COPYZ_AX     ; output the name
+  MOV AX,0A0D       ; load CRLF
+  STOSW             ; output trailing CRLF
+  LOOP L1           ; loop to output the next name
+  CALL OWRITE_DI    ; output the complete list to the console
+  JMP GOOD_EXIT     ; return to the operating system
+
+E1:                 ; there were no arguments in the command tail
+  JMP USAGE_EXIT    ; output the usage message and exit
+
+  DB 0D,0A,0A
+USAGE_MSG:
+  DB 'usage: WILDLIST fnames >out',0D,0A
+  DB '    outputs expanded list of file names, one per line',0D,0A
+  DB 0D,0A,0,01A
+

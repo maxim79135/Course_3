@@ -1,0 +1,19 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   COPY48                                       See EILIB.TXT for terms
+;---------------
+
+; COPY_FILE48 copies the file whose name is pointed to by DX, to the
+;   file whose name is pointed to by DI, using a 48K buffer whose segment
+;   is 64K beyond the current program segment.
+
+COPY_FILE48:
+  PUSH ES,SI        ; preserve registers across call
+  MOV AX,CS         ; fetch our program segment
+  ADD AX,01000      ; advance the segment value to the next 64K
+  MOV ES,AX         ; point ES to the buffer segment for copying
+  MOV SI,48K        ; load segment size of 48K
+  CALL COPY_FILE    ; copy the file
+  POP SI,ES         ; restore clobbered registers
+  RET
+
+

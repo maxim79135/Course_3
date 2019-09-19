@@ -1,0 +1,22 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PINK                                         See EILIB.TXT for terms
+;---------------
+
+; PINK converts the text-mode screen to white letters against a pink
+;   background.
+
+PINK:
+  MOV BX,37 BY 6      ; BH=37 pink value, BH=6 palette register number
+  MOV AX,01000        ; BIOS function codes for SET_PALETTE_REGISTER
+  INT 010             ; set register so a background code of 6 is pink
+  MOV ES,BX,0B800     ; we will output directly to the color screen
+  MOV CX,29*80        ; we will output to as many as 29 rows
+  MOV DI,1            ; point to the attribute byte of the first video word
+  MOV AL,111          ; load attribute number of "white on pink"
+L1:                   ; loop here to change each attribute byte
+  STOSB               ; output the white-on-pink attribute
+  INC DI              ; advance past the next content byte
+  LOOP L1             ; loop to output the next attibute byte
+  RET                 ; exit the program
+
+

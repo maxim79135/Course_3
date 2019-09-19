@@ -1,0 +1,57 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   FLICKER                                      See EILIB.TXT for terms
+;---------------
+
+; FLICKER is a memory resident program that constantly displays the value
+;   of a single memory byte as a two-digit hexadecimal number in the
+;   upper left corner of the screen.
+
+FLICKER:
+  MOV SI,081                ; point to our command tail
+  CALL VERIFY_HEX           ; fetch the segment value
+  MOV MEM_SEG,AX            ; store the segment value
+  CALL VERIFY_HEX           ; fetch the offset value
+  MOV MEM_OFFSET,AX         ; store the offset value
+  CALL NO_MORE_ARGS         ; insure that there are no more arguments
+  CALL ATTACH_TO_TIMER      ; attach ourselves to the system timer interrupt
+  MOV DX,END/16+2           ; load the number of paragraphs in our program
+  MOV AH,031                ; MS-DOS function number for EXIT_RESIDENT
+  INT 021                   ; terminate the stay resident
+
+MEM_SEG     DW ?            ; pointer to the segment of our memory byte
+
+OUR_TIMER:
+  PUSH AX,CX,DI,ES          ; preserve registers across call
+  CS MOV ES,MEM_SEG         ; point to our memory segment
+  MOV DI,0                  ; point to the byte's offset
+MEM_OFFSET EQU W[$-2]       ; offset is plugged into the above immediate value
+  ES MOV CH,[DI]            ; fetch the memory byte
+  SUB AX,AX                 ; load zero
+  MOV ES,AX                 ; point DS to zero, to address BIOS variables
+  ES MOV DI,W[044E]         ; fetch the offset-within-segment of the screen
+  SHR DI,CL,4               ; convert the offset to a paragraphs count
+  ES MOV AL,B[0449]         ; fetch display mode
+  ADD DI,0B000              ; VIDEO_SEG is 0B000 for video mode 7
+  CMP AL,7                  ; is the video mode 7 (monochrome)?
+  JE >L0                    ; jump if yes, that's an acceptible mode
+  ADD DI,0800               ; VIDEO_SEG is 0B800 for page 0, color modes
+  CMP AL,2                  ; is the video mode 2?
+  JE >L0                    ; jump if yes, that's also an acceptible mode
+  CMP AL,3                  ; not 7 or 2; it had better be 3
+  JNE >L1                   ; skip output if is was a graphics mode
+L0:
+  MOV AL,CH                 ; fetch the memory byte
+  MOV ES,DI                 ; point to the screen segment
+  SUB DI,DI                 ; we will output to offset zero in that segment
+  CALL HEX_AL               ; output the hex byte value
+L1:
+  POP ES,DI,CX,AX           ; restore clobbered registers
+  RET
+
+SCREEN_HEX EQU 1            ; hex output will be to the screen
+
+USAGE_MSG:
+  DB 'usage: FLICKER seg offset',0D,0A
+  DB '  constantly displays a memory byte',0D,0A
+  DB 0
+

@@ -1,0 +1,64 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   GATHERLP                                     See EILIB.TXT for terms
+;---------------
+
+; GATHER_LINE_PTRS gathers the pointers from lines in the buffer
+;   SI--DX.  We ignore blank lines, and any incomplete line at the end
+;   of the file.  We output the pointers to the buffer at BP, limited by
+;   BX.  We return with BP pointing to, and BX beyond, the sequence
+;   of pointers.  If MAX_GLP is set, then we also return CX set to the
+;   maximum number of bytes in a line.
+
+GATHER_LINE_PTRS:
+        #if MAX_GLP
+  SUB CX,CX             ; initialize maximum line size
+        #endif
+  PUSH BP               ; save the starting pointers-pointer
+L1:                     ; loop here to scan over leading blanks in a line
+  CMP SI,DX             ; have we reached the end of the input?
+  JAE >L4               ; jump if we have, to go to the next stage
+  MOV [BP],SI           ; store the pointer to this line
+L2:                     ; loop here to scan over leading blanks
+  LODSB                 ; fetch a byte from the line
+  CMP AL,0A             ; is it the terminating linefeed?
+  JE L1                 ; loop if yes, to discard the line
+  CMP SI,DX             ; are we at the end of the file?
+  JAE >L4               ; jump if yes, to go to the next stage
+  CMP AL,' '            ; is the byte a blank?
+  JBE L2                ; loop if next, to continue scanning blanks
+L3:                     ; nonblank seen: loop here to scan the rest of the line
+  CMP SI,DX             ; end of file?
+  JAE >L4               ; jump if yes, to go to the next stage
+  LODSB                 ; fetch a byte from the line
+  CMP AL,0A             ; is it the terminating linefeed?
+  JNE L3                ; loop if not, to continue scanning the line
+        #if MAX_GLP
+  MOV AX,SI             ; fetch the beyond-line pointer
+  SUB AX,[BP]           ; compute the size of the line
+  CMP AX,CX             ; if the size bigger than the previous maximum
+  IF AE XCHG CX,AX      ; if yes then update the maximum
+        #endif
+  INC BP,2              ; line is scanned: advance the pointers-pointer
+  CMP BP,BX             ; is the pointers buffer full?
+  JB L1                 ; loop if not, to scan another line
+  POP BP                ; restore BP to the start of the pointers
+  MOV AX,TOO_BIG_MSG    ; point to message saying to
+L8:                     ; common error exit
+  STC                   ; Carry signals failure
+  RET
+
+L4:                     ; lines are successfuly scanned
+  MOV BX,BP             ; point BX beyond the pointers output
+  POP BP                ; restore BP to the start of the pointers
+  CMP BX,BP             ; were there any lines?
+  MOV AX,NO_LINES_MSG   ; load error message, in case there weren't
+  JE L8                 ; error exit if there were no lines
+  RET
+
+TOO_BIG_MSG:
+  DB 'Sorry, the file is too big.',0D,0A,0
+NO_LINES_MSG:
+  DB 'File has only blank lines.',0D,0A,0
+
+
+

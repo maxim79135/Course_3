@@ -1,0 +1,66 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   ATTACH_T                                     See EILIB.TXT for terms
+;---------------
+
+; ATTACH_TO_TIMER attaches our program to the system's timer, so that the
+;   NEAR procedure OUR_TIMER is called on every tick of the clock.
+;
+; *** WARNING *** If OUR_TIMER is attached and the program is not terminate-
+;    and-stay-resident, then you must call UNATTACH_TIMER before exiting back
+;    to the operating system, or else the machine will crash when it jumps to
+;    L1 below, which won't be in memory any more.
+
+L0:                         ; timer-interrupt code when we are attached
+  DW 09090                  ; NOPs change to JMP >L2 if we need to self-stub
+  CALL OUR_TIMER            ; invoke our NEAR procedure
+C3 EQU ($-2-L0) BY 0EB
+L2:
+  DB 0EA                    ; opcode for direct FAR jump
+OLD_TIMER DW L0,?           ; jump to the old timer code
+
+ATTACH_TO_TIMER:
+L9 DB
+  MOV AX,09090              ; load NOPs to enable our handler
+  CS MOV L9,0C3             ; RET opcode disables future calls to us
+  CS XCHG L0 W,AX           ; swap the NOPs to into our handler
+  CMP AL,090                ; were the NOPs already there?
+  JNE RET                   ; return if not-- it had been stubbed
+  PUSH DS                   ; not stubbed -- preserve register across call
+  SUB AX,AX                 ; load zero
+  MOV DS,AX                 ; point DS to the low-memory interrupt vector
+  CLI                       ; we cannot tolerate interrupts during swapping
+  MOV AX,L0                 ; fetch the pointer to the above L0 code
+  XCHG AX,W[070]            ; swap with the offset in the interrupt vector
+  CS MOV OLD_TIMER W,AX     ; store the old offset
+  MOV AX,CS                 ; fetch our code segment value
+  XCHG AX,W[072]            ; swap with the segment in the interrupt vector
+  CS MOV OLD_TIMER+2 W,AX   ; store the old segment
+  STI                       ; we can tolerate interrupts again
+  POP DS                    ; restore clobbered register
+  RET
+
+
+; UNATTACH_TIMER reverses the effects of a previous call to ATTACH_TO_TIMER, so
+;   that our code is no longer executed on each timer tick.
+
+UNATTACH_TIMER:
+  CS MOV L9,0B8             ; MOV AX,iw opcode re-enables ATTACH_TO_TIMER calls
+  PUSH DS                   ; preserve register across call
+  SUB AX,AX                 ; load zero
+  MOV DS,AX                 ; point DS to the low-memory interrupt vector
+  MOV AX,CS                 ; fetch our segment register value
+  CLI                       ; we cannot tolerate interrupts during swapping
+  CMP AX,W[072]             ; is the timer pointing to our segment?
+  JE >L1                    ; jump if it is -- we can unattach completely
+  CS MOV L0 W,C3            ; somebody else chained in-- we must stub ourselves
+  JMP >L2
+
+L1:
+  CS MOV AX,OLD_TIMER W     ; fetch the old offset
+  MOV W[070],AX             ; restore it to the interrupt vector
+  CS MOV AX,OLD_TIMER+2 W   ; fetch the old segment
+  MOV W[072],AX             ; restore it to the interrupt vector
+L2:
+  STI                       ; we can tolerate interrupts again
+  POP DS                    ; restore clobbered register
+  RET

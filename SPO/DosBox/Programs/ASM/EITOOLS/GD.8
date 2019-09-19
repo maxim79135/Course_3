@@ -1,0 +1,42 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;     GD                                         See EILIB.TXT for terms
+;---------------
+
+; GD with no operands changes the current directory to \D\D86; otherwise,
+;   to \D\operand.
+
+GD:
+  MOV DL,2          ; load number for C drive
+  MOV AH,0E         ; MS-DOS function code for SET_DRIVE
+  INT 021           ; change the current drive to drive C
+  MOV SI,081        ; point to our command tail
+  CALL TAIL_BLANKS  ; advance to the operand
+  CMP AL,0D         ; are there no operands?
+  JE >L1            ; skip if there are
+  MOV DI,NEWDIR     ; operand seen: point to surdirectory slot
+L2:                 ; loop here to copy the operand
+  LODSB             ; fetch byte
+  STOSB             ; output byte
+  CMP AL,' '        ; terminating blank seen?
+  JA L2             ; loop if not, to copy another byte
+  DEC DI            ; retreat to terminator
+  MOV AL,0          ; load null
+  STOSB             ; null-terminate the path
+L1:
+  MOV AH,03B        ; MS-DOS function code for CHANGE_DIR
+  MOV DX,PATH       ; point to the new current directory
+  INT 021           ; change the current directory
+  MOV AX,04C00      ; MS-DOS function codes for GOOD_EXIT
+  INT 021           ; exit the program
+
+        #if GP      ; alternate path if we assemble with the GP flag
+PATH:
+  DB '\P\'
+NEWDIR:
+  DB 'TAPCIS',0
+        #else       ; default path
+PATH:
+  DB '\D\'
+NEWDIR:
+  DB 'D86',0
+        #endif

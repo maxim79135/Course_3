@@ -1,0 +1,37 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   GOODZ                                        See EILIB.TXT for terms
+;---------------
+
+; GOODZ resets the VGA font patterns for characters digit zero and capital O
+;    to new values, such that neither has any slashes through them, or
+;    dots in them.
+
+GOODZ:
+  MOV BP,NEW_ZERO       ; point to the new pattern for digit zero
+  MOV DX,030            ; load ASCII value for digit zero
+  CALL >L1              ; reset zero to the new font pettern
+  MOV BP,NEW_OH         ; point to new pattern for letter O
+  MOV DX,04F            ; load ASCII value for letter O
+L1:                     ; reset character DL to a new font pattern
+  MOV BX,>L0 BY 0       ; 14 bytes per character, block 0
+  MOV CX,1              ; we are storing the char pattern for one byte
+  MOV AX,01100          ; BIOS function code for STORE_CHAR_PATTERN
+  INT 010               ; store a new pattern for ASCII value DL
+  RET
+
+        #if CHARHT=16
+NEW_ZERO:                                 ; 16-row dot pattern for digit zero
+  DB 0,0,03E,8 DUP 063,03E
+L0 EQU $-NEW_ZERO
+NEW_OH:                                   ; 16-row dot pattern for letter O
+  DB 0,0,01C,036,6 DUP 063,036,01C
+        #elseif CHARHT=14
+NEW_ZERO:
+  DB 0,0,07C,7 DUP 0C6,07C
+L0 EQU $-NEW_ZERO
+NEW_OH:
+  DB 0,0,038,06C,5 DUP 0C6,06C,038
+        #else
+  ERROR
+        #endif
+

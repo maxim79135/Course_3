@@ -1,0 +1,57 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   BXSWITCH                                     See EILIB.TXT for terms
+;---------------
+
+; BX_SWITCHES scans SI-pointed memory for command-tail switches, as defined
+;   by the BX-pointed switch table.  The table consists of a sequence of
+;   three-byte records; each record is a switch byte followed by an action
+;   routine to be called if the switch byte is the first nonblank seen.
+;   The table is terminated by a zero switch-byte.  We call the action routine
+;   for each table byte seen (with SI advanced beyond that table byte), and
+;   then return with SI advanced to the first byte not found in the table.
+
+L0:                   ; loop here if a switch byte was seen
+  CALL >C9            ; advance SI beyond switch char and do the action
+  POP BX              ; restore the switch table pointer
+BX_SWITCHES:
+  CALL TAIL_BLANKS    ; advance SI to the next nonblank
+  PUSH BX             ; save the switch table pointer
+  CALL FIND_ACT_AL    ; look for the character in the switches table
+  JNC L0              ; loop if it was a switch, to act upon the switch
+  POP BX              ; not a switch byte: restore the table pointer and return
+  RET
+
+
+; FIND_ACT_AL expects BX to point to a table of three-byte records.  Each
+;   byte consists of a byte-code and an associated word -- typically an
+;   action routine that our caller will call.  We are called with AL set
+;   to a value to be searched.  If the value is found in the table, we return
+;   NoCarry with BX pointing to the value within the table.  In typical
+;   usage, the caller will then perform the action with a CALL W[BX+1]
+;   instruction.
+
+FIND_ACT_AL:
+  CMP AL,[BX]         ; does our byte match the switch table byte?
+  JE RET              ; jump if it does, to call the action routine
+  ADD BX,3            ; no match: advance the switch table pointer
+  CMP B[BX],0         ; have we reached the end of the switch table?
+  JNE FIND_ACT_AL     ; loop if not, to continue scanning the table
+  STC                 ; return Carry to signal the byte was not found
+  RET  
+
+
+        #if def LETTER_SWITCHES
+E1:                       ; letter-switch was not found
+  JMP USAGE_MSG           ; abort the program
+
+LETTER_SWITCH:
+  MOV BX,LETTER_SWITCHES  ; point to action table supplied by caller
+  CALL TAIL_BLANKS        ; advance SI to the next nonblank
+  OR AL,020               ; coerce the letter to lower-case
+  CALL FIND_ACT_AL        ; find the letter in the table
+  JC E1                   ; error if the letter was not found
+        #endif  
+C9:
+  INC SI                  ; advance SI beyond the switch byte
+  JMP W[BX+1]             ; call the action routine
+

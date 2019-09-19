@@ -1,0 +1,18 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    RCON                                        See EILIB.TXT for terms
+;---------------
+
+; RCON reads a line of standard input, and returns the first character
+;  as its errorlevel.
+
+RCON:
+  MOV DX,0200           ; point to free memory beyond our program
+  SUB BX,BX             ; load the open-file handle for standard input
+  MOV AH,03F            ; MS-DOS function number for READ
+  MOV CX,DX             ; 0200 bytes is plenty to read
+  INT 021               ; read some bytes from standard input
+  MOV AL,[0200]         ; fetch the first byte read
+  CMP AL,'a'            ; is it a letter?
+  IF AE AND AL,0DF      ; if yes then coerce the letter to upper-case
+  MOV AH,04C            ; MS-DOS function number for EXIT
+  INT 021               ; exit the program, with errorlevel AL

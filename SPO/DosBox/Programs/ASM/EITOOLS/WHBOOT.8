@@ -1,0 +1,35 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   WHBOOT                                       See EILIB.TXT for terms
+;---------------
+
+; WHBOOT writes standard input to the first 4 sectors of the first hard drive.
+
+; NOTE that running this program under uncontrolled circumstances would be 
+;    a disaster!
+
+WHBOOT:
+  SUB BX,BX            ; load the open-file handle for standard input
+  MOV DX,01000         ; point DX to a free memory area
+  MOV CX,0810          ; load the number of bytes we will write
+  CALL MREAD           ; read the bytes from standard input
+  JC >E1               ; usage exit if there was a read error
+  CMP AX,CX            ; were there enough bytes read?
+  JB >E1               ; usage exit if there were not
+  MOV DX,0 BY 080
+  MOV CX,0 BY 1        ; sector CL is 1, track CH is 0
+  MOV BX,01000         ; we will read the sector to 01000
+  MOV AX,0B04          ; we are writing AL=4 sectors, function 0B is WRITE
+  INT 013              ; write the sectors
+  JMP GOOD_EXIT        ; exit back to the operating system
+
+E1:                    ; not enough bytes were read
+  JMP USAGE_EXIT       ; output a usage message and exit the program
+
+
+USAGE_MSG:
+  DB 'usage: WHBOOT <file',0D,0A
+  DB '   writes the file to the first sectors of hard disk',0D,0A
+  DB 0D,0A
+  DB 'WARNING: this could effectively destroy the contents of the hard disk!!'
+  DB 0D,0A
+  DB 0

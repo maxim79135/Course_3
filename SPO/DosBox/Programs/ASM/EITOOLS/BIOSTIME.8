@@ -1,0 +1,41 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   BIOSTIME                                     See EILIB.TXT for terms
+;---------------
+
+; BIOSTIME gets the current time from the BIOS, and calls DOS to set that
+;   time.  This will correct the time after having run the SoftICE debugger
+;   under Windows -- that debugger disables all interrupts, so that the
+;   system clock goes behind by however long one is in the debugger.
+
+; I have also added code to clear video memory of the monochrome display
+; for SoftICE, to avoid burn-in of the SoftICE screen.
+
+BIOSTIME:
+  MOV AH,2            ; BIOS function code for READ_CLOCK
+  INT 01A             ; set CH=h CL=m DH=s, all BCD values
+  CALL SWAP_FIX       ; swap DX seconds into CX and convert from BCD to binary
+  CALL SWAP_FIX       ; swap hours back into CX and convert from BCD to binary
+  MOV AH,02D          ; MS-DOS function number for SET_TIME
+  INT 021             ; reset the time according to DOS
+  MOV ES,AX,0B000     ; point ES to monochrome video memory
+  SUB DI,DI           ; point DI to offset zero within video memory
+  MOV AX,0720         ; load a blank character
+  MOV CX,25*80        ; load the number of characters to blank
+  REP STOSW           ; propagate the blanks across the screen
+  MOV AX,04C00        ; MS-DOS funtion codes for GOOD_EXIT
+  INT 021             ; exit back to the operating system
+
+
+SWAP_FIX:
+  XCHG CX,DX
+  MOV AL,CH           ; fetch the BCD hours count
+  AAM 16              ; unpack the nibbles
+  AAD                 ; rejoin the nibbles as a decimal value
+  MOV CH,AL           ; store the hours count
+  MOV AL,CL           ; fetch the BCD minutes count
+  AAM 16              ; unpack the nibbles
+  AAD                 ; rejoin the nibbles as a decimal value
+  MOV CL,AL           ; store the minutes count
+  RET
+
+

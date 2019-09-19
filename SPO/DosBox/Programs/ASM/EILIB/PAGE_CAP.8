@@ -1,0 +1,17 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   PAGE_CAP                                     See EILIB.TXT for terms
+;---------------
+
+; PAGE_CAP_DI is called with DI pointing beyond a buffer of bytes about
+;   to be printed.  We strip all trailing blanks and control characters
+;   from the buffer, then append a CR and a formfeed, to insure a
+;   page-eject without any unneccessary trailing blank material.
+
+L1:                     ; loop here to retract trailing blanks and controls
+  DEC DI                ; retreat the output pointer
+PAGE_CAP_DI:
+  CMP B[DI-1],' '       ; is this byte still a blank or control?
+  JBE L1                ; loop if it is, to retreat some more
+  MOV AX,0C0D           ; load CR and formfeed
+  STOSW                 ; output a trailing CRFF
+  RET

@@ -1,0 +1,79 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   LOSTSTR                                      See EILIB.TXT for terms
+;---------------
+
+; LOSTSTR examines every cluster of a disk drive, looking for a given string.
+;   We output a summary of all entries, containing the cluster number and
+;   the surronding bytes.
+
+; This program was written ten years ago.  It will need to be reworked,
+; in order to function with today's multi-gigabyte hard drives.
+
+        DATA SEGMENT
+TARG_LENGTH  DW ?       ; length of the string we are looking for
+TARGET:                 ; contents of the string we are looking for
+  DB 128 DUP (?)
+OBUFF:                  ; buffer for our display output
+  DB 16K DUP ?
+OBUFF_LIM:              ; overflow for the buffer
+  DB 1K DUP ?
+        DATA ENDS
+
+LOSTSTR:
+  MOV SI,081            ; point to our invocation command tail
+  MOV DI,TARGET         ; string parameter will be output to TARGET
+  CALL SCAN_STRING      ; scan the string we are searching for
+  mov al,081            ; load BIOS index number for the first hard drive
+  CALL INIT_CLUS        ; initialize cluster scanning
+  MOV B_CLUS,AX         ; store the number of bytes per cluster
+  CALL CLUS_REPORT      ; check all clusters and generate the report
+  JMP GOOD_EXIT         ; return to the operating system
+
+  RET
+
+CHECK_CLUS:
+  PUSH DI             ; preserve the output pointer
+  MOV SI,TARGET       ; point to the target string
+  MOV BX,[SI-2]       ; load the size of the string
+  MOV CX,0            ; load the number of bytes in this cluster
+B_CLUS EQU W[$-2]     ; cluster count is plugged into the above imm word
+  MOV DI,DX           ; point DI to the cluster buffer
+  CALL FIND_NOCASE    ; find the string within the cluster
+  MOV SI,DI           ; point SI beyond the found string
+  POP DI              ; restore the output pointer
+  JNZ RET             ; return if the string was not in this cluster
+  MOV AX,0            ; fetch this cluster number
+THIS_CLUS EQU W[$-2]  ; cluster number is plugged into the above imm value
+  CALL OUT_AX_10      ; output the cluster number
+  MOV AX,'  '         ; load blanks
+  STOSW               ; output intervening blanks
+  MOV AX,CX,60        ; we will output 60 display bytes total
+  SUB AX,TARG_LENGTH  ; compute the number of bytes besides the target
+  SHR AX,2            ; compute the number of bytes on each side
+  SUB SI,AX           ; retreat input pointer by the size of the left prefix
+L1:                   ; loop here to output each byte of the display line
+  LODSB               ; fetch the byte from the cluster
+  AND AL,07F          ; coerce the byte to the lower 128 range
+  CMP AL,020          ; is the byte a control character?
+  IF B ADD AL,040     ; is yes then convert it to an upper-case letter
+  CMP AL,07F          ; is it the DEL code?
+  IF E MOV AL,020     ; convert DEL to space
+  STOSB               ; output the filtered byte
+  LOOP L1             ; loop to display the next byte
+  MOV AX,0A0D         ; load terminating CRLF
+  STOSW               ; output the terminating CRLF
+  JMP CHECK_OBUFF     ; check for output buffer overflow
+
+
+OUT_AX_10:          ; output decimal AX, 7 chars wide, right-justified
+  MOV DL,0          ; high byte of output is zero
+  MOV BH,7          ; field width is 7 chars
+OUT_10:
+  MOV BL,10         ; numeric display base is decimal
+  MOV DH,' '        ; output will be left-padded with blanks
+  JMP NUMOUT        ; output DLAX as a decimal number
+
+
+USAGE_MSG:
+  DB 'usage: LOSTSTR "string" >a:out',0D,0A
+  DB '    outputs cluster numbers containing the given string',0D,0A,0

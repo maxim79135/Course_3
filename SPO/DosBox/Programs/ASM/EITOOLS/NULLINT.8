@@ -1,0 +1,8 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   NULLINT                                      See EILIB.TXT for terms
+;---------------
+
+; NULLINT is a "do-nothing" program designed to be fed to INTCHAIN.
+
+NULLINT:
+  JMP 0FB           ; jump to the old routine supplied by INTCHAIN

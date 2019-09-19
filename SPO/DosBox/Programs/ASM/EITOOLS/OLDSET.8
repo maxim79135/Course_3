@@ -1,0 +1,87 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   OLDSET                                       See EILIB.TXT for terms
+;---------------
+
+; OLDSET sets the main date-time stamp of the file(s) named in the command
+;   tail, to the oldest of the several dates/times associated with that
+;   file.
+
+; This program assumes we are running Win95 or later.
+
+OLDSET:
+  CALL NONBLANK_TAIL    ; verify there are command-tail arguments
+  MOV BP,OLDSET_DX      ; point to the action routine for each file
+  CALL WILD_BP_ACT      ; perform OLDSET_DX for each named file
+  JMP GOOD_EXIT         ; exit the program
+
+  DB 0D,0A
+USAGE_MSG:
+  DB 0D,0A
+  DB 'usage: OLDSET fnames',0D,0A
+  DB '   set date-time stamps to the oldest stored time for each file',0D,0A
+  DB 0D,0A,0,01A
+
+        DATA SEGMENT
+FSTRUC:                 ; info structure returned by a GET_FILE_ATTRS call
+  ATTRIBS        DD ?   ; bitmap of file attributes
+CREATE_TIME:            ; time the file was created
+  DQ ?
+ACCESS_TIME:            ; time the file was last accessed
+  DQ ?
+MODIFY_TIME:            ; time the file was last modified
+  DQ ?
+  SERIAL_NUMBER  DD ?   ; we do not look at these remaining entries
+  HIGH_FSIZE     DD ?
+  LOW_FSIZE      DD ?
+  N_LINKS        DD ?
+  HIGH_INDEX     DD ?
+  LOW_INDEX      DD ?
+        DATA ENDS
+
+
+OLDSET_DX:
+  MOV AX,03D02        ; MS-DOS function codes for OPEN_READ_WRITE
+  INT 021             ; open the file
+  JC RET              ; return, doing nothing, if the file doesn't exist
+  XCHG BX,AX          ; swap the open-file handle into BX
+  SUB CX,CX           ; high word of seek offset is zero
+  SUB DX,DX           ; low word of seek offset is zero
+  MOV AX,04202        ; MS-DOS function codes for SEEK_FROM_END
+  INT 021             ; seek to the end of the file
+  MOV DX,FSTRUC       ; point to our structure to be filled
+  MOV AX,071A6        ; new MS-DOS function codes for GET_FILE_ATTRS
+  STC                 ; call requires Carry to be set
+  INT 021             ; fill the structure with the file's time codes
+  MOV SI,CREATE_TIME  ; point to the first time code
+  MOV DI,SI           ; also point DI to the first code
+  CALL CMP8           ; advance DI, compare, and leave smaller code in SI
+  CALL CMP8           ; advance DI again, and leave smallest code in SI
+  PUSH BX             ; save the file handle
+  MOV BL,0            ; code for "translate to DOS format"
+  MOV AX,071A7        ; codes for TRANSLATE_TIME
+  INT 021             ; translate the smallest code to date-time CXDX
+  POP BX              ; restore the open-file handle
+  MOV AX,05701        ; MS-DOS function codes for SET_DATE_TIME
+  INT 021             ; set the date-time to the earliest time found
+  JMP MCLOSE          ; close the file
+
+
+; CMP8 is called with SI pointing to the smallest 8-byte time code yet found,
+;   and DI+8 pointing to the next time code to compare to SI.  We advance DI,
+;   compare SI to that next code, and return with SI pointing to the smaller
+;   of the two codes.
+
+CMP8:
+  MOV CX,8          ; load our byte count
+  ADD DI,CX         ; advance DI to the next 8-byte record
+  PUSH SI,DI        ; save SI and DI during the compare
+  ADD DI,7          ; advance DI to the last byte of the record
+  ADD SI,7          ; advance SI to the last byte of the record
+  STD               ; comparison is backwards
+  REPE CMPSB        ; compare the records
+  CLD               ; restore forward scanning
+  POP DI,SI         ; restore starting record pointers
+  IF A MOV SI,DI    ; if SI was bigger then reset it to DI
+  RET
+
+  

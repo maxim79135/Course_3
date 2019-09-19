@@ -1,0 +1,112 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  DECODATE                                      See EILIB.TXT for terms
+;---------------
+
+; DECODE_DATE translates the encoded date number BXCX into a year CX, a month
+;   DH, and a day DL.
+
+; Dates are encoded starting from the ideal date March 1, 0000 in the
+; Gregorian calendar (the date is ideal since Gregory didn't exist then).
+; We break down the date by observing that the Gregorian calendar breaks time
+; into successively smaller blocks, each block occupying the same number of
+; days within the next-larger block, except for the last block.  We can thus
+; perform a succession of divisions on the date number, by the number of
+; days in each block.  The blocks are 400 years = 365*400+97 = 146097 days,
+; 100 years = 36524 days, 4 years = 1461 days, and 1 year = 365 days, 5 months  The
+; = 31+30+31+30+31 = 153 days, 2 months = 61 days, and 1 month = 31 days.
+; 8086's 32-by-16 division suffices for all divisions except the first.
+; For that division, we use the approximation 146097 = 65536 * (1935/868)
+; to compute a guess for the answer, then adjust if the guess was wrong.
+; For the division by 365, we need to adjust for the last year which
+; is longer not shorter-- we need to insure that the last day is in the
+; 4th, not the 5th year.
+
+DECODE_DATE:
+  PUSH BP           ; preserve register across call
+  MOV BP,868        ; load the first multiplier
+  MOV AX,CX         ; fetch low(D)
+  MUL BP            ; set DXAX to low(D) * 868
+  MOV AL,BL         ; fetch high(D)
+  MOV AH,100        ; load multiplier 100 = 868 mod 256
+  MUL AH            ; AX = high(D) * 100
+  ADD AH,BL         ; AX = high(D) * 356
+  ADD AH,BL         ; AX = high(D) * 612
+  ADD AH,BL         ; AX = high(D) * 868
+  ADD AX,DX         ; AX = D * 868 / 65536
+  SUB DX,DX         ; DXAX = D * 868 / 65536
+  MOV BP,1935       ; load the first divisor
+  DIV BP            ; now AX= (D*868/65536)/1935= D/(65536*(1935/868))=D/146097
+  XCHG BP,AX        ; swap number of 400-year blocks into BP
+  MOV AX,15025      ; load 146097 mod 65536
+  MUL BP            ; multiply back the number of blocks
+  ADD DX,BP         ; add 65536 * BP
+  ADD DX,BP         ; add another 65536 * BP now DXAX=146097*BP
+  SUB CX,AX         ; reduce D by BP * 146097
+  SBB BX,DX         ; carry the subtraction to the upper words
+  JNC >L1           ; skip if we now have a true remainder
+  DEC BP            ; BP is too big: reduce it
+  ADD CX,15025      ; add low(146097) back to remainder
+  ADC BX,2          ; carry the addition into high words (2 is high(146097))
+L1:
+  ADD BP,BP         ; BP = #400's * 2
+  ADD BP,BP         ; BP = #400's * 4
+  MOV DX,BX         ; copy remainder within 400-block to DXAX
+  XCHG AX,CX        ; swap the low word of the remainder into AX
+  MOV CX,36524      ; load number of days in a 100-year block
+  CALL DIV_CX_CK4   ; calculate AX=century+total, DX=year within century
+  MOV CL,100        ; load multiplier
+  MUL CL            ; calculate the number of years so far accumulated
+  XCHG BP,AX        ; swap the number of years into BP
+  XCHG AX,DX        ; fetch the remainder mod 100 years
+  SUB DX,DX         ; extend the remainder AX to DXAX
+  MOV CX,1461       ; load the number of days in 4 years
+  DIV CX            ; calculate AX = #4's, DX = remainder mod 4 years
+  ADD AX,AX         ; AX = #4's * 2
+  ADD AX,AX         ; AX = #4's * 4
+  ADD BP,AX         ; add into the total years
+  XCHG AX,DX        ; swap the remainder mod 4 years into AX
+  CWD               ; extend the remainder AX into DXAX
+  MOV CX,365        ; load the number of days in a year
+  CALL DIV_CX_CK4   ; calculate AX= #years, DX= remainder mod 1 year
+  XCHG CX,AX        ; swap the year into CX, for return
+  XCHG AX,DX        ; swap the remainder into AX
+  MOV BL,153        ; load the number of days in 5 months
+  DIV BL            ; calculate AL = #5m's, AH = remainder mod 5m
+  MOV BX,>L2        ; load the XLAT table of 5-month numbers
+  CS XLATB          ; convert AL into a month-number
+  CMP AL,3          ; set Carry if it's January of the next year
+  ADC CX,0          ; increment year if it's January
+  XCHG DX,AX        ; swap month into DL, day into DH
+  MOV AL,DH         ; fetch the remainder mod 5 months
+  MOV AH,0          ; extend the remainder AL to AX
+  MOV BL,61         ; load the number of days in 2 months
+  DIV BL            ; calculate AL = #2m's, AH = remainder mod 2m
+  ADD AL,AL         ; AL = #2m's * 2
+  ADD AL,DL         ; add in DL to get a month number
+  XCHG AL,AH        ; swap month into AH, day into AL
+  CMP AL,31           ; are we in the second month of the 2-month block?
+  IF AE ADD AX,256-31 ; if yes then reduce the day and increment the month
+  INC AX              ; increment the day-in-month, to start with 1 not 0
+  XCHG DX,AX        ; swap month to DH, day to DL
+  POP BP            ; restore clobbered register
+  RET
+
+L2:                 ; month numbers for 5-month blocks
+  DB 3,8,1          ; March, August, next year's January
+
+
+; DIV_CX_CK4 is called to divide DXAX by CX, where CX is the number of days
+;   in either a year or century.  After the division, we adjust for the
+;   possibility that our day is the last day of the block.  In that case,
+;   we must retreat to the last day (Feb. 29) of the previous block. 
+;   We return with the running years-total BP added into AX.
+
+DIV_CX_CK4:
+  DIV CX            ; calculate AX= #blocks, DX = days mod block
+  CMP AL,4          ; is it the anomalous last day of the block?
+  JNE >L3           ; skip if not
+  MOV DX,CX         ; it is: replace remainder with the divisor
+  DEC AX            ; reduce the quotient to 3
+L3:
+  ADD AX,BP         ; add the total years into AX
+  RET

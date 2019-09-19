@@ -1,0 +1,122 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   RANDPICK                                     See EILIB.TXT for terms
+;---------------
+
+; RANDPICK accepts a list of file names in its command tail, picks
+;   n random lines from each file, and outputs to standard output n
+;   lines, each consisting of one instance of each picked record.
+;   The output is columnar, in that we pad each record output with a
+;   number of blanks that will fill out each field to the width of the
+;   largest line in each file.  The result is a list of random combinations
+;   of elements from each of the input files.
+
+MAX_GLP EQU 1   ; we want GATHER_LINE_PTRS to give us the maximum line length
+
+        DATA SEGMENT
+OBUFF:
+  DB 16K DUP ?       ; output buffer
+OBUFF_LIM:
+  DB 1K DUP ?        ; overrun buffer for output
+LINE_PTRS:
+  DW 16K DUP ?       ; array of pointers to lines in the file
+LP_LIMIT:
+        DATA ENDS
+
+  JMP RANDPICK        ; jump around the following message
+
+  DB 0D,0A,0D,0A      ; spacing so TYPE RANDPICK.COM looks decent
+USAGE_MSG:
+  DB 'usage: RANDPICK n fnames',0D,0A
+  DB '   picks a random line from each file given, n times',0D,0A
+  DB 0
+  DB 01A              ; terminator for TYPE RANDPICK.COM
+
+
+RANDPICK:
+  CALL TIME_SEED        ; initialize the random-number seed
+  MOV SI,081            ; point to our invocation command tail
+  CALL VERIFY_DEC       ; fetch the repeat count
+  PUSH AX               ; save the repeat count
+  CALL TAIL_BLANKS      ; skip over leading blanks
+  CMP AL,0D             ; are there any operands?
+  IF E JMP USAGE_EXIT   ; error if there are no operands
+  POP CX                ; restore the repeat count
+  MOV DI,OBUFF          ; initialize the output pointer
+L5:
+  PUSH CX,SI            ; save the repeat count and filenames pointer
+L1:                     ; loop here to process each file
+  CALL FILE_ARG         ; point DX to the file name
+  PUSH SI               ; save the command-tail pointer
+  CALL PROCESS_FILE     ; process the file
+  POP SI                ; restore the command-tail pointer
+  CALL TAIL_BLANKS      ; advance to the next file name
+  CMP AL,0D             ; have we reached the end of the command tail?
+  JNE L1                ; loop if not, to process another file
+  MOV AH,0A             ; end is reached: load CRLF
+  STOSW                 ; output CRLF
+  CMP DI,OBUFF_LIM      ; have we overrun the output?
+  IF AE CALL OFLUSH     ; if yes then flush the output
+  POP SI,CX             ; restore the fnames pointer and repeat count
+  LOOP L5               ; loop to repeat output
+  CALL OFLUSH           ; processing complete: flush the output
+  JMP GOOD_EXIT         ; exit the program
+
+
+OFLUSH:
+  PUSH DX               ; save caller's DX
+  MOV DX,OBUFF          ; point to our output buffer
+  CALL OWRITE_DI        ; write the output to the console
+  MOV DI,DX             ; reset the output pointer to the buffer start
+  POP DX                ; restore clobbered register
+  RET
+
+
+; PFILE_REC processes the file pointed to by SI (and beyond by DX).
+;    In this case, we pick a random line, and output the line, padded
+;    out to its maximum length.
+
+TOO_BIG:                ; a file was too big
+  MOV AX,TOO_BIG_MSG    ; point to message saying so
+L0:
+  JMP EMSG_USAGE_EXIT   ; output error message
+
+PFILE_REC:
+  CMP DX,-2             ; did the file size exceed a single segment?
+  JE TOO_BIG            ; error if it did
+  MOV BP,LINE_PTRS      ; point BP to the pointers buffer
+  MOV BX,LP_LIMIT       ; point BX to the limit for the buffer
+  CALL GATHER_LINE_PTRS ; gather the pointers to each line
+  JC L0                 ; error exit if there was a problem
+  PUSH CX               ; save the maximum line length
+  CALL RANDOM_PTR       ; point SI to a random line within the file
+  MOV BX,DI             ; save our starting output in BX
+L2:                     ; loop here to copy each byte of the line
+  LODSB                 ; fetch a byte
+  STOSB                 ; output the byte
+  CMP AL,0A             ; is it the terminating linefeed?
+  JNE L2                ; loop if not, to output another byte
+  DEC DI,2              ; retract the output of the CRLF
+  POP CX                ; restore the maximum line size
+  ADD CX,BX             ; advance CX beyond the padded-out field
+  SUB CX,DI             ; compute the number of padding blanks needed
+  MOV AL,' '            ; load blank
+  REP STOSB             ; output the padding blanks
+  MOV SI,DX             ; signal our caller we are done with this file
+  RET
+
+
+; RANDOM_PTR is called with BP pointing to an array of pointers, and
+;   BX pointing beyond the array.  Select a random pointer from the array,
+;   and return with SI set to that pointer.
+
+RANDOM_PTR:
+  MOV CX,BX             ; point CX beyond the array
+  SUB CX,BP             ; calculate the number of remaining pointers
+  SHR CX,1              ; convert the byte count into a word count
+  CALL RANDOM_CX        ; set AX to a random index within the count
+  ADD AX,AX             ; convert the index back to a byte offset
+  XCHG SI,AX            ; swap the offset into SI, for addressing
+  ADD SI,BP             ; point SI to the pointer represented by the offset
+  SS MOV SI,[SI]        ; fetch the random pointer
+  RET
+

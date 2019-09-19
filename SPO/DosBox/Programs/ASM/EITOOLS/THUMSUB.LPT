@@ -1,0 +1,2 @@
+%; HTML subdir-link template used by THUMBS.BAT to generate a THUMBS.HTM file
+<A HREF="%1\thumbs.htm">%1</A><br>

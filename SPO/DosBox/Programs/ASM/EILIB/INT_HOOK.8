@@ -1,0 +1,102 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   INT_HOOK                                     See EILIB.TXT for terms
+;---------------
+
+; This module handles the hooking of interrupts by a TSR program.  The
+;   caller must supply a length SIG_SIZE and a pointer SIG_SRC to a
+;   signature string identifying the program, plus a pointer SIG_DEST
+;   to the destination of the signature string when the program goes TSR.
+
+; If the caller will be hooking only one interrupt, it can supply its
+;   interrupt number SINGLE_INT.  In that case, it should also supply the
+;   pointer OLD_INT to the doubleword in which the old handler's pointer
+;   is to be stored.
+
+; INT_HOOK points interrupt handler AL to DS:DX.  If SINGLE_INT is defined
+;    we use it -- the caller need not set AL.
+
+; INT_UNHOOK fetches the old handler from the doubleword at ES:DI, and 
+;    restores interrupt handler AL to it.  If SINGLE_INT is defined, we
+;    use it and also set DI to TSR_OLD_INT -- the caller need not supply
+;    them.
+
+INT_UNHOOK:
+        #if SINGLE_INT            ; if just one interrupt then load DI parm
+  MOV DI,OLD_INT+SIG_DEST-SIG_SRC ; point to slot for the original int pointer
+        #endif
+  ES MOV DX,W[DI]           ; point DX to original handler offset
+  ES MOV DS,W[DI+2]         ; point DS to original handler segment
+INT_HOOK:
+        #if SINGLE_INT
+  MOV AX,025 BY SINGLE_INT  ; MS-DOS function codes for SET_SINGLE_INT
+        #else
+  MOV AH,025                ; MS_DOS function code for SET_INT
+        #endif
+  INT 021                   ; point the interrupt to DS:DX
+  RET
+
+
+; LOAD_OLD_INT points ES:BX to the old handler AL, and stores this pointer
+;   in memory pointed to by DS:DI.  If SINGLE_INT is defined, we use it and
+;   OLD_INT -- the caller need not supply AL and DI.  In that case, we
+;   also drop into INT_SIG_CMP.
+
+; INT_SIG_CMP sets Z if the old handler, at ES, contains our signature string
+;   at offset SIG_DEST.
+
+LOAD_OLD_INT:
+        #if SINGLE_INT      ; if just one interrupt then load its parameters
+  MOV DI,OLD_INT            ; point to the doubleword for the old interrupt
+  MOV AX,035 BY SINGLE_INT  ; MS-DOS function codes for GET_SINGLE_INT
+        #else               ; if there is more than one interrupt hooked...
+  MOV AH,035                ; load function code, caller supplies AL int number
+        #endif
+  INT 021                   ; point ES:BX to the old interrupt
+  MOV [DI],BX               ; store the old offset
+  MOV [DI+2],ES             ; store the old segment
+        #if !SINGLE_INT     ; if single interrupt then drop into INT_SIG_CMP
+  RET
+        #endif
+;
+;
+INT_SIG_CMP:
+  MOV SI,SIG_SRC     ; point to the code being moved
+        #if SIG_DEST EQ SIG_SRC
+  MOV DI,SI          ; also point DI to the code
+        #else
+  MOV DI,SIG_DEST    ; point to the destination for moving our code
+        #endif
+  MOV CX,SIG_SIZE    ; load the size of the signature buffer
+  PUSH SI,DI         ; preserve registers
+  REPE CMPSB         ; is our signature already in the present handler?
+  POP DI,SI          ; restore clobbered registers
+  RET                ; Z if we were already installed
+
+
+; RELEASE_ES_TSR releases the memory occupied by our TSR at segment ES.  We
+;   also look for the preceding environment segment and release it if we
+;   find it.
+
+RELEASE_ES_TSR:
+  MOV AX,DX,ES      ; copy our segment to DX and AX, for computation
+  DEC DX            ; retreat DX to our memory-allocation record
+  MOV DS,DX         ; point DS to the memory record
+  CALL >L3          ; cancel our allocation
+  MOV BX,-1         ; initialize our required size counter
+L2:                 ; loop here to search back to our environment
+  INC BX            ; increment the required size counter
+  DEC DX            ; retreat the proposed segment value
+  JZ RET            ; exit if we have exhausted the segments
+  MOV DS,DX         ; point DS to the proposed memory record
+  CMP B[0],'M'      ; is there a correct type byte?
+  JNE L2            ; loop if not, to search for another record
+  CMP BX,W[3]       ; is the size word the required value?
+  JNE L2            ; loop if not, to search for another record
+  CMP W[1],AX       ; we have a memory record: is it owned by us?
+  JNE RET           ; exit if not-- we have released all we need to
+L3:
+  MOV W[1],0        ; cancel our allocation
+  RET  
+
+  
+

@@ -1,0 +1,22 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   MEMWRITE                                     See EILIB.TXT for terms
+;---------------
+
+; MEMWRITE outputs to standard output the region of memory whose segment
+;   location and length (less than 64K) are given as command tail arguments.
+
+MEMWRITE:
+  MOV SI,081          ; point to the invocation command tail
+  CALL VERIFY_HEX     ; set AX to the segment address
+  PUSH AX             ; save the segment address
+  CALL VERIFY_HEX     ; set AX to the output length
+  XCHG CX,AX          ; swap the output length into CX
+  CALL NO_MORE_ARGS   ; insure that there are just 2 hex arguments
+  POP DS              ; restore the segment address to DS
+  SUB DX,DX           ; writing always starts at offset 0 within the segment
+  CALL OWRITE         ; output the memory contents to standard output
+  JMP GOOD_EXIT       ; return to the operating system
+
+USAGE_MSG:
+  DB 'usage: MEMWRITE segaddr length >outfile',0D,0A
+  DB '    outputs <64K bytes from memory',0D,0A,0

@@ -1,0 +1,64 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;     MENU                                       See EILIB.TXT for terms
+;---------------
+
+; FIND_MENU places a menu on the screen, waits for the choice of a letter
+;   from the menu, and returns with AX pointing to an action routine
+;   associated with that letter.  Input SI points to a NONVAR_FIELDS array,
+;   described in TEMPLATE.8.  Each valid menu letter must follow an 8-code
+;   in the SI-pointed array, and it must be followed by two blanks.  The
+;   terminating 0FF moust follow a 9-marker.  Input BX points to an array
+;   of action-routine pointers, one for each menu letter.
+
+; DO_MENU places a menu on the screen, waits for the coice of a letter from
+;   the menu, and executes the action routine associated with the letter.
+
+L0:                   ; loop here if the user's letter was not found
+  POP BX              ; restore the pointers-pointer
+FIND_MENU:
+  MOV BP,MENU_TPL     ; point to the menu template
+  MOV W[BP],SI        ; plug the caller's fixed part into our template
+  CALL EDIT_TEMPLATE  ; show the menu and get the letter
+  MOV AL,9            ; load marker, for searching
+  MOV DI,SI           ; point DI to the caller's fixed part, for scanning
+  MOV CH,0FF          ; make the search count huge
+L3:                   ; loop here to look for the terminating 9-marker
+  REPNE SCASB         ; find the next 9-marker
+  CMP B[DI],0FF       ; are we at the terminator?
+  JNE L3              ; loop if not, to keep searching
+  MOV CX,DI           ; terminator found: point CX beyond it
+  SUB CX,SI           ; calculate the size of the SI-array
+  MOV DI,SI           ; restore DI to the start of the array
+  PUSH BX             ; save the pointers-pointer
+  MOV DL,AL,MENU_LET  ; set both DL and AL to the keystroke entered
+  SUB AL,'a'          ; reduce lower-case range to 0
+  ADD AL,0100-26      ; set Carry if AL was not lower-case
+  SBB AL,AL           ; set 0FF if not lower case, 0 if lower-case
+  OR AL,0DF           ; set 0FF if not lower case, 0DF if lower case
+  AND DL,AL           ; coerce DL to upper case if it was lower case
+  MOV AL,8            ; load 8-marker, for searching
+  DB 03D              ; skip over the first INC BX,2
+L1:                   ; loop here for each 8-marker found and rejected
+  INC BX,2            ; advance the pointers-pointer
+L2:                   ; loop here when an 8-marker wasn't a menu line
+  REPNE SCASB         ; look for the next 8-marker
+  JNE L0              ; jump if the array was exhausted, to re-prompt the user
+  CMP W[DI+1],'  '    ; was the menu item followed by two blanks?
+  JNE L2              ; loop if not, to look for the next 8-marker
+  CMP DL,B[DI]        ; is this the line that the user chose?
+  JNE L1              ; loop if not, to scan more menu lines
+  MOV AX,[BX]         ; fetch the pointer to the action routine
+  POP BX              ; restore the pointers-pointer
+  RET                 ; NoCarry is set from the above CMP
+
+
+DO_MENU:              ; place a menu and execute the returned action routine
+  CALL FIND_MENU      ; display the menu and get the user's choice
+  JC RET              ; return Carry if a valid choice was not made
+  PUSH AX,BX,SI       ; preserve registers across call
+  CALL AX             ; perform the associated action
+  POP SI,BX,AX        ; restore clobbered registers
+  CLC                 ; NoCarry signals an action was performed
+  RET
+
+

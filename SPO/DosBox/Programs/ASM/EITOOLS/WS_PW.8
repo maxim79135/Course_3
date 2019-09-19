@@ -1,0 +1,63 @@
+        ;---------------                         Copr.2000 Eric Isaacson
+LINE_FILTER   WS_PW                            ; See EILIB.TXT for terms
+        ;---------------
+
+; WS_PW converts a file from an ancient, DOS-based WordStar format to
+;    plain ASCII text.
+
+; This program was written many years ago, and is probably no longer useful.
+; I did not deem it worthwhile to bring it up-to-date and to comment it.
+; I am including it because it was in an earlier version of EITOOLS.
+
+ALREADY_MSG:
+  DB 'conversion already made??',0D,0A,0
+
+PROCESS_LINE:       ; filter CX bytes from SI--DI to BP
+  MOV DI,BP
+  JCXZ RET
+  CMP B[SI],'.'
+  JE >L6
+L1:
+  LODSB
+  CMP AL,01A
+  JA >L3
+  JE >L4
+  CMP AL,0D
+  JNE >L2
+  CMP B[SI],0D
+  JE >L4
+L2:
+  CMP AL,015
+  JE >L7
+  CMP AL,018
+  JE >L7
+  CMP AL,019
+  JE >L7
+  CMP AL,013
+  IF E MOV AL,015
+  CMP AL,016
+  IF E MOV AL,019
+  CMP AL,014
+  IF E MOV AL,018
+L3:
+  STOSB
+L4:
+  LOOP L1
+  JMP PROCESS_LINE_EXIT
+
+L6:
+  MOVSB
+  LODSW
+  CMP AX,'ap'
+  JNE >L5
+  DEC DI
+  MOV AX,0F0C
+L5:
+  STOSW
+  DEC CX,2
+  JMP L4
+
+L7:
+  MOV AX,ALREADY_MSG
+  JMP ERROR_EXIT
+

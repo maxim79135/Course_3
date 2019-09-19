@@ -1,0 +1,52 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;   RANMEM                                       See EILIB.TXT for terms
+;---------------
+
+; RANMEM fills memory with random values.  We use TIME_SEED if no
+;   invocation operand was given; else we use the 16-bit decimal
+;   operand provided.
+
+        DATA SEGMENT
+  EVEN
+LOW_STACK:              ; lowered stack area
+  DB 0200 DUP ?
+FREE:                   ; start of memory that will be filled
+        DATA ENDS
+
+RANMEM:
+  MOV SI,081            ; point to our invocation command tail
+  CALL TAIL_BLANKS      ; scan to the invocation operand
+  CMP AL,' '            ; was there an operand?
+  JB >L1                ; jump if not
+  CALL VERIFY_1_DEC     ; there was an operand: scan it
+  CALL SET_SEED         ; store the operand as the random-number seed
+  JMP >L2               ; join common code
+
+L1:                     ; no invocation operand
+  CALL TIME_SEED        ; fetch a seed based on the current time
+L2:
+  MOV SP,FREE           ; reset stack below our program
+  MOV AX,CS             ; fetch our program segment
+  ADD AX,(FREE+15)/16   ; calculate the segment just beyond this program
+L3:                     ; loop here to randomize 16 bytes from each segment
+  MOV ES,AX             ; store the segment value
+  SUB DI,DI             ; initialize the output pointer
+L4:  
+  MOV CX,256            ; bytes have 256 possible values
+  CALL RANDOM_CX        ; fetch a random value
+  STOSB                 ; output the random value
+  CMP DI,16             ; have we output 16 bytes from this segment?
+  JB L4                 ; loop if we have not, to output another byte
+  MOV AX,ES             ; 16 bytes complete: fetch the segment value
+  INC AX                ; increment to the next 16 bytes
+  CMP AX,W[2]           ; have we reached the end of available memory?
+  JB L3                 ; loop if not, to output another 16 random bytes
+  MOV AX,04C00          ; task complete: load exit codes
+  INT 021               ; exit to operating system
+
+USAGE_MSG:
+  DB 'usage: RANMEM [decimal_seed]',0D,0A
+  DB '   fills memory with random values',0D,0A,0
+ 
+
+

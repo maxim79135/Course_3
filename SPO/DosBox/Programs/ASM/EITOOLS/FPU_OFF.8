@@ -1,0 +1,14 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    FPUOFF                                      See EILIB.TXT for terms
+;---------------
+
+; FPUOFF was written during the brouhaha over the floating-point bug
+; in the very first Pentium chips.  Someone was selling a program on
+; Compuserve that "fixed" the problem by completely disabling the 
+; floating-point processor!  This program is my response: an 8-byte
+; COM file.
+
+FPUOFF:
+  POP DS            ; tricky way to get zero into the DS register
+  AND B[0410],0FD   ; turn off the BIOS flag for the floating-point unit
+  INT 32            ; exit back to the operating system

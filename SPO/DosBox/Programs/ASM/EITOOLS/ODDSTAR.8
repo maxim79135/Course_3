@@ -1,0 +1,35 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;  ODDSTAR                                       See EILIB.TXT for terms
+;---------------
+
+; ODDSTAR is a filter that converts all non-vanila characters (not in
+;  the range 020--07E) to an asterisk *.
+
+ODDSTAR:
+  CALL VERIFY_NO_ARGS     ; verify no command-tail arguments
+  CALL PROCESS_RECORDS    ; process the file, a bufferful at a time
+  JMP GOOD_EXIT           ; exit back to the operating system
+
+
+PROCESS_RECORD:           ; process bytes from SI--DX
+  LODSB                   ; fetch a byte
+  CMP AL,0D               ; is it a carriage return?
+  JE >L3                  ; jump if yes, to output as-is
+  CMP AL,0A               ; is it a linefeed?
+  JE >L3                  ; jump if yes, to output as-is
+  CMP AL,020              ; is it another control character?
+  JB >L2                  ; jump if yes, to convert to *
+  CMP AL,07E              ; is it a high character?
+  JBE >L3                 ; jump if not, to output as-is
+L2:                       ; control char or high char is seen
+  MOV AL,'*'              ; convert the character to *
+L3:
+  STOSB                   ; output the character
+  CMP SI,DX               ; have we reached the end of the buffer?
+  JB PROCESS_RECORD       ; loop if not, to filter another character
+  RET
+
+USAGE_MSG:
+  DB 'usage: ODDSTAR <in >out',0D,0A
+  DB '  converts odd charatcers to a *',0D,0A
+  DB 0

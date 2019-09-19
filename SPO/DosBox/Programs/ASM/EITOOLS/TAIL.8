@@ -1,0 +1,84 @@
+;---------------                                 Copr.2000 Eric Isaacson
+;    TAIL                                        See EILIB.TXT for terms
+;---------------
+
+; TAIL outputs to standard output the last part of a named file.  We output
+;   the last 32K bytes, unless another count is given after the input
+;   file name in the command tail.  If the count begins with L, we output
+;   the indicated number of lines.  There is a limit of 56K bytes that will
+;   be output.
+
+        DATA SEGMENT
+IBUFF:                  ; read-buffer for the file
+  DB  0E000 DUP ?    ; we have 56K to read to
+        DATA ENDS
+
+TAIL:
+  MOV SI,081            ; point to our command tail
+  CALL OPEN_I_ARG       ; scan and open the input file
+  CALL TAIL_BLANKS      ; scan over intervening blanks
+  SUB AL,'0'            ; reduce digits range to zero
+  CMP AL,9              ; was it a digit?
+  JBE >L2               ; jump if it is: it is a byte count
+  OR AL,020             ; coerce together L-030=01C and l030=03C
+  CMP AL,03C            ; was the character l or L?
+  MOV AX,08000          ; load 32K in case it wasn't
+  JNE >L3               ; jump if it wasn't
+  INC SI                ; L was seen: scan past the L
+  MOV TAIL_ACT W,09090  ; replace the bytes-JMP with NOPs, to activate lines
+L2:
+  CALL VERIFY_DEC       ; scan the count given in the command tail
+L3:
+  XCHG CX,AX            ; swap the count into CX
+  CALL NO_MORE_ARGS     ; insure no more command-tail arguments
+TAIL_ACT:
+  JMP >L7               ; jump if we are seeking by bytes
+;
+; line-seek code drops through to the following:
+;
+  MOV BP,CX             ; copy the lines count to BP
+  INC BP                ; include the last linefeed we won't output
+  MOV CX,0E000          ; load full buffer
+  CALL READ_END_CLOSE   ; read the buffer-full and close the file
+  PUSH DI               ; save the beyond-pointer
+  DEC DI                ; retreat DI to the last byte read
+  MOV AL,0A             ; load linefeed, for searching
+  STD                   ; we are scanning backwards
+L2:                     ; loop here to find each linefeed
+  REPNE SCASB           ; find the next linefeed
+  JNE >L3               ; jump if the buffered bytes were exhausted instead
+  DEC BP                ; linefeed found: count down lines
+  JNZ L2                ; loop if there are more lines
+  INC DI                ; advance to the last linefeed found
+L3:
+  CLD                   ; restore forward scanning
+  LEA DX,[DI+1]         ; point DX to the start of the lines
+  POP DI                ; restore the beyond-pointer
+  JMP >L9               ; jump to common exit
+
+L7:                     ; we are outputting a given number of bytes
+  CALL READ_END_CLOSE   ; read those bytes
+L9:                     ; common exit
+  CALL OWRITE_DI        ; output the trailing bytes, DX up to DI
+  JMP GOOD_EXIT         ; exit the program
+
+
+
+; READ_END_CLOSE reads CX bytes to IBUFF, and closes the input file.  We
+;   return with DI pointing beyond the CX actual bytes read.
+
+READ_END_CLOSE:
+  MOV DX,IBUFF          ; point to our input buffer
+  CALL READ_END         ; read the bytes
+  XCHG CX,AX            ; swap the actual count into CX
+  MOV DI,DX             ; copy the buffer pointer to DI
+  ADD DI,CX             ; advance DI beyond the bytes read
+  JMP MCLOSE            ; close the input file
+
+
+
+USAGE_MSG:
+  DB 'usage: TAIL in_file [byte_count] >out',0D,0A
+  DB '  or   TAIL in_file L line_count >out',0D,0A
+  DB 'outputs the tail end of a file',0D,0A,0
+
