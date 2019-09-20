@@ -1,0 +1,655 @@
+@Contents
+$^#FAR version 1.0 beta. File and Archive Manager.#
+$^#Copyright (C) 1996 Eugene Roshal.#
+   ~How to use help~@Help@
+
+   ~About FAR~@About@
+
+   ~Keyboard reference~@KeyRef@
+
+   ~Panels:~@Panels@  ~File panel~@FilePanel@
+            ~Tree panel~@TreePanel@
+            ~Info panel~@InfoPanel@
+            ~Quick view panel~@QViewPanel@
+
+   ~Menus:~@Menus@   ~Left and right menus~@LeftRightMenu@
+            ~Files menu~@FilesMenu@
+            ~Commands menu~@CmdMenu@
+            ~Options menu~@OptMenu@
+
+   ~Find file command~@FindFile@
+   ~History~@History@
+   ~Process list~@ProcList@
+   ~Compare folders command~@CompFolders@
+   ~User menu~@UserMenu@
+
+   ~File associations~@EditAssoc@
+   ~Configuration dialog~@ConfigDlg@
+
+   ~Internal viewer~@Viewer@
+   ~Internal editor~@Editor@
+
+@Help
+$ #How to use help
+     Help screens may have some reference items on them
+  that lead to another help screen. You can use #Tab# and
+  #Shift-Tab# keys to move the cursor from one reference
+  item to another, then press Enter to go to a help screen
+  describing that item. With the mouse, you can click a
+  reference to go to the help screen about that item.
+
+     If text is not completely fitted into the help window,
+  scroll bar is displayed. In such case #cursor keys# can
+  be used to scroll text.
+
+     You can press #Alt-F1# to go back to a previous help
+  screen and #Shift-F1# to view the help contents.
+
+@About
+$ #About FAR#
+                        What is FAR..
+
+     FAR is the text mode file and archive manager for
+  Windows 95 and Windows NT. It supports #long file names#
+  and provides a wide set of file and folder operations.
+
+     FAR does transparent #archive# processing. Files in
+  the archive are handled similarly as in a folder: when
+  you operate with the archive, FAR transforms your
+  commands into corresponding external archiver calls.
+
+     FAR proposes a number of service functions as well.
+
+@KeyRef
+$ #Keyboard reference#
+ #Common panel commands#
+
+  Change active panel                                  #Tab#
+  Change folder to root                             #Ctrl-\#
+  Swap panels                                       #Ctrl-U#
+  Re-read panel                                     #Ctrl-R#
+  Toggle info panel                                 #Ctrl-L#
+  Toggle quick view panel                           #Ctrl-Q#
+  Hide/show both panels                             #Ctrl-O#
+  Hide/show inactive panel                          #Ctrl-P#
+  Hide/show left panel                             #Ctrl-F1#
+  Hide/show right panel                            #Ctrl-F2#
+  Insert file name to the command line          #Ctrl-Enter#
+  Insert full file name to the command line         #Ctrl-F#
+
+ #File panel commands
+
+  Select/unselect file              #Ins, Shift+Cursor keys#
+  Copy selected names to clipboard        #Ctrl-C, Ctrl-Ins#
+  Select group                                      #Gray +#
+  Unselect group                                    #Gray -#
+  Invert selection                                  #Gray *#
+  Set brief view mode                               #Ctrl-1#
+  Set medium view mode                              #Ctrl-2#
+  Set full view mode                                #Ctrl-3#
+  Set wide view mode                                #Ctrl-4#
+  Toggle long/short file names view mode            #Ctrl-N#
+  Sort by name                                     #Ctrl-F3#
+  Sort by extension                                #Ctrl-F4#
+  Sort by time                                     #Ctrl-F5#
+  Sort by size                                     #Ctrl-F6#
+  Unsorted                                         #Ctrl-F7#
+
+ #Command line#
+
+  Character left                                      #Left#
+  Character right                                    #Right#
+  Word left                                      #Ctrl-Left#
+  Word right                                    #Ctrl-Right#
+  Start of line                                  #Ctrl-Home#
+  End of line                                     #Ctrl-End#
+  Delete char                                          #Del#
+  Delete char left                                      #BS#
+  Delete to end of line                              #Alt-D#
+  Delete word left                                 #Ctrl-BS#
+  Delete word right                                 #Ctrl-T#
+  Paste from clipboard                   #Shift-Ins, Ctrl-V#
+  Previous command                                  #Ctrl-E#
+  Next command                                      #Ctrl-X#
+
+@Panels
+$ #Panels#
+     Normally FAR shows two panels (left and right
+  windows), with different information. If you want to
+  change type of information displayed in the panel, use
+  ~panel menu~@LeftRightMenu@ or corresponding ~keyboard commands~@KeyRef@.
+
+     See also the following topics to obtain more
+  information:
+
+  ~File panel~@FilePanel@   ~Tree panel~@TreePanel@   ~Info panel~@InfoPanel@   ~Quick view panel~@QViewPanel@
+
+@FilePanel
+$ #File panel#
+     The file panel displays the current folder or archive
+  contents. You may select or unselect files and folders,
+  perform different file and archive operations.
+
+     View mode of the file panel may be set to:
+
+       #brief#     file names are displayed
+                 only within three columns;
+
+       #medium#    the same as in brief but
+                 within two columns;
+
+       #full#      name, size, date and time
+                 of the file are displayed;
+
+       #wide#      file names and sizes are
+                 displayed.
+
+     The medium and wide modes are designed specially for
+  long file names.
+
+     If you wish to change the panel mode, choose one from
+  the ~panel menu~@LeftRightMenu@. After the mode change or drive change
+  action, if the initial panel type differs it will be
+  automatically set to the file panel.
+
+     #Speed search# action may be used to point required
+  file by the first letters of it's name. Hold the Alt key
+  and type the file name until needed file is selected.
+  Pressing Ctrl-Enter keys simultaneously will point to
+  next match if one.
+
+@TreePanel
+$ #Tree panel#
+     The tree panel displays folder structure of the
+  current disk as a tree. Within tree mode you may change
+  to a folder quickly and perform folder operations.
+
+     FAR stores folder tree information in the file named
+  #Tree.Far# at root folder of each drive.
+
+     You can find a folder quickly with help of #speed#
+  #search# action. Hold the Alt key and type the folder
+  name until you point to the right folder. Pressing
+  Ctrl-Enter keys simultaneously will select next match.
+
+@InfoPanel
+$ #Info panel#
+     The information panel contains the following:
+
+       - #network# names of computer and user;
+
+       - name and type of the #current disk# as well as
+         filesystem type, total and free space sizes,
+         disk volume label and serial number;
+
+       - #memory# load percentage (100% means the whole
+         memory used), total and free size of physical
+         and virtual memory;
+
+       - #description# file #File_Id.Diz#.
+         If there is no such file in the current folder,
+         FAR tries to locate Read.Me, ReadMe and
+         similar files. You may view the file contents
+         in full screen pressing the F3 key or left
+         left mouse button. Edit action is available
+         by pressing the F4 key or right mouse button.
+
+     When you are inside the archive, then the #archive
+  information# is displayed at the info panel:
+
+       - the name of archive and the archiver;
+
+       - archive type (normal, self-extracting, solid,
+         volume);
+
+       - presence or absence of archive and file comments,
+         password encrypted files, recovery data, archive
+         lock and authenticity verification;
+
+       - sliding dictionary size;
+
+       - total files, packed and unpacked archive size
+         and archive compression ratio.
+
+@QViewPanel
+$ #Quick view panel#
+     The quick view panel is used to show information
+  about selected item in the ~file panel~@FilePanel@ or ~tree panel~@TreePanel@.
+
+     If selected item is file then the beginning of the
+  file is displayed. For files of registered Windows types
+  the type is shown as well.
+
+     For folders, the quick view panel displays total size
+  and number of files and subfolders in the folder.
+
+@Menus
+$ #Menus#
+     To choose action from the menu you may press F9 or
+  click mouse on top of the screen. Use Shift-F10 key
+  combination to select last initiated menu command.
+
+     Read the following topics to get information about
+  particular menu:
+
+     ~Left and right menus~@LeftRightMenu@       ~Files menu~@FilesMenu@
+
+     ~Commands menu~@CmdMenu@              ~Options menu~@OptMenu@
+
+@LeftRightMenu
+$ #Left and right menus#
+     The #left# and #right# menus allow to change left and
+  right panel settings accordingly. These menus includes
+  the following items:
+
+   #Brief view#           Display files within 3 columns
+   #Medium view#          Display files within 2 columns
+   #Full view#            Display file name, size, date
+                        and time
+   #Wide view#            Display file name and size
+
+   #Info panel#           Change panel type to ~info panel~@InfoPanel@
+   #Tree panel#           Change panel type to ~tree panel~@TreePanel@
+   #Tree panel#           Change panel type to ~quick view~@QViewPanel@
+   #Panel On/Off#         Show/hide panel
+
+   #Sort by name#         Sort files by name
+   #Sort by extension#    Sort files by extension
+   #Sort by time#         Sort files by time
+   #Sort by size#         Sort files by size
+   #Sort by unsorted#     Do not sort files
+
+   #Show long names#      Show long/short file names
+
+   #Re-read#              Re-read panel
+   #Change drive#         Change current drive
+
+@FilesMenu
+$ #Files menu#
+   #Add to archive#     Add selected files to the archive.
+
+     In this dialog you may choose archiver, add or change
+  command line switches (default are defined in the
+  #Archive.Ini# file, enter password to encrypt files
+  during archiving. You may indicate "Delete files after
+  archiving" option to perform the move to archive
+  operation. The "Save settings" choice performs saving of
+  current archiver and archive switches for future usage.
+
+   #Extract files#      Extract files from the archive.
+
+     You may enter path to extract files, set password to
+  decrypt archived files or indicate "Test only" and
+  "Extract without pathnames" options.
+
+   #Comment archive#    Add comment to the archive.
+
+   #Convert to SFX#     Convert archive to SFX.
+
+                        SFX means SelF-eXtracting.
+
+   #Recover archive#    Try to recover broken archive.
+
+   #Add recovery data#  Add to archive special data,
+                      to help recover after occasional
+                      damages of the archive.
+
+   #Lock archive#       Disable archive modifications.
+
+   #File attributes#    Change file attributes.
+
+   #Select group#       Select file group with a wildcard.
+
+   #Unselect group#     Unselect file group, with a
+                      wildcard.
+
+   #Invert selection#   Invert current file selection.
+
+
+  Notes:
+
+  1. To initiate an archive management command in the menu,
+     you need to have corresponding archiver tool.
+     See the #Archive.Ini# configuration file, archiver
+     options are defined.
+
+  2. The whole set of archive management commands is fully
+     applicable with RAR archives only. Other archivers do
+     not support a few commands.
+
+@CmdMenu
+$ #Commands menu#
+   #Find file#            Look for files in the folders tree,
+                        with wildcard usage.
+                        See ~Find file~@FindFile@ for more info
+
+   #History#              Display the previous commands.
+                        See ~History~@History@ for more info
+
+   #Video mode#           Select the number of lines on the
+                        screen.
+
+   #Swap panels#          Swap left and right panels.
+
+   #Panels On/Off#        Show/hide both panels.
+
+   #Compare folders#      Compare contents of folders.
+                        See ~Compare folders~@CompFolders@ for the
+                        detailed description.
+
+   #Edit user menu#       Allows to edit main or local
+                        ~user menu~@UserMenu@. You may
+                        press Ins for insert, Del for
+                        delete and F4 to edit menu
+                        records.
+
+   #Edit associations#    Displays ~file associations~@EditAssoc@ list.
+                        You may use Ins for insert, Del
+                        for delete and F4 to edit file
+                        associations.
+
+   #Process list#         Shows ~active processes list~@ProcList@.
+
+@OptMenu
+$ #Options menu#
+   #Configuration#        This dialog allows to set a number
+                        of configuration parameters. Read
+                        ~Configuration dialog~@ConfigDlg@ topic for
+                        this dialog description.
+
+   #Colors#               Using Colors menu you may change
+                        color of different interface items,
+                        or change whole FAR colors palette
+                        to black and white or to default.
+
+   #Save setup#           This option saves current
+                        configuration, colors and screen
+                        layout.
+
+@FindFile
+$ #Find file command#
+     This command is intended to find in the folder tree
+  one or more files, matching the wildcard mask entered by
+  user. Search may be performed in the folders from the
+  #root disk folder#, from the #current folder# or in the
+  #current folder only#. Optional text string may be
+  specified to find files containing this text. If the text
+  is specified, option #"Case sensitive"# can be used to
+  select case sensitive comparison.
+
+     While search is in progress or when it is finished,
+  you can use the cursor keys for the files list scrolling
+  and buttons to perform required actions.
+
+     During or after search the following buttons are
+  available:
+
+   #New search#      Start new search session;
+
+   #Go to#           Breaks current search, changes panel
+                   folder and moves cursor to the selected
+                   file;
+
+   #View#            View selected file. If search is not
+                   completed, it will be resumed after
+                   viewing;
+
+   #Stop#            Breaks current search. Available while
+                   search is in progress;
+
+   #Cancel#          Close the search dialog;
+
+@History
+$ #History#
+     The history command shows list of OS commands,
+  executed with the FAR command line.
+
+     You can choose a command and press #Enter# to execute
+  it again or #Ctrl-Enter# to paste it to the command line
+  for modify. You can use highlighted letters to execute
+  the command, instead of using cursor keys and Enter.
+
+     It is also possible to go to previous or next
+  command, using keys Ctrl-E or Ctrl-X correspondingly.
+
+@ProcList
+$ #Process list#
+     The process list displays active processes. Each line
+  of the list contains process name, base priority,
+  process type (16-bit or 32-bit) and pathname of module
+  being executed. In the bottom line thread priorities for
+  current process are displayed.
+
+     Process or thread with higher priority takes more
+  processor time than process or thread with lower
+  priority. The default priority is 8.
+
+     From the process list you may switch to the process
+  window, if the window exists, or kill the process. Be
+  careful killing a process. It stops process immediately,
+  and any unsaved information will be lost, so it should
+  be used only when really necessary, for example to
+  interrupt the program which does not response. Do not
+  kill the Windows kernel and other systems processes,
+  or system will hang completely.
+
+@CompFolders
+$ #Compare folders command~@CompFolders#
+     The compare folders command is applicable only when
+  two ~file panels~@FilePanel@  are displayed. It compares the contents
+  of folders displayed in two panels. Files existent
+  in one panel only, or those which have date more
+  recent than files with the same name in the other panel
+  became marked.
+
+     Subfolders are not compared. Files are compared only
+  by name, size and time, file contents do not affect to
+  the operation.
+
+@UserMenu
+$ #User menu#
+     The user menu exists to facilitate calls of
+  frequently used operations. It contains a number of user
+  defined commands and command sequences, which can be
+  executed when invoking the user menu. The menu may
+  contain submenus.
+
+     With the #Edit user menu# command from the
+  ~Commands menu~@CmdMenu@, you can edit or create main or local
+  user menu. The main user menu can be only one. It is
+  stored in the #Menu.Ini# file located in the same as
+  FAR.EXE folder. Main user menu is called if no local
+  menu for the current folder is available. Local menu can
+  be placed in any folder.
+
+     For execution of user menu command select it with
+  cursor movement keys and press Enter. You may press hot
+  key, assigned to required menu item.
+
+     You may delete submenu or menu item with the Del key,
+  insert new submenu or menu item with the Ins key or edit
+  existent submenu or menu item with the F4 key.
+
+     When you edit or create menu item, you should enter
+  the hot key for fast item access, the item title which
+  will be displayed in the menu and the command sequence
+  to execute when this item will be selected.
+
+     When you edit or create submenu, you must enter the
+  hot key and the item title only.
+
+@EditAssoc
+$ #File associations#
+     FAR allows up to three command sequences to be
+  associated with particular file type:
+
+   #Execute commands#     Performed if Enter is pressed
+
+   #View commands#        Performed if F3 is pressed
+
+   #Edit commands#        Performed if F4 is pressed
+
+     You may add new associations with the #Edit
+  associations# command in the ~Commands menu~@CmdMenu@,
+  or directly edit the #Types.Ini# file located in the
+  same folder as FAR.EXE.
+
+     In associated command you may use special symbols:
+
+        !!       '!' character
+        !        Long file name without extension
+        !~~       Short file name without extension
+        !.!      Long file name with extension
+        !-!      Short file name with extension
+        !:       Current drive
+        !\       Current path
+
+  Notes:
+
+  1. If no execute command is associated with file,
+     FAR tries to use Windows association for this
+     file type.
+
+  2. When locating particular file type association the
+     Types.Ini file is scanned from the beginning. If you
+     wish to add "*.*" default file type, you must place
+     it at the end. Otherwise, all other type associations
+     after the default one would be ignored.
+
+@ConfigDlg
+$ #Configuration dialog#
+     In the configuration dialog you can set a number of
+  options. Use cursor keys, the Tab and Shift-Tab keys to
+  move between dialog items. Space is used to change
+  selection and Enter to process changes.
+
+     Options
+
+     Panel options
+
+  #Show hidden files#       Enable to show files with
+                          Hidden attribute.
+
+  #Highlight special#       Enable to highlight files with
+  #files#                   Hidden and System attributes.
+
+  #Auto change folder#      If checked, cursor moves in the
+                          ~Tree panel~@TreePanel@ will cause folder
+                          change in the other panel.
+                          If it is not checked, you must
+                          press Enter to change folder
+                          in the tree panel.
+
+  #Select folders#          Enable to select folders, using
+                          Gray + and Gray *. Otherwise
+                          these keys will select files
+                          only.
+
+     Screen options
+
+  #Clock#                   Show clock at the right top
+                          corner of the screen.
+
+  #Show key bar#            Show the functional key bar at
+                          the bottom line.
+
+  #Screen saver#            Run screen saver after the
+                          inactivity interval in minutes.
+
+     External viewer
+
+  #Use for F3#              Run external viewer by F3.
+
+  #Use for Alt-F3#          Run external viewer by Alt-F3.
+
+  #Viewer command#          Command to execute external
+                          viewer. Use special symbols
+                          described in ~File associations~@EditAssoc@
+                          to specify name of the file
+                          to view.
+
+     External editor
+
+  #Use for F3#              Run external editor by F3.
+
+  #Use for Alt-F3#          Run external editor by Alt-F3.
+
+  #Editor command#          Command to execute external
+                          editor. Use special symbols
+                          described in ~File associations~@EditAssoc@
+                          to specify name of the file
+                          to edit.
+
+     Auto save setup option
+
+  #Auto save setup#         If checked, FAR will perform
+                          save setup automatically before
+                          exit.
+
+  Note: if external viewer or external editor is assigned
+        to F3 key, it will be executed only if associated
+        viewer or editor for current file type is absent.
+
+@Viewer
+$ #Internal viewer#
+   Viewer commands
+
+    #Left#               Character left
+    #Right#              Character right
+    #Up#                 Line up
+    #Down#               Line down
+    #Ctrl-Left#          20 characters left
+    #Ctrl-Right#         20 characters right
+    #PgUp#               Page up
+    #PgDn#               Page down
+    #Home#               Start of file
+    #End#                End of file
+
+    #F1#                 Help
+    #F2#                 Toggle strings wrap/unwrap
+    #F4#                 Toggle text/hex mode
+    #F7#                 Search
+    #Shift-F7#           Continue search
+    #F10, Esc#           Exit
+
+@Editor
+$ #Internal editor#
+  Cursor movements
+
+   #Left#                    Character left
+   #Right#                   Character right
+   #Up#                      Line up
+   #Down#                    Line down
+   #Ctrl-Left#               Word left
+   #Ctrl-Right#              Word right
+   #PgUp#                    Page up
+   #PgDn#                    Page down
+   #Home#                    Start of line
+   #End#                     End of line
+   #Ctrl-Home#               Start of file
+   #Ctrl-End#                End of file
+
+  Delete operations
+
+   #Del#                     Delete char
+   #BS#                      Delete char left
+   #Ctrl-Y#                  Delete line
+   #Alt-D#                   Delete to end of line
+   #Ctrl-BS#                 Delete word left
+   #Ctrl-T#                  Delete word right
+
+  Block operations
+
+   #Shift+Cursor keys#       Select block
+   #Shift-Ins, Ctrl-V#       Paste block to clipboard
+   #Ctrl-Ins, Ctrl-C#        Copy block from clipboard
+   #Ctrl-Del, Ctrl-X#        Cut block
+
+  Other operations
+
+   #F1#                      Help
+   #F2#                      Save file
+   #F7#                      Search
+   #Shift-F7#                Continue search
+   #F10, Esc#                Exit
+

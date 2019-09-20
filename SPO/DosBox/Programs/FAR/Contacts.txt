@@ -1,0 +1,22 @@
+                                                                 Contacts.txt
+
+       Send your comments, bug reports, suggestions, compatibility
+       issues or simply useful information for FAR development to 
+       Eugene Roshal, the FAR author:
+
+
+         E-mail: Eugene.Roshal@p12.f23.n5010.z2.fidonet.org
+
+         Snail mail:       FAR Report
+                           a/ja 16112
+                           Chelyabinsk 454091
+                           RUSSIA
+
+         Anonymous ftp distribution:
+
+               ftp://ftp.elf.stuba.sk/pub/pc/shell/
+
+
+         ATTENTION! The contact information expired at 01-Jul-97.
+             Look for newest versions of FAR after this date.
+

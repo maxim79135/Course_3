@@ -1,6 +1,3 @@
-var a : string;
-
 begin
-     read(a);
-     write('Hello ', a);
+     write('Hello');
 end.
