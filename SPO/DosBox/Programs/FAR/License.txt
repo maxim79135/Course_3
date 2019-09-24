@@ -1,0 +1,58 @@
+                                                                 License.txt
+      The FAR File and Archive Manager
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      License for use and distribution
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      Beta testing status
+      ~~~~~~~~~~~~~~~~~~~
+
+      This version of FAR is currently at beta testing state.
+
+      It is FREEWARE with expiration date. Read the license for details:
+
+
+   1. All copyrights to FAR are exclusively owned by the author
+      - Eugene Roshal.
+
+   2. Anyone may use this software for beta testing purposes before
+      the expiration date: 01/01/1997. If you read this license after
+      the FAR version is expired, you are strongly encouraged to get
+      newest version of FAR (see corresponding license enclosed within
+      a newest version package).
+
+   3. The FAR beta testing freeware version, may be freely distributed,
+      provided the distribution package is not modified. No person or 
+      company may charge a fee for the distribution of FAR without
+      written permission from the copyright holder.
+
+   4. You may send your comments, bug reports, suggestions, other
+      information on the FAR version to its author (look inside the 
+      file Contacts.txt for the address information).
+
+   5. FAR FILE AND ARCHIVE MANAGER IS DISTRIBUTED "AS IS".
+      NO WARRANTY OF ANY KIND IS EXPRESSED OR IMPLIED. YOU
+      USE AT YOUR OWN RISK. THE AUTHOR WILL NOT BE LIABLE FOR
+      DATA LOSS, DAMAGES, LOSS OF PROFITS OR ANY OTHER KIND
+      OF LOSS WHILE USING OR MISUSING THIS SOFTWARE.
+
+   6. You may not use, copy, emulate, clone, rent, lease, sell, modify,
+      decompile, disassemble, otherwise reverse engineer, or transfer the
+      licensed program, or any subset of the licensed program, except as 
+      provided for in this agreement.  Any such unauthorized use shall 
+      result in immediate and automatic termination of this license and
+      may result in criminal and/or civil prosecution.
+
+      All rights not expressly granted here are reserved by Eugene Roshal.
+
+   7. The terms of this license, as well as the FAR data structure formats
+      and interface design are subjects of changes in future versions of
+      FAR or corresponding products.
+
+   8. Installing and using FAR signifies acceptance of these terms
+      and conditions of the license.
+
+   9. If you do not agree with the terms of this license you must remove
+      FAR files from your storage devices and cease to use the product.
+
+      Thank you for trying FAR.
+                                            Eugene Roshal

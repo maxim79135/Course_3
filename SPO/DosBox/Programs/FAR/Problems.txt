@@ -1,0 +1,36 @@
+                                                                 Problems.txt
+
+This is additional information for the FAR version 1.0 beta.
+
+
+Hints and known problems:
+
+1. To process archives FAR calls external archiver tools.
+   Archiver command lines are defined in the file Archiver.Ini
+   located in the FAR folder. In case you installed the final
+   release of the RAR Archiver v2.0 for Windows, you may change 
+   the '-r' switch to '-r0' in the [rar] archiver section for 
+   better perfomance.
+
+2. If you wanted to add FAR to your Start menu of Windows 95,
+   it would be useful to add FAR.BAT with FAR.EXE call,
+   instead of adding FAR.EXE itself. It will help you to save
+   properties.
+
+3. When critical error occurs while execution of DOS application
+   started with FAR, choose "Fail" instead of "Abort", when you
+   prompted by critical error handler. Otherwise, in some cases
+   FAR will not be able to continue after the application is 
+   terminated. The problem is known for Windows 95 only. Windows NT
+   users will not run into this.
+
+4. If you wish to use Windows Paste from clipboard whithin the FAR 
+   editor, uncheck the "Fast pasting" option in FAR properties. 
+   Paste and Copy operations are implemented in the editor as well
+   with usage of common Windows clipboard (see also "Block commands"
+   in the Editor's help).
+
+
+
+   See file Contacts.txt to send your feedbacks. Thank you.
+
