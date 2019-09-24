@@ -6,7 +6,12 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::FullPivLU;
 
-VectorXd solveMatrixWithGauss(MatrixXd matrix) {
+void solveMatrixWithGauss(MatrixXd matrix, bool isOneSolve) {
+	if (isOneSolve) 
+		cout << "System has one solution" << endl;
+	else
+		cout << "System has more then one solution" << endl;
+	
 	double tmp;
 	int n = matrix.rows(), m = matrix.cols() - 1;
 	VectorXd result(n);
@@ -15,9 +20,9 @@ VectorXd solveMatrixWithGauss(MatrixXd matrix) {
 		do {
 			tmp = matrix(i, k);
 			k++;
-		} while (tmp == 0 || k <= m);
-		if (k == m) 
+		} while (tmp == 0 && k <= m);
 		k--;
+		if (k == m) continue;
 		for (int j = m; j >= k; j--) matrix(i, j) /= tmp;
 		for (int j = i + 1; j < n; j++) {
 			tmp = matrix(j, k);
@@ -25,13 +30,37 @@ VectorXd solveMatrixWithGauss(MatrixXd matrix) {
 		}
 		cout << matrix << "\n\n";
 	}
-
-	result(n - 1) = matrix(n - 1, n);
-	for (int i = n - 2; i >= 0; i--) {
-		result(i) = matrix(i, n);
-		for (int j = i + 1; j < n; j++) result(i) -= matrix(i, j) * result(j);
+	cout << "Result\n";
+	
+	MatrixXd res = MatrixXd::Zero(m + 1, m + 1);
+	res(m, m) = 1;
+	for (int i = n; i < m; i++) res(i, i) = 1;
+		
+	for (int i = n - 1; i >= 0; i--) {
+		for (int j = 0; j < m + 1; j++) res.row(i) -= matrix(i, j) * res.row(j) * (j == m ? -1 : 1);
 	}
-	return result;
+
+	for (int i = 0; i < m; i++) {
+		cout << "X" << i + 1 << " = ";
+		bool isZeroCountX = false;
+		if (res(i, m)) {
+			cout << res(i, m);
+			isZeroCountX = true;
+		}
+		for (int j = 0; j < m; j++) {
+			if (res(i, j) != 0) {
+				isZeroCountX = true;	
+				if (abs(res(i, j)) == 1) 
+					cout << ((res(i, j) > 0) ? "+" : "-") << "x" << j + 1;
+				else {
+					if (res(i, j) > 0) cout << "+";
+					cout << res(i, j) << "*x" << j + 1;
+				}
+			}
+		}
+		if (!isZeroCountX) cout << 0;
+		cout << endl;
+	}
 }
 
 int main() {
@@ -66,13 +95,7 @@ int main() {
 	if (rankA != rankAb) {
 		cout << "System has not solutions" << endl;
 		return EXIT_SUCCESS;
-	} else if (rankA == m) {
-		cout << "System has one solution" << endl;
-		VectorXd v = solveMatrixWithGauss(Ab);
-		cout << "Result\n";
-		for (int i = 0; i < n; i++) cout << "X" << i + 1 << " = " << v(i) << endl; 
-	} else {
-		cout << "System has more then one solution" << endl;
-		VectorXd v = solveMatrixWithGauss(Ab);	
-	}
+	} else
+		solveMatrixWithGauss(Ab, rankA == m ? true : false);	
+
 }

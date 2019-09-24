@@ -1,0 +1,24 @@
+{
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "g++.exe build active file",
+            "command": "E:\\Qt\\Tools\\mingw730_64\\bin\\g++.exe",
+            "args": [
+                "${fileDirname}\\${fileBasenameNoExtension}.cpp",
+                "-o",
+                "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                "-w",
+                "-I",
+                "E:\\Downloads\\eigen-eigen-323c052e1731"
+            ],
+            "options": {
+                "cwd": "E:\\Qt\\Tools\\mingw730_64\\bin"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+    ],
+    "version": "2.0.0"
+}
