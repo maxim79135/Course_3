@@ -74,6 +74,65 @@ MESSAGE proc near
     ret
 MESSAGE endp
 
+FINDCHAR proc near
+    mov al, FD.character
+
+    mov cx, 03h
+    lea bx, FD.one
+    lea dx, message5
+    mov di, bx
+
+loop_for_find_char:
+    push cx
+    push dx
+    xor dx, dx
+    mov cx, 0ah
+
+main_m1:
+    cmp [bx], al
+    jne main_m2
+    inc dx
+main_m2:
+    inc bx
+    loop main_m1
+    inc bx
+    push bx
+
+    cmp dx, 00h
+    jne main_print_string
+
+    lea di, FD.four
+    mov [di], al
+    inc di
+
+    ; copy other characters
+    mov cx, 0Ah
+    sub bx, 0bh
+main_m3:
+    mov ah, [bx]
+    mov [di], ah
+    inc di
+    inc bx
+    loop main_m3
+    mov byte ptr [di], 24h
+    lea di, FD.four
+
+main_print_string:
+    pop bx
+    pop dx
+    call MESSAGE
+
+    push dx
+    mov dx, di
+    call MESSAGE
+    
+    pop dx
+    pop cx
+    add dx, 0ch
+    loop loop_for_find_char
+    ret
+FINDCHAR endp
+
 main:
     mov ax, @data
     mov ds, ax
@@ -110,47 +169,10 @@ main:
     lea bx, FD.character
     xor dx, dx
     call GETCHAR
-
-    ; find character in each string
-    mov al, FD.character
-    xor dx, dx
-    mov cx, 0ah
-    lea bx, FD.one
-
-main_m1:
-    cmp [bx], al
-    jne main_m2
-    inc dx
-main_m2:
-    inc bx
-    loop main_m1
-
-    lea di, FD.one
-    cmp dx, 00h
-    jne main_print_string
-
-    lea di, FD.four
-    mov [di], al
-    inc di
-
-    ; copy other characters
-    mov cx, 0Ah
-    lea si, FD.one
-main_m3:
-    mov ah, [si]
-    mov [di], ah
-    inc di
-    inc si
-    loop main_m3
-    mov byte ptr [di], 24h
-    lea di, FD.four
-
-main_print_string:
-    lea dx, message5
-    call MESSAGE
-    mov dx, di
-    call MESSAGE
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
+    ;find current chacracter for each string
+    call FINDCHAR
+    
     ; exit program
     mov ah, 4ch
     int 21h
