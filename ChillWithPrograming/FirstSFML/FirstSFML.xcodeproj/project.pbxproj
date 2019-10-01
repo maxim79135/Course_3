@@ -281,8 +281,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = G877386M6Q;
 				ENABLE_HARDENED_RUNTIME = YES;
-				HEADER_SEARCH_PATHS = "/Users/max/Downloads/SFML-2.5.1-macos-clang/include/**";
-				LIBRARY_SEARCH_PATHS = "/Users/max/Downloads/SFML-2.5.1-macos-clang/lib/**";
+				HEADER_SEARCH_PATHS = "/usr/local/include/**";
+				LIBRARY_SEARCH_PATHS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -294,8 +294,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = G877386M6Q;
 				ENABLE_HARDENED_RUNTIME = YES;
-				HEADER_SEARCH_PATHS = "/Users/max/Downloads/SFML-2.5.1-macos-clang/include/**";
-				LIBRARY_SEARCH_PATHS = "/Users/max/Downloads/SFML-2.5.1-macos-clang/lib/**";
+				HEADER_SEARCH_PATHS = "/usr/local/include/**";
+				LIBRARY_SEARCH_PATHS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

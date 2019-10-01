@@ -16,13 +16,23 @@ void solveMatrixWithGauss(MatrixXd matrix, bool isOneSolve) {
 	int n = matrix.rows(), m = matrix.cols() - 1;
 	VectorXd result(n);
 	for (int i = 0; i < n; i++) {
-		int k = i;
+		/*int k = i;
 		do {
 			tmp = matrix(i, k);
 			k++;
 		} while (tmp == 0 && k <= m);
 		k--;
-		if (k == m) continue;
+		if (k == m) continue;*/
+        int k = i;
+        while (!(tmp = matrix(k, k))) {
+            k++;
+            if (k == n) {
+                int l = i;
+                while (<#condition#>) {
+                    <#statements#>
+                }
+            }
+        }
 		for (int j = m; j >= k; j--) matrix(i, j) /= tmp;
 		for (int j = i + 1; j < n; j++) {
 			tmp = matrix(j, k);
