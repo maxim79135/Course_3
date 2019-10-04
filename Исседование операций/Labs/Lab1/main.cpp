@@ -6,6 +6,19 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::FullPivLU;
 
+bool isFreeVariable(MatrixXd matrix, int number) {
+	int k = number, tmp;
+    while (!(tmp = matrix(k, k))) {
+        k++;
+        if (k == matrix.rows()) {
+            int l = number;
+            while (<#condition#>) {
+                <#statements#>
+            }
+        }
+    }	
+}
+
 void solveMatrixWithGauss(MatrixXd matrix, bool isOneSolve) {
 	if (isOneSolve) 
 		cout << "System has one solution" << endl;
@@ -23,16 +36,7 @@ void solveMatrixWithGauss(MatrixXd matrix, bool isOneSolve) {
 		} while (tmp == 0 && k <= m);
 		k--;
 		if (k == m) continue;*/
-        int k = i;
-        while (!(tmp = matrix(k, k))) {
-            k++;
-            if (k == n) {
-                int l = i;
-                while (<#condition#>) {
-                    <#statements#>
-                }
-            }
-        }
+        
 		for (int j = m; j >= k; j--) matrix(i, j) /= tmp;
 		for (int j = i + 1; j < n; j++) {
 			tmp = matrix(j, k);
