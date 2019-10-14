@@ -1,0 +1,119 @@
+Отчет по лабораторной работе по Системному ПО
+Тема: Исследование EXE файлов
+Вариант  11
+
+Задание 1. Заголовок EXE файла
+
+Макс. требуемый объем памяти      65535
+Мин. требуемый объем памяти       0
+Смещение Relocation Table         0X003E
+Кол-во эл-тов в Relocation Table  1
+Кол-во параграфов в заголовке     32
+Смещение сегмента стека           0X0017
+Смещение сегмента кода            0X0001
+Значение указателя команд         0X0131
+Длина загружаемой части           858
+
+Задание 2. Декодирование команд
+
+0131: xor ax, ax
+0133: push ax
+0134: mov ax, 0
+0137: mov ds, ax
+0139: pop ax
+013A: mov dx,00h
+013D: mov ah, 09h
+013F: int 21h
+0141: mov bx, 0417h
+0144: mov ax, 0
+0147: push ds
+0148: mov ds, ax
+014A: mov al, [bx]
+014C: pop ds
+014D: add al, 30h
+014F: int 29h
+0151: mov ax, 4c00h
+0154: int 21h
+0156: retf
+
+Задание 3. Описание действий
+
+0131: xor ax, ax
+  AX:=AX xor AX
+
+0133: push ax
+  SP:=SP-0002h
+  [SP]:=AX
+
+0134: mov ax, 0
+  AX:=0000h
+
+0137: mov ds, ax
+  DS:=AX
+
+0139: pop ax
+  AX:=[SP]
+  SP:=SP+0002h
+
+013A: mov dx,00h
+  DX:=0000h
+
+013D: mov ah, 09h
+  AH:=0009h
+
+013F: int 21h
+  SP:=SP-0002h
+  [SP]:=Flags
+  SP:=SP-0002h
+  [SP]:=CS
+  SP:=SP-0002h
+  [SP]:=IP
+
+0141: mov bx, 0417h
+  BX:=0417h
+
+0144: mov ax, 0
+  AX:=0000h
+
+0147: push ds
+  SP:=SP-0002h
+  [SP]:=DS
+
+0148: mov ds, ax
+  DS:=AX
+
+014A: mov al, [bx]
+  AL:=[BX]
+
+014C: pop ds
+  DS:=[SP]
+  SP:=SP+0002h
+
+014D: add al, 30h
+  AL:=AL+0030h
+
+014F: int 29h
+  SP:=SP-0002h
+  [SP]:=Flags
+  SP:=SP-0002h
+  [SP]:=CS
+  SP:=SP-0002h
+  [SP]:=IP
+
+0151: mov ax, 4c00h
+  AX:=4C00h
+
+0154: int 21h
+  SP:=SP-0002h
+  [SP]:=Flags
+  SP:=SP-0002h
+  [SP]:=CS
+  SP:=SP-0002h
+  [SP]:=IP
+
+0156: retf
+  IP:=[SP]
+  SP:=SP+0002h
+  CS:=[SP]
+  SP:=SP+0002h
+

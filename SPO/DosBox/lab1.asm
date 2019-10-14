@@ -138,6 +138,17 @@ main:
     mov ax,@data
     mov ds,ax
 
+
+    mov ah, 0
+    mov bh, 0
+    mov ch, 0
+    mov dh, 0
+
+    mov ax, 0
+    mov bx, 0
+    mov cx, 0
+    mov dx, 0
+
     lea dx,message2
     call    MESSAGE
     lea bx,FD.one
