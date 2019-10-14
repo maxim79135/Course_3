@@ -36,7 +36,21 @@ void solveMatrixWithGauss(MatrixXd matrix, bool isOneSolve) {
 		} while (tmp == 0 && k <= m);
 		k--;
 		if (k == m) continue;*/
+<<<<<<< HEAD
+        int k = i;
+        while (!(tmp = matrix(k, k))) {
+            k++;
+            if (k == n) {
+                int l = i;
+                while (!(tmp = matrix(i, l))) {
+                    break;
+                }
+            }
+        }
+        cout << k << endl;
+=======
         
+>>>>>>> b391d9a0a476d85f3deaa4bfa66e196da1201c5a
 		for (int j = m; j >= k; j--) matrix(i, j) /= tmp;
 		for (int j = i + 1; j < n; j++) {
 			tmp = matrix(j, k);
