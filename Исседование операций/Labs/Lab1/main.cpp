@@ -8,63 +8,83 @@ using Eigen::FullPivLU;
 
 bool isFreeVariable(MatrixXd matrix, int number) {
 	int k = number, tmp;
-    while (!(tmp = matrix(k, k))) {
+    while (!(tmp = matrix(k, number))) {
         k++;
         if (k == matrix.rows()) {
-            int l = number;
-            while (<#condition#>) {
-                <#statements#>
-            }
+            return true;
         }
-    }	
+    }
+    return false;
+}
+
+void swapRowsInMatrix(MatrixXd &matrix, int i, int j) {
+    VectorXd temp(matrix.cols());
+    temp = matrix.row(i);
+    matrix.row(i) = matrix.row(j);
+    matrix.row(j) = temp;
 }
 
 void solveMatrixWithGauss(MatrixXd matrix, bool isOneSolve) {
-	if (isOneSolve) 
+    // free var on matrix
+    VectorXd freeVariables = VectorXd::Zero(matrix.cols() - 1);
+    if (isOneSolve)
 		cout << "System has one solution" << endl;
 	else
 		cout << "System has more then one solution" << endl;
 	
 	double tmp;
-	int n = matrix.rows(), m = matrix.cols() - 1;
-	VectorXd result(n);
-	for (int i = 0; i < n; i++) {
-		/*int k = i;
-		do {
-			tmp = matrix(i, k);
-			k++;
-		} while (tmp == 0 && k <= m);
-		k--;
-		if (k == m) continue;*/
-<<<<<<< HEAD
+	int n = matrix.rows(), m = matrix.cols() - 1, i = 0;
+	while (i < n) {
         int k = i;
-        while (!(tmp = matrix(k, k))) {
-            k++;
-            if (k == n) {
+        if (isFreeVariable(matrix, i)) {
+            if (matrix.row(i).isZero()) {
+                i++;
+                continue;
+            } else {
                 int l = i;
                 while (!(tmp = matrix(i, l))) {
-                    break;
+                    l++;
+                    k = l;
                 }
             }
+            freeVariables(i) = 1;
+        } else {
+            while (!(tmp = matrix(k, i))) {
+                k++;
+            }
+            swapRowsInMatrix(matrix, i, k);
+            k = i;
         }
-        cout << k << endl;
-=======
-        
->>>>>>> b391d9a0a476d85f3deaa4bfa66e196da1201c5a
 		for (int j = m; j >= k; j--) matrix(i, j) /= tmp;
 		for (int j = i + 1; j < n; j++) {
 			tmp = matrix(j, k);
 			for (int l = m; l >= k; l--) matrix(j, l) -= tmp * matrix(i, l);
 		}
 		cout << matrix << "\n\n";
+        //i = k;
+        i++;
 	}
 	cout << "Result\n";
-	
-	MatrixXd res = MatrixXd::Zero(m + 1, m + 1);
-	res(m, m) = 1;
-	for (int i = n; i < m; i++) res(i, i) = 1;
-		
-	for (int i = n - 1; i >= 0; i--) {
+
+    matrix.conservativeResize(matrix.rows() + 2, matrix.cols());
+    for (int i = 0; i < m - n; i++) matrix.row(i + n) = VectorXd::Zero(m + 1);
+
+    for (int i = n - 1; i > 0; i--)
+        for (int j = 0; j < m + 1; j++) {
+            if (matrix(i, j)) {
+                swapRowsInMatrix(matrix, i, j);
+                break;
+            }
+        }
+
+    //cout << endl << matrix << endl << endl;
+    MatrixXd res = MatrixXd::Zero(m + 1, m + 1);
+    res(m, m) = 1;
+    for (int i = 0; i < m; i++) if (!matrix(i, i)) res(i, i) = 1;
+    
+    
+    //cout << endl << matrix << endl;
+	for (int i = m - 1; i >= 0; i--) {
 		for (int j = 0; j < m + 1; j++) res.row(i) -= matrix(i, j) * res.row(j) * (j == m ? -1 : 1);
 	}
 
@@ -91,7 +111,9 @@ void solveMatrixWithGauss(MatrixXd matrix, bool isOneSolve) {
 	}
 }
 
+
 int main() {
+	system("clear");
 	cout << "Solving a fourth-order linear equation system by the Gauss method" << endl;
 	cout << "Type of system: Ax=b\n";
 	int n, m;
@@ -117,8 +139,8 @@ int main() {
 	// find ranks
 	FullPivLU<MatrixXd> lu(A);
 	FullPivLU<MatrixXd> lu2(Ab);
-	int rankA = lu.rank();
-	int rankAb = lu2.rank();
+	long rankA = lu.rank();
+	long rankAb = lu2.rank();
 	
 	if (rankA != rankAb) {
 		cout << "System has not solutions" << endl;
