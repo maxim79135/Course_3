@@ -129,11 +129,16 @@ def Simplex(A, b, c):
                 A[i] -= min * A[min_i]
                 b[i] -= min * b[min_i]
 
-A = np.array([[1, 2, 3, 1, 0, 0],
-              [4, 3, 2, 0, 1, 0],
-              [3, 1, 1, 0, 0, 1]
-             ], dtype=float)
-c = np.array([4, 5, 6, 0, 0, 0], dtype=float)
-b = np.array([35, 45, 40], dtype=float)
+f = open('input.txt', 'r')
+n, m = map(int, f.readline().split())
+table = np.zeros((n, m + n), dtype=int)
+c = np.zeros(n, dtype=int)
+b = np.array(n, dtype=int)
 
-Simplex(A, b, c)
+for i in range(n):
+    table[i] = list(map(int, f.readline().split()))
+
+c = np.array(list(map(int, f.readline().split())))
+b = np.array(list(map(int, f.readline().split())))
+
+Simplex(table, b, c)
