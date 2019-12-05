@@ -1,0 +1,52 @@
+Microsoft (R) Macro Assembler Version 5.00                  11/15/19 15:15:35
+                                                             Page     1-1
+
+
+
+TEST.EXE(13): warning A4085: End of file, no END directive
+Microsoft (R) Macro Assembler Version 5.00                  11/15/19 15:15:35
+                                                             Page     1-1
+
+
+				MZ`
+TEST.EXE(1): error A2106: Line too long
+				
+TEST.EXE(2): error A2106: Line too long
+				
+				
+				
+				
+				Symbol: $String1: $ 
+TEST.EXE(7): warning A4001: Extra characters on line
+				String2: $ 
+TEST.EXE(8): warning A4001: Extra characters on line
+				String3: $ 
+TEST.EXE(9): warning A4001: Extra characters on line
+				Result1: $ 
+TEST.EXE(10): warning A4001: Extra characters on line
+				Result2: $ 
+TEST.EXE(11): warning A4001: Extra characters on line
+				Result3: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+				$$$$$$$$$ 
+TEST.EXE(12): warning A4001: Extra characters on line
+				 
+TEST.EXE(13): warning A4085: End of file, no END directive
+Microsoft (R) Macro Assembler Version 5.00                  11/15/19 15:15:35
+                                                             Symbols-1
+
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+@FILENAME  . . . . . . . . . . .  	TEXT  TEST		
+
+
+     12 Source  Lines
+     13 Total   Lines
+      1 Symbols
+
+  51338 + 465206 Bytes symbol space free
+
+      7 Warning Errors
+      3 Severe  Errors

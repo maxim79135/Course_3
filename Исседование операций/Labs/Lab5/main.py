@@ -7,7 +7,12 @@ def print_matrix(table, needs, stocks):
     columns = ['B' + str(i + 1) for i in range(table.shape[1])]
     columns.append('Stocks')
 
-    temp_table = table
+    temp_table = np.array(table)
+    for i in range(table.shape[0]):
+        for j in range(table.shape[1]):
+            if temp_table[i][j] == -1:
+                temp_table[i][j] = 0
+
     temp_table = np.r_[temp_table, [needs]]
     temp_table = np.c_[temp_table, np.append(stocks, np.sum(stocks))]
     
@@ -15,9 +20,40 @@ def print_matrix(table, needs, stocks):
     print(df)
     print()
 
+    for i in range(table.shape[0]):
+        for j in range(table.shape[1]):
+            if temp_table[i][j] == 0:
+                temp_table[i][j] = -1
+
 max_value = 10000000
 
-def reference_plan_calculation(table, needs, stocks):
+#reference plan with north west method
+def north_west(table, needs, stocks):
+    temp_table = np.array(table)
+    temp_needs = np.array(needs)
+    temp_stocks = np.array(stocks)
+    temp_values = np.full((table.shape[0], table.shape[1]), -1, dtype=int)
+    count = 0
+    cur_i, cur_j = 0, 0
+    while count < table.shape[0] + table.shape[1] - 1:
+        if np.argmin([temp_needs[cur_j], temp_stocks[cur_i]]) == 0:
+            temp_values[cur_i][cur_j] = temp_needs[cur_j]
+            temp_stocks[cur_i] -= temp_needs[cur_j]
+            temp_needs[cur_j] = 0
+            cur_j += 1
+        else:
+            temp_values[cur_i][cur_j] = temp_stocks[cur_i]
+            temp_needs[cur_j] -= temp_stocks[cur_i]
+            temp_stocks[cur_i] = 0
+            cur_i += 1
+        print_matrix(temp_values, temp_needs, temp_stocks)
+        count += 1
+    print_matrix(temp_values, temp_needs, temp_stocks)
+    return temp_values
+
+
+#reference plan with min element method
+def min_element(table, needs, stocks):
     temp_table = np.array(table)
     temp_needs = np.array(needs)
     temp_stocks = np.array(stocks)
@@ -112,21 +148,51 @@ def get_delta(plan, table):
                     min_delta_j = j
                 print(table[i][j] - (u[i] + v[j]), end=' ')
     print()
+    print('Min delta: ' + str(min_delta))
+    print('In coords: (' + str(min_delta_i + 1) + ', ' + str(min_delta_j + 1) + ')')
     return min_delta, min_delta_i, min_delta_j
 
 def get_way(plan, min_delta_i, min_delta_j):
-    pass
+    import itertools
+    nodes = []
+    for i in range(plan.shape[0]):
+        for j in range(plan.shape[1]):
+            if plan[i][j] != -1:
+                nodes.append((i, j))
+    depth = 3
+    while True:
+        permutations = list(itertools.permutations(nodes, depth))
+        cur_node = (min_delta_i, min_delta_j)
+        start_node = cur_node
 
-Сед789836#
-CxP7EvD
+        for x in permutations:
+            x = list(x)
+            x.append(start_node)
+            for node in x:
+                if cur_node[0] != node[0] and cur_node[1] != node[1]:
+                    cur_node = start_node
+                    break
+                else:
+                    cur_node = node
+                    if cur_node == start_node:
+                        for i, j in x:
+                            print('(' + str(i + 1) + ', ' + str(j + 1) + ')', end=' ')
+                        print()
+                        return x
+        depth += 1
+
 def change_plan(plan, min_delta_i, min_delta_j):
-    nodes = [(min_delta_i, min_delta_j), (1, 2), (2, 2), (2, 1)]
-    #get_way(plan, min_delta_i, min_delta_j)
+    nodes = get_way(plan, min_delta_i, min_delta_j)
+    nodes.pop()
+    nodes.insert(0, (min_delta_i, min_delta_j))
+    
 
     min = max_value
+    min_i, min_j = 0, 0
     for i in range(len(nodes)):
-        if plan[nodes[i][0]][nodes[i][1]] < min and plan[nodes[i][0]][nodes[i][1]] != -1 and i % 2 != 0:
+        if plan[nodes[i][0]][nodes[i][1]] < min and plan[nodes[i][0]][nodes[i][1]] != -1 and i % 2 == 1:
             min = plan[nodes[i][0]][nodes[i][1]]
+            min_i, min_j = nodes[i][0], nodes[i][1]
     
     for i in range(len(nodes)):
         if i % 2 == 0:
@@ -136,9 +202,10 @@ def change_plan(plan, min_delta_i, min_delta_j):
                 plan[nodes[i][0]][nodes[i][1]] += min
         else:
             plan[nodes[i][0]][nodes[i][1]] -= min
-            if plan[nodes[i][0]][nodes[i][1]] == 0:
+            if plan[nodes[i][0]][nodes[i][1]] == 0 and nodes[i][0] != min_i and nodes[i][1] != min_j:
                 plan[nodes[i][0]][nodes[i][1]] = -1
     return
+
 
 def main():
     print('Enter option: ', end='')
@@ -155,15 +222,19 @@ def main():
     
     # change table for closed model
     if np.sum(needs) < np.sum(stocks):
-        table = np.c_[table, np.zeros(table.shape[0])]
+        table = np.c_[table, np.zeros(table.shape[0], dtype=int)]
         needs = np.append(needs, np.sum(stocks) - np.sum(needs))
     elif np.sum(needs) > np.sum(stocks):
-        table = np.r_[table, [np.zeros(table.shape[1])]]
+        table = np.r_[table, [np.zeros(table.shape[1], dtype=int)]]
         stocks = np.append(stocks, np.sum(needs) - np.sum(stocks))
     
     print_matrix(table, needs, stocks)
-    plan = reference_plan_calculation(table, needs, stocks)
+    #plan = min_element(table, needs, stocks)
+    plan = north_west(table, needs, stocks)
     
+    print('Plan table: ')
+    print_matrix(plan, needs, stocks)
+    print('Start table: ')
     print_matrix(table, needs, stocks)
     
     while True:

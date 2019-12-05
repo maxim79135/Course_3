@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<LOG_ROOT>
+	<PROJECT NAME="Lab1">
+		<CBX_INST_ENTRY INSTANCE_NAME="|Lab1|PLL1:inst1|altpll:altpll_component" CBX_FILE_NAME="PLL1_altpll.v"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|Lab1|USBBridge:instx|USB_CT3:b2v_inst5|lpm_counter:LPM_COUNTER_component" CBX_FILE_NAME="cntr_pqi.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|Lab1|USBBridge:instx|USB_MUX1x2:b2v_inst116|LPM_MUX:LPM_MUX_component" CBX_FILE_NAME="mux_96e.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|Lab1|USBBridge:instx|USB_MUX8x2:b2v_instmux1|LPM_MUX:LPM_MUX_component" CBX_FILE_NAME="mux_g6e.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|Lab1|USBBridge:instx|USB_DC8:b2v_inst14|lpm_decode:LPM_DECODE_component" CBX_FILE_NAME="decode_j1g.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|Lab1|USBBridge:instx|USB_MUX8x19:b2v_instmux2|LPM_MUX:LPM_MUX_component" CBX_FILE_NAME="mux_c8e.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|Lab1|USBBridge:instx|usb_dc3:b2v_instdc3|lpm_decode:LPM_DECODE_component" CBX_FILE_NAME="decode_5af.tdf"/>
+	</PROJECT>
+</LOG_ROOT>

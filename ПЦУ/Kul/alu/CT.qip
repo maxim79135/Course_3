@@ -1,0 +1,6 @@
+set_global_assignment -name IP_TOOL_NAME "LPM_COUNTER"
+set_global_assignment -name IP_TOOL_VERSION "9.1"
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) "CT.v"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "CT.bsf"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "CT_bb.v"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "CT.cmp"]

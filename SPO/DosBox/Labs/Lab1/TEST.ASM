@@ -37,7 +37,7 @@ getchar_m3:
     cmp al, 0dh
     je getchar_quit
 getchar_m4:
-    cmp al, 33
+    cmp al, 31
     jle getchar_m1
 getchar_quit:
     mov [bx], al
@@ -136,6 +136,7 @@ FINDCHAR endp
 main:
     mov ax, @data
     mov ds, ax
+    dec byte ptr ds:[bp][si+00C4h]
     
     ; print string1
     lea dx, message2
