@@ -1,5 +1,5 @@
 Analysis & Synthesis report for lab
-Mon Dec 02 23:51:05 2019
+Mon Dec 09 21:33:25 2019
 Quartus II Version 9.1 Build 350 03/24/2010 Service Pack 2 SJ Web Edition
 
 
@@ -9,54 +9,53 @@ Quartus II Version 9.1 Build 350 03/24/2010 Service Pack 2 SJ Web Edition
   1. Legal Notice
   2. Analysis & Synthesis Summary
   3. Analysis & Synthesis Settings
-  4. Parallel Compilation
-  5. Analysis & Synthesis Source Files Read
-  6. Analysis & Synthesis Resource Usage Summary
-  7. Analysis & Synthesis Resource Utilization by Entity
-  8. Registers Removed During Synthesis
-  9. Removed Registers Triggering Further Register Optimizations
- 10. General Register Statistics
- 11. Inverted Register Statistics
- 12. Multiplexer Restructuring Statistics (Restructuring Performed)
- 13. Source assignments for USBBridge:inst|USB_CT3:b2v_inst5|lpm_counter:LPM_COUNTER_component
- 14. Source assignments for lab:inst4|CT1:inst17|CT:inst|lpm_counter:lpm_counter_component
- 15. Source assignments for lab:inst4|CT1:inst18|CT:inst|lpm_counter:lpm_counter_component
- 16. Source assignments for lab:inst4|CT3:inst33|lpm_counter:lpm_counter_component
- 17. Parameter Settings for User Entity Instance: USBBridge:inst|USB_MUX1x2:b2v_inst116|LPM_MUX:LPM_MUX_component
- 18. Parameter Settings for User Entity Instance: USBBridge:inst|USB_DC8:b2v_inst14|lpm_decode:LPM_DECODE_component
- 19. Parameter Settings for User Entity Instance: USBBridge:inst|USB_CT3:b2v_inst5|lpm_counter:LPM_COUNTER_component
- 20. Parameter Settings for User Entity Instance: USBBridge:inst|usb_dc3:b2v_instdc3|lpm_decode:LPM_DECODE_component
- 21. Parameter Settings for User Entity Instance: USBBridge:inst|USB_MUX8x2:b2v_instmux1|LPM_MUX:LPM_MUX_component
- 22. Parameter Settings for User Entity Instance: USBBridge:inst|USB_MUX8x19:b2v_instmux2|LPM_MUX:LPM_MUX_component
- 23. Parameter Settings for User Entity Instance: PLL1:inst1|altpll:altpll_component
- 24. Parameter Settings for User Entity Instance: lab:inst4|KC3:inst10|lpm_or:lpm_or_component
- 25. Parameter Settings for User Entity Instance: lab:inst4|Rg3:inst9|Rg_3:inst|lpm_ff:lpm_ff_component
- 26. Parameter Settings for User Entity Instance: lab:inst4|Rg3:inst9|MUX0:inst1|LPM_MUX:lpm_mux_component
- 27. Parameter Settings for User Entity Instance: lab:inst4|Rg3:inst9|MUX0:inst2|LPM_MUX:lpm_mux_component
- 28. Parameter Settings for User Entity Instance: lab:inst4|MUX0:inst8|LPM_MUX:lpm_mux_component
- 29. Parameter Settings for User Entity Instance: lab:inst4|SM1:inst6|lpm_add_sub:lpm_add_sub_component
- 30. Parameter Settings for User Entity Instance: lab:inst4|Rg1:inst|Rg_1:inst|lpm_shiftreg:lpm_shiftreg_component
- 31. Parameter Settings for User Entity Instance: lab:inst4|KC1:inst5|lpm_xor:lpm_xor_component
- 32. Parameter Settings for User Entity Instance: lab:inst4|Rg1:inst2|Rg_1:inst|lpm_shiftreg:lpm_shiftreg_component
- 33. Parameter Settings for User Entity Instance: lab:inst4|KC2:inst3|lpm_and:lpm_and_component
- 34. Parameter Settings for User Entity Instance: lab:inst4|KC5:inst19|lpm_or:lpm_or_component
- 35. Parameter Settings for User Entity Instance: lab:inst4|CT1:inst17|CT:inst|lpm_counter:lpm_counter_component
- 36. Parameter Settings for User Entity Instance: lab:inst4|CT1:inst18|CT:inst|lpm_counter:lpm_counter_component
- 37. Parameter Settings for User Entity Instance: lab:inst4|SM2:inst23|lpm_add_sub:lpm_add_sub_component
- 38. Parameter Settings for User Entity Instance: lab:inst4|KC4:inst21|lpm_xor:lpm_xor_component
- 39. Parameter Settings for User Entity Instance: lab:inst4|KC5:inst26|lpm_or:lpm_or_component
- 40. Parameter Settings for User Entity Instance: lab:inst4|Comp:inst30|lpm_compare:lpm_compare_component
- 41. Parameter Settings for User Entity Instance: lab:inst4|CT3:inst33|lpm_counter:lpm_counter_component
- 42. Parameter Settings for User Entity Instance: lab:inst4|KC4:inst28|lpm_xor:lpm_xor_component
- 43. altpll Parameter Settings by Entity Instance
- 44. lpm_shiftreg Parameter Settings by Entity Instance
- 45. Port Connectivity Checks: "USBBridge:inst|USB_MUX8x19:b2v_instmux2"
- 46. Port Connectivity Checks: "USBBridge:inst|USB_RG8E:b2v_inst9"
- 47. Port Connectivity Checks: "USBBridge:inst|USB_RG8E:b2v_inst43"
- 48. Port Connectivity Checks: "USBBridge:inst|USB_RG8E:b2v_inst38"
- 49. Port Connectivity Checks: "USBBridge:inst|USB_RG8E:b2v_inst37"
- 50. Port Connectivity Checks: "USBBridge:inst|USB_DC8:b2v_inst14"
- 51. Analysis & Synthesis Messages
+  4. Analysis & Synthesis Source Files Read
+  5. Analysis & Synthesis Resource Usage Summary
+  6. Analysis & Synthesis Resource Utilization by Entity
+  7. Registers Removed During Synthesis
+  8. Removed Registers Triggering Further Register Optimizations
+  9. General Register Statistics
+ 10. Inverted Register Statistics
+ 11. Multiplexer Restructuring Statistics (Restructuring Performed)
+ 12. Source assignments for USBBridge:inst|USB_CT3:b2v_inst5|lpm_counter:LPM_COUNTER_component
+ 13. Source assignments for lab:inst4|CT1:inst17|CT:inst|lpm_counter:lpm_counter_component
+ 14. Source assignments for lab:inst4|CT1:inst18|CT:inst|lpm_counter:lpm_counter_component
+ 15. Source assignments for lab:inst4|CT3:inst33|lpm_counter:lpm_counter_component
+ 16. Parameter Settings for User Entity Instance: USBBridge:inst|USB_MUX1x2:b2v_inst116|LPM_MUX:LPM_MUX_component
+ 17. Parameter Settings for User Entity Instance: USBBridge:inst|USB_DC8:b2v_inst14|lpm_decode:LPM_DECODE_component
+ 18. Parameter Settings for User Entity Instance: USBBridge:inst|USB_CT3:b2v_inst5|lpm_counter:LPM_COUNTER_component
+ 19. Parameter Settings for User Entity Instance: USBBridge:inst|usb_dc3:b2v_instdc3|lpm_decode:LPM_DECODE_component
+ 20. Parameter Settings for User Entity Instance: USBBridge:inst|USB_MUX8x2:b2v_instmux1|LPM_MUX:LPM_MUX_component
+ 21. Parameter Settings for User Entity Instance: USBBridge:inst|USB_MUX8x19:b2v_instmux2|LPM_MUX:LPM_MUX_component
+ 22. Parameter Settings for User Entity Instance: PLL1:inst1|altpll:altpll_component
+ 23. Parameter Settings for User Entity Instance: lab:inst4|KC3:inst10|lpm_or:lpm_or_component
+ 24. Parameter Settings for User Entity Instance: lab:inst4|Rg3:inst9|Rg_3:inst|lpm_ff:lpm_ff_component
+ 25. Parameter Settings for User Entity Instance: lab:inst4|Rg3:inst9|MUX0:inst1|LPM_MUX:lpm_mux_component
+ 26. Parameter Settings for User Entity Instance: lab:inst4|Rg3:inst9|MUX0:inst2|LPM_MUX:lpm_mux_component
+ 27. Parameter Settings for User Entity Instance: lab:inst4|MUX0:inst8|LPM_MUX:lpm_mux_component
+ 28. Parameter Settings for User Entity Instance: lab:inst4|SM1:inst6|lpm_add_sub:lpm_add_sub_component
+ 29. Parameter Settings for User Entity Instance: lab:inst4|Rg1:inst|Rg_1:inst|lpm_shiftreg:lpm_shiftreg_component
+ 30. Parameter Settings for User Entity Instance: lab:inst4|KC1:inst5|lpm_xor:lpm_xor_component
+ 31. Parameter Settings for User Entity Instance: lab:inst4|Rg1:inst2|Rg_1:inst|lpm_shiftreg:lpm_shiftreg_component
+ 32. Parameter Settings for User Entity Instance: lab:inst4|KC2:inst3|lpm_and:lpm_and_component
+ 33. Parameter Settings for User Entity Instance: lab:inst4|KC5:inst19|lpm_or:lpm_or_component
+ 34. Parameter Settings for User Entity Instance: lab:inst4|CT1:inst17|CT:inst|lpm_counter:lpm_counter_component
+ 35. Parameter Settings for User Entity Instance: lab:inst4|CT1:inst18|CT:inst|lpm_counter:lpm_counter_component
+ 36. Parameter Settings for User Entity Instance: lab:inst4|SM2:inst23|lpm_add_sub:lpm_add_sub_component
+ 37. Parameter Settings for User Entity Instance: lab:inst4|KC4:inst21|lpm_xor:lpm_xor_component
+ 38. Parameter Settings for User Entity Instance: lab:inst4|KC5:inst26|lpm_or:lpm_or_component
+ 39. Parameter Settings for User Entity Instance: lab:inst4|Comp:inst30|lpm_compare:lpm_compare_component
+ 40. Parameter Settings for User Entity Instance: lab:inst4|CT3:inst33|lpm_counter:lpm_counter_component
+ 41. Parameter Settings for User Entity Instance: lab:inst4|KC4:inst28|lpm_xor:lpm_xor_component
+ 42. altpll Parameter Settings by Entity Instance
+ 43. lpm_shiftreg Parameter Settings by Entity Instance
+ 44. Port Connectivity Checks: "USBBridge:inst|USB_MUX8x19:b2v_instmux2"
+ 45. Port Connectivity Checks: "USBBridge:inst|USB_RG8E:b2v_inst9"
+ 46. Port Connectivity Checks: "USBBridge:inst|USB_RG8E:b2v_inst43"
+ 47. Port Connectivity Checks: "USBBridge:inst|USB_RG8E:b2v_inst38"
+ 48. Port Connectivity Checks: "USBBridge:inst|USB_RG8E:b2v_inst37"
+ 49. Port Connectivity Checks: "USBBridge:inst|USB_DC8:b2v_inst14"
+ 50. Analysis & Synthesis Messages
 
 
 
@@ -82,7 +81,7 @@ applicable agreement for further details.
 +-----------------------------------------------------------------------------------+
 ; Analysis & Synthesis Summary                                                      ;
 +------------------------------------+----------------------------------------------+
-; Analysis & Synthesis Status        ; Successful - Mon Dec 02 23:51:05 2019        ;
+; Analysis & Synthesis Status        ; Successful - Mon Dec 09 21:33:25 2019        ;
 ; Quartus II Version                 ; 9.1 Build 350 03/24/2010 SP 2 SJ Web Edition ;
 ; Revision Name                      ; lab                                          ;
 ; Top-level Entity Name              ; lab1                                         ;
@@ -180,76 +179,65 @@ applicable agreement for further details.
 +----------------------------------------------------------------------------+--------------------+--------------------+
 
 
-Parallel compilation was disabled, but you have multiple processors available. Enable parallel compilation to reduce compilation time.
-+-------------------------------------+
-; Parallel Compilation                ;
-+----------------------------+--------+
-; Processors                 ; Number ;
-+----------------------------+--------+
-; Number detected on machine ; 2      ;
-; Maximum allowed            ; 1      ;
-+----------------------------+--------+
-
-
 +------------------------------------------------------------------------------------------------------------------------------------------------------------+
 ; Analysis & Synthesis Source Files Read                                                                                                                     ;
 +----------------------------------+-----------------+------------------------------------+------------------------------------------------------------------+
 ; File Name with User-Entered Path ; Used in Netlist ; File Type                          ; File Name with Absolute Path                                     ;
 +----------------------------------+-----------------+------------------------------------+------------------------------------------------------------------+
-; PLL1.v                           ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/PLL1.v                               ;
-; USB_CT3.vhd                      ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/USB_CT3.vhd                          ;
-; usb_dc3.vhd                      ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/usb_dc3.vhd                          ;
-; USB_DC8.vhd                      ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/USB_DC8.vhd                          ;
-; USB_MUX1x2.vhd                   ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/USB_MUX1x2.vhd                       ;
-; USB_MUX8x2.vhd                   ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/USB_MUX8x2.vhd                       ;
-; USB_MUX8x19.vhd                  ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/USB_MUX8x19.vhd                      ;
-; USB_RG8E.vhd                     ; yes             ; User VHDL File                     ; E:/altera/3 êóðñ/TTT/alu ua/USB_RG8E.vhd                         ;
-; USBBridge.vhd                    ; yes             ; User VHDL File                     ; E:/altera/3 êóðñ/TTT/alu ua/USBBridge.vhd                        ;
-; lab1.bdf                         ; yes             ; User Block Diagram/Schematic File  ; E:/altera/3 êóðñ/TTT/alu ua/lab1.bdf                             ;
-; KC1.v                            ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/KC1.v                                ;
-; SM1.v                            ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/SM1.v                                ;
-; KC2.v                            ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/KC2.v                                ;
-; KC4.v                            ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/KC4.v                                ;
-; SM2.v                            ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/SM2.v                                ;
-; CT3.v                            ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/CT3.v                                ;
-; lab.bdf                          ; yes             ; User Block Diagram/Schematic File  ; E:/altera/3 êóðñ/TTT/alu ua/lab.bdf                              ;
-; Rg1.bdf                          ; yes             ; User Block Diagram/Schematic File  ; E:/altera/3 êóðñ/TTT/alu ua/Rg1.bdf                              ;
-; Rg_3.v                           ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/Rg_3.v                               ;
-; MUX0.v                           ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/MUX0.v                               ;
-; Rg3.bdf                          ; yes             ; User Block Diagram/Schematic File  ; E:/altera/3 êóðñ/TTT/alu ua/Rg3.bdf                              ;
-; CT.v                             ; yes             ; User Wizard-Generated File         ; E:/altera/3 êóðñ/TTT/alu ua/CT.v                                 ;
-; CT1.bdf                          ; yes             ; User Block Diagram/Schematic File  ; E:/altera/3 êóðñ/TTT/alu ua/CT1.bdf                              ;
-; UA.v                             ; yes             ; User Verilog HDL File              ; E:/altera/3 êóðñ/TTT/alu ua/UA.v                                 ;
-; lpm_mux.tdf                      ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_mux.tdf      ;
-; db/mux_96e.tdf                   ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/mux_96e.tdf                       ;
-; lpm_decode.tdf                   ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_decode.tdf   ;
-; db/decode_j1g.tdf                ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/decode_j1g.tdf                    ;
-; lpm_counter.tdf                  ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_counter.tdf  ;
-; db/cntr_pqi.tdf                  ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/cntr_pqi.tdf                      ;
-; db/decode_5af.tdf                ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/decode_5af.tdf                    ;
-; db/mux_g6e.tdf                   ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/mux_g6e.tdf                       ;
-; db/mux_c8e.tdf                   ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/mux_c8e.tdf                       ;
-; altpll.tdf                       ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/altpll.tdf       ;
-; db/pll1_altpll.v                 ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/pll1_altpll.v                     ;
-; kc3.tdf                          ; yes             ; Auto-Found Wizard-Generated File   ; E:/altera/3 êóðñ/TTT/alu ua/kc3.tdf                              ;
-; lpm_or.inc                       ; yes             ; Auto-Found AHDL File               ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_or.inc       ;
-; lpm_or.tdf                       ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_or.tdf       ;
-; lpm_ff.tdf                       ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_ff.tdf       ;
-; db/mux_jrc.tdf                   ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/mux_jrc.tdf                       ;
-; lpm_add_sub.tdf                  ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_add_sub.tdf  ;
-; db/add_sub_oii.tdf               ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/add_sub_oii.tdf                   ;
-; rg_1.tdf                         ; yes             ; Auto-Found Wizard-Generated File   ; E:/altera/3 êóðñ/TTT/alu ua/rg_1.tdf                             ;
-; lpm_shiftreg.inc                 ; yes             ; Auto-Found AHDL File               ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_shiftreg.inc ;
-; lpm_shiftreg.tdf                 ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_shiftreg.tdf ;
-; lpm_xor.tdf                      ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_xor.tdf      ;
-; lpm_and.tdf                      ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_and.tdf      ;
-; kc5.tdf                          ; yes             ; Auto-Found Wizard-Generated File   ; E:/altera/3 êóðñ/TTT/alu ua/kc5.tdf                              ;
-; db/cntr_8ii.tdf                  ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/cntr_8ii.tdf                      ;
-; db/add_sub_f2i.tdf               ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/add_sub_f2i.tdf                   ;
-; comp.v                           ; yes             ; Auto-Found Wizard-Generated File   ; E:/altera/3 êóðñ/TTT/alu ua/comp.v                               ;
-; lpm_compare.tdf                  ; yes             ; Megafunction                       ; e:/altera/91sp2/quartus/libraries/megafunctions/lpm_compare.tdf  ;
-; db/cmpr_okg.tdf                  ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/cmpr_okg.tdf                      ;
-; db/cntr_7cj.tdf                  ; yes             ; Auto-Generated Megafunction        ; E:/altera/3 êóðñ/TTT/alu ua/db/cntr_7cj.tdf                      ;
+; PLL1.v                           ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/PLL1.v                                         ;
+; USB_CT3.vhd                      ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/USB_CT3.vhd                                    ;
+; usb_dc3.vhd                      ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/usb_dc3.vhd                                    ;
+; USB_DC8.vhd                      ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/USB_DC8.vhd                                    ;
+; USB_MUX1x2.vhd                   ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/USB_MUX1x2.vhd                                 ;
+; USB_MUX8x2.vhd                   ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/USB_MUX8x2.vhd                                 ;
+; USB_MUX8x19.vhd                  ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/USB_MUX8x19.vhd                                ;
+; USB_RG8E.vhd                     ; yes             ; User VHDL File                     ; Y:/ÏÖÓ/Kul/alu ua/USB_RG8E.vhd                                   ;
+; USBBridge.vhd                    ; yes             ; User VHDL File                     ; Y:/ÏÖÓ/Kul/alu ua/USBBridge.vhd                                  ;
+; lab1.bdf                         ; yes             ; User Block Diagram/Schematic File  ; Y:/ÏÖÓ/Kul/alu ua/lab1.bdf                                       ;
+; KC1.v                            ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/KC1.v                                          ;
+; SM1.v                            ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/SM1.v                                          ;
+; KC2.v                            ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/KC2.v                                          ;
+; KC4.v                            ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/KC4.v                                          ;
+; SM2.v                            ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/SM2.v                                          ;
+; CT3.v                            ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/CT3.v                                          ;
+; lab.bdf                          ; yes             ; User Block Diagram/Schematic File  ; Y:/ÏÖÓ/Kul/alu ua/lab.bdf                                        ;
+; Rg1.bdf                          ; yes             ; User Block Diagram/Schematic File  ; Y:/ÏÖÓ/Kul/alu ua/Rg1.bdf                                        ;
+; Rg_3.v                           ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/Rg_3.v                                         ;
+; MUX0.v                           ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/MUX0.v                                         ;
+; Rg3.bdf                          ; yes             ; User Block Diagram/Schematic File  ; Y:/ÏÖÓ/Kul/alu ua/Rg3.bdf                                        ;
+; CT.v                             ; yes             ; User Wizard-Generated File         ; Y:/ÏÖÓ/Kul/alu ua/CT.v                                           ;
+; CT1.bdf                          ; yes             ; User Block Diagram/Schematic File  ; Y:/ÏÖÓ/Kul/alu ua/CT1.bdf                                        ;
+; UA.v                             ; yes             ; User Verilog HDL File              ; Y:/ÏÖÓ/Kul/alu ua/UA.v                                           ;
+; lpm_mux.tdf                      ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_mux.tdf      ;
+; db/mux_96e.tdf                   ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/mux_96e.tdf                                 ;
+; lpm_decode.tdf                   ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_decode.tdf   ;
+; db/decode_j1g.tdf                ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/decode_j1g.tdf                              ;
+; lpm_counter.tdf                  ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_counter.tdf  ;
+; db/cntr_pqi.tdf                  ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/cntr_pqi.tdf                                ;
+; db/decode_5af.tdf                ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/decode_5af.tdf                              ;
+; db/mux_g6e.tdf                   ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/mux_g6e.tdf                                 ;
+; db/mux_c8e.tdf                   ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/mux_c8e.tdf                                 ;
+; altpll.tdf                       ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/altpll.tdf       ;
+; db/pll1_altpll.v                 ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/pll1_altpll.v                               ;
+; kc3.tdf                          ; yes             ; Auto-Found Wizard-Generated File   ; Y:/ÏÖÓ/Kul/alu ua/kc3.tdf                                        ;
+; lpm_or.inc                       ; yes             ; Auto-Found AHDL File               ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_or.inc       ;
+; lpm_or.tdf                       ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_or.tdf       ;
+; lpm_ff.tdf                       ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_ff.tdf       ;
+; db/mux_jrc.tdf                   ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/mux_jrc.tdf                                 ;
+; lpm_add_sub.tdf                  ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_add_sub.tdf  ;
+; db/add_sub_oii.tdf               ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/add_sub_oii.tdf                             ;
+; rg_1.tdf                         ; yes             ; Auto-Found Wizard-Generated File   ; Y:/ÏÖÓ/Kul/alu ua/rg_1.tdf                                       ;
+; lpm_shiftreg.inc                 ; yes             ; Auto-Found AHDL File               ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_shiftreg.inc ;
+; lpm_shiftreg.tdf                 ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_shiftreg.tdf ;
+; lpm_xor.tdf                      ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_xor.tdf      ;
+; lpm_and.tdf                      ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_and.tdf      ;
+; kc5.tdf                          ; yes             ; Auto-Found Wizard-Generated File   ; Y:/ÏÖÓ/Kul/alu ua/kc5.tdf                                        ;
+; db/cntr_8ii.tdf                  ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/cntr_8ii.tdf                                ;
+; db/add_sub_f2i.tdf               ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/add_sub_f2i.tdf                             ;
+; comp.v                           ; yes             ; Auto-Found Wizard-Generated File   ; Y:/ÏÖÓ/Kul/alu ua/comp.v                                         ;
+; lpm_compare.tdf                  ; yes             ; Megafunction                       ; c:/altera/91sp2/quartus/libraries/megafunctions/lpm_compare.tdf  ;
+; db/cmpr_okg.tdf                  ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/cmpr_okg.tdf                                ;
+; db/cntr_7cj.tdf                  ; yes             ; Auto-Generated Megafunction        ; Y:/ÏÖÓ/Kul/alu ua/db/cntr_7cj.tdf                                ;
 +----------------------------------+-----------------+------------------------------------+------------------------------------------------------------------+
 
 
@@ -289,91 +277,91 @@ Parallel compilation was disabled, but you have multiple processors available. E
 ; Compilation Hierarchy Node                        ; LC Combinationals ; LC Registers ; Memory Bits ; DSP Elements ; DSP 9x9 ; DSP 18x18 ; Pins ; Virtual Pins ; Full Hierarchy Name                                                                                ; Library Name ;
 +---------------------------------------------------+-------------------+--------------+-------------+--------------+---------+-----------+------+--------------+----------------------------------------------------------------------------------------------------+--------------+
 ; |lab1                                             ; 587 (1)           ; 285 (0)      ; 0           ; 0            ; 0       ; 0         ; 24   ; 0            ; |lab1                                                                                              ; work         ;
-;    |PLL1:inst1|                                   ; 0 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|PLL1:inst1                                                                                   ; work         ;
+;    |PLL1:inst1|                                   ; 0 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|PLL1:inst1                                                                                   ;              ;
 ;       |altpll:altpll_component|                   ; 0 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|PLL1:inst1|altpll:altpll_component                                                           ; work         ;
 ;          |PLL1_altpll:auto_generated|             ; 0 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|PLL1:inst1|altpll:altpll_component|PLL1_altpll:auto_generated                                ; work         ;
 ;    |USBBridge:inst|                               ; 170 (10)          ; 157 (10)     ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst                                                                               ;              ;
-;       |USB_CT3:b2v_inst5|                         ; 3 (0)             ; 3 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_CT3:b2v_inst5                                                             ; work         ;
-;          |lpm_counter:LPM_COUNTER_component|      ; 3 (0)             ; 3 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_CT3:b2v_inst5|lpm_counter:LPM_COUNTER_component                           ; work         ;
-;             |cntr_pqi:auto_generated|             ; 3 (3)             ; 3 (3)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_CT3:b2v_inst5|lpm_counter:LPM_COUNTER_component|cntr_pqi:auto_generated   ; work         ;
-;       |USB_DC8:b2v_inst14|                        ; 23 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_DC8:b2v_inst14                                                            ; work         ;
-;          |lpm_decode:LPM_DECODE_component|        ; 23 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_DC8:b2v_inst14|lpm_decode:LPM_DECODE_component                            ; work         ;
-;             |decode_j1g:auto_generated|           ; 23 (23)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_DC8:b2v_inst14|lpm_decode:LPM_DECODE_component|decode_j1g:auto_generated  ; work         ;
-;       |USB_MUX1x2:b2v_inst116|                    ; 1 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX1x2:b2v_inst116                                                        ; work         ;
-;          |lpm_mux:LPM_MUX_component|              ; 1 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX1x2:b2v_inst116|lpm_mux:LPM_MUX_component                              ; work         ;
-;             |mux_96e:auto_generated|              ; 1 (1)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX1x2:b2v_inst116|lpm_mux:LPM_MUX_component|mux_96e:auto_generated       ; work         ;
-;       |USB_MUX8x19:b2v_instmux2|                  ; 67 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x19:b2v_instmux2                                                      ; work         ;
+;       |USB_CT3:b2v_inst5|                         ; 3 (0)             ; 3 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_CT3:b2v_inst5                                                             ;              ;
+;          |lpm_counter:LPM_COUNTER_component|      ; 3 (0)             ; 3 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_CT3:b2v_inst5|lpm_counter:LPM_COUNTER_component                           ;              ;
+;             |cntr_pqi:auto_generated|             ; 3 (3)             ; 3 (3)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_CT3:b2v_inst5|lpm_counter:LPM_COUNTER_component|cntr_pqi:auto_generated   ;              ;
+;       |USB_DC8:b2v_inst14|                        ; 23 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_DC8:b2v_inst14                                                            ;              ;
+;          |lpm_decode:LPM_DECODE_component|        ; 23 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_DC8:b2v_inst14|lpm_decode:LPM_DECODE_component                            ;              ;
+;             |decode_j1g:auto_generated|           ; 23 (23)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_DC8:b2v_inst14|lpm_decode:LPM_DECODE_component|decode_j1g:auto_generated  ;              ;
+;       |USB_MUX1x2:b2v_inst116|                    ; 1 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX1x2:b2v_inst116                                                        ;              ;
+;          |lpm_mux:LPM_MUX_component|              ; 1 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX1x2:b2v_inst116|lpm_mux:LPM_MUX_component                              ;              ;
+;             |mux_96e:auto_generated|              ; 1 (1)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX1x2:b2v_inst116|lpm_mux:LPM_MUX_component|mux_96e:auto_generated       ;              ;
+;       |USB_MUX8x19:b2v_instmux2|                  ; 67 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x19:b2v_instmux2                                                      ;              ;
 ;          |lpm_mux:LPM_MUX_component|              ; 67 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x19:b2v_instmux2|lpm_mux:LPM_MUX_component                            ; work         ;
-;             |mux_c8e:auto_generated|              ; 67 (67)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x19:b2v_instmux2|lpm_mux:LPM_MUX_component|mux_c8e:auto_generated     ; work         ;
-;       |USB_MUX8x2:b2v_instmux1|                   ; 65 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x2:b2v_instmux1                                                       ; work         ;
-;          |lpm_mux:LPM_MUX_component|              ; 65 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x2:b2v_instmux1|lpm_mux:LPM_MUX_component                             ; work         ;
-;             |mux_g6e:auto_generated|              ; 65 (65)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x2:b2v_instmux1|lpm_mux:LPM_MUX_component|mux_g6e:auto_generated      ; work         ;
-;       |USB_RG8E:b2v_inst11|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst11                                                           ; work         ;
-;       |USB_RG8E:b2v_inst37|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst37                                                           ; work         ;
-;       |USB_RG8E:b2v_inst38|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst38                                                           ; work         ;
-;       |USB_RG8E:b2v_inst39|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst39                                                           ; work         ;
-;       |USB_RG8E:b2v_inst3|                        ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst3                                                            ; work         ;
-;       |USB_RG8E:b2v_inst40|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst40                                                           ; work         ;
-;       |USB_RG8E:b2v_inst43|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst43                                                           ; work         ;
-;       |USB_RG8E:b2v_inst46|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst46                                                           ; work         ;
-;       |USB_RG8E:b2v_inst47|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst47                                                           ; work         ;
-;       |USB_RG8E:b2v_inst48|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst48                                                           ; work         ;
-;       |USB_RG8E:b2v_inst49|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst49                                                           ; work         ;
-;       |USB_RG8E:b2v_inst4|                        ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst4                                                            ; work         ;
-;       |USB_RG8E:b2v_inst50|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst50                                                           ; work         ;
-;       |USB_RG8E:b2v_inst51|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst51                                                           ; work         ;
-;       |USB_RG8E:b2v_inst6|                        ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst6                                                            ; work         ;
-;       |USB_RG8E:b2v_inst9|                        ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst9                                                            ; work         ;
+;             |mux_c8e:auto_generated|              ; 67 (67)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x19:b2v_instmux2|lpm_mux:LPM_MUX_component|mux_c8e:auto_generated     ;              ;
+;       |USB_MUX8x2:b2v_instmux1|                   ; 65 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x2:b2v_instmux1                                                       ;              ;
+;          |lpm_mux:LPM_MUX_component|              ; 65 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x2:b2v_instmux1|lpm_mux:LPM_MUX_component                             ;              ;
+;             |mux_g6e:auto_generated|              ; 65 (65)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_MUX8x2:b2v_instmux1|lpm_mux:LPM_MUX_component|mux_g6e:auto_generated      ;              ;
+;       |USB_RG8E:b2v_inst11|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst11                                                           ;              ;
+;       |USB_RG8E:b2v_inst37|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst37                                                           ;              ;
+;       |USB_RG8E:b2v_inst38|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst38                                                           ;              ;
+;       |USB_RG8E:b2v_inst39|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst39                                                           ;              ;
+;       |USB_RG8E:b2v_inst3|                        ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst3                                                            ;              ;
+;       |USB_RG8E:b2v_inst40|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst40                                                           ;              ;
+;       |USB_RG8E:b2v_inst43|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst43                                                           ;              ;
+;       |USB_RG8E:b2v_inst46|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst46                                                           ;              ;
+;       |USB_RG8E:b2v_inst47|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst47                                                           ;              ;
+;       |USB_RG8E:b2v_inst48|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst48                                                           ;              ;
+;       |USB_RG8E:b2v_inst49|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst49                                                           ;              ;
+;       |USB_RG8E:b2v_inst4|                        ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst4                                                            ;              ;
+;       |USB_RG8E:b2v_inst50|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst50                                                           ;              ;
+;       |USB_RG8E:b2v_inst51|                       ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst51                                                           ;              ;
+;       |USB_RG8E:b2v_inst6|                        ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst6                                                            ;              ;
+;       |USB_RG8E:b2v_inst9|                        ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst9                                                            ;              ;
 ;       |USB_RG8E:b2v_instRgAdr|                    ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_instRgAdr                                                        ; work         ;
-;       |USB_RG8E:b2v_inst|                         ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst                                                             ; work         ;
-;       |usb_dc3:b2v_instdc3|                       ; 1 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|usb_dc3:b2v_instdc3                                                           ; work         ;
-;          |lpm_decode:LPM_DECODE_component|        ; 1 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|usb_dc3:b2v_instdc3|lpm_decode:LPM_DECODE_component                           ; work         ;
-;             |decode_5af:auto_generated|           ; 1 (1)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|usb_dc3:b2v_instdc3|lpm_decode:LPM_DECODE_component|decode_5af:auto_generated ; work         ;
-;    |lab:inst4|                                    ; 416 (11)          ; 128 (4)      ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4                                                                                    ; work         ;
+;       |USB_RG8E:b2v_inst|                         ; 0 (0)             ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|USB_RG8E:b2v_inst                                                             ;              ;
+;       |usb_dc3:b2v_instdc3|                       ; 1 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|usb_dc3:b2v_instdc3                                                           ;              ;
+;          |lpm_decode:LPM_DECODE_component|        ; 1 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|usb_dc3:b2v_instdc3|lpm_decode:LPM_DECODE_component                           ;              ;
+;             |decode_5af:auto_generated|           ; 1 (1)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|USBBridge:inst|usb_dc3:b2v_instdc3|lpm_decode:LPM_DECODE_component|decode_5af:auto_generated ;              ;
+;    |lab:inst4|                                    ; 416 (11)          ; 128 (4)      ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4                                                                                    ;              ;
 ;       |CT1:inst17|                                ; 18 (0)            ; 8 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst17                                                                         ; work         ;
 ;          |CT:inst|                                ; 18 (0)            ; 8 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst17|CT:inst                                                                 ; work         ;
-;             |lpm_counter:lpm_counter_component|   ; 18 (0)            ; 8 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst17|CT:inst|lpm_counter:lpm_counter_component                               ; work         ;
+;             |lpm_counter:lpm_counter_component|   ; 18 (0)            ; 8 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst17|CT:inst|lpm_counter:lpm_counter_component                               ;              ;
 ;                |cntr_8ii:auto_generated|          ; 18 (18)           ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst17|CT:inst|lpm_counter:lpm_counter_component|cntr_8ii:auto_generated       ; work         ;
-;       |CT1:inst18|                                ; 10 (0)            ; 8 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst18                                                                         ; work         ;
+;       |CT1:inst18|                                ; 10 (0)            ; 8 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst18                                                                         ;              ;
 ;          |CT:inst|                                ; 10 (0)            ; 8 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst18|CT:inst                                                                 ; work         ;
-;             |lpm_counter:lpm_counter_component|   ; 10 (0)            ; 8 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst18|CT:inst|lpm_counter:lpm_counter_component                               ; work         ;
+;             |lpm_counter:lpm_counter_component|   ; 10 (0)            ; 8 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst18|CT:inst|lpm_counter:lpm_counter_component                               ;              ;
 ;                |cntr_8ii:auto_generated|          ; 10 (10)           ; 8 (8)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT1:inst18|CT:inst|lpm_counter:lpm_counter_component|cntr_8ii:auto_generated       ; work         ;
-;       |CT3:inst33|                                ; 7 (0)             ; 6 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT3:inst33                                                                         ; work         ;
+;       |CT3:inst33|                                ; 7 (0)             ; 6 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT3:inst33                                                                         ;              ;
 ;          |lpm_counter:lpm_counter_component|      ; 7 (0)             ; 6 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT3:inst33|lpm_counter:lpm_counter_component                                       ; work         ;
 ;             |cntr_7cj:auto_generated|             ; 7 (7)             ; 6 (6)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|CT3:inst33|lpm_counter:lpm_counter_component|cntr_7cj:auto_generated               ; work         ;
 ;       |Comp:inst30|                               ; 8 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Comp:inst30                                                                        ; work         ;
-;          |lpm_compare:lpm_compare_component|      ; 8 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Comp:inst30|lpm_compare:lpm_compare_component                                      ; work         ;
+;          |lpm_compare:lpm_compare_component|      ; 8 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Comp:inst30|lpm_compare:lpm_compare_component                                      ;              ;
 ;             |cmpr_okg:auto_generated|             ; 8 (8)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Comp:inst30|lpm_compare:lpm_compare_component|cmpr_okg:auto_generated              ; work         ;
 ;       |KC1:inst5|                                 ; 24 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC1:inst5                                                                          ; work         ;
-;          |lpm_xor:lpm_xor_component|              ; 24 (24)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC1:inst5|lpm_xor:lpm_xor_component                                                ; work         ;
-;       |KC2:inst3|                                 ; 23 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC2:inst3                                                                          ; work         ;
+;          |lpm_xor:lpm_xor_component|              ; 24 (24)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC1:inst5|lpm_xor:lpm_xor_component                                                ;              ;
+;       |KC2:inst3|                                 ; 23 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC2:inst3                                                                          ;              ;
 ;          |lpm_and:lpm_and_component|              ; 23 (23)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC2:inst3|lpm_and:lpm_and_component                                                ; work         ;
-;       |KC3:inst10|                                ; 8 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC3:inst10                                                                         ; work         ;
+;       |KC3:inst10|                                ; 8 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC3:inst10                                                                         ;              ;
 ;          |lpm_or:lpm_or_component|                ; 8 (8)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC3:inst10|lpm_or:lpm_or_component                                                 ; work         ;
 ;       |KC4:inst21|                                ; 7 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC4:inst21                                                                         ; work         ;
-;          |lpm_xor:lpm_xor_component|              ; 7 (7)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC4:inst21|lpm_xor:lpm_xor_component                                               ; work         ;
-;       |KC4:inst28|                                ; 2 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC4:inst28                                                                         ; work         ;
+;          |lpm_xor:lpm_xor_component|              ; 7 (7)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC4:inst21|lpm_xor:lpm_xor_component                                               ;              ;
+;       |KC4:inst28|                                ; 2 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC4:inst28                                                                         ;              ;
 ;          |lpm_xor:lpm_xor_component|              ; 2 (2)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC4:inst28|lpm_xor:lpm_xor_component                                               ; work         ;
 ;       |KC5:inst26|                                ; 2 (0)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC5:inst26                                                                         ; work         ;
-;          |lpm_or:lpm_or_component|                ; 2 (2)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC5:inst26|lpm_or:lpm_or_component                                                 ; work         ;
+;          |lpm_or:lpm_or_component|                ; 2 (2)             ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|KC5:inst26|lpm_or:lpm_or_component                                                 ;              ;
 ;       |Rg1:inst2|                                 ; 24 (1)            ; 24 (0)       ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg1:inst2                                                                          ; work         ;
-;          |Rg_1:inst|                              ; 23 (0)            ; 24 (0)       ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg1:inst2|Rg_1:inst                                                                ; work         ;
+;          |Rg_1:inst|                              ; 23 (0)            ; 24 (0)       ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg1:inst2|Rg_1:inst                                                                ;              ;
 ;             |lpm_shiftreg:lpm_shiftreg_component| ; 23 (23)           ; 24 (24)      ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg1:inst2|Rg_1:inst|lpm_shiftreg:lpm_shiftreg_component                            ; work         ;
 ;       |Rg1:inst|                                  ; 24 (1)            ; 24 (0)       ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg1:inst                                                                           ; work         ;
 ;          |Rg_1:inst|                              ; 23 (0)            ; 24 (0)       ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg1:inst|Rg_1:inst                                                                 ; work         ;
 ;             |lpm_shiftreg:lpm_shiftreg_component| ; 23 (23)           ; 24 (24)      ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg1:inst|Rg_1:inst|lpm_shiftreg:lpm_shiftreg_component                             ; work         ;
-;       |Rg3:inst9|                                 ; 51 (1)            ; 24 (0)       ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg3:inst9                                                                          ; work         ;
+;       |Rg3:inst9|                                 ; 51 (1)            ; 24 (0)       ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg3:inst9                                                                          ;              ;
 ;          |MUX0:inst1|                             ; 50 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg3:inst9|MUX0:inst1                                                               ; work         ;
-;             |lpm_mux:lpm_mux_component|           ; 50 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg3:inst9|MUX0:inst1|lpm_mux:lpm_mux_component                                     ; work         ;
+;             |lpm_mux:lpm_mux_component|           ; 50 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg3:inst9|MUX0:inst1|lpm_mux:lpm_mux_component                                     ;              ;
 ;                |mux_jrc:auto_generated|           ; 50 (50)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg3:inst9|MUX0:inst1|lpm_mux:lpm_mux_component|mux_jrc:auto_generated              ; work         ;
 ;          |Rg_3:inst|                              ; 0 (0)             ; 24 (0)       ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg3:inst9|Rg_3:inst                                                                ; work         ;
-;             |lpm_ff:lpm_ff_component|             ; 0 (0)             ; 24 (24)      ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg3:inst9|Rg_3:inst|lpm_ff:lpm_ff_component                                        ; work         ;
+;             |lpm_ff:lpm_ff_component|             ; 0 (0)             ; 24 (24)      ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|Rg3:inst9|Rg_3:inst|lpm_ff:lpm_ff_component                                        ;              ;
 ;       |SM1:inst6|                                 ; 26 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|SM1:inst6                                                                          ; work         ;
 ;          |lpm_add_sub:lpm_add_sub_component|      ; 26 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|SM1:inst6|lpm_add_sub:lpm_add_sub_component                                        ; work         ;
 ;             |add_sub_oii:auto_generated|          ; 26 (26)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|SM1:inst6|lpm_add_sub:lpm_add_sub_component|add_sub_oii:auto_generated             ; work         ;
-;       |SM2:inst23|                                ; 17 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|SM2:inst23                                                                         ; work         ;
+;       |SM2:inst23|                                ; 17 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|SM2:inst23                                                                         ;              ;
 ;          |lpm_add_sub:lpm_add_sub_component|      ; 17 (0)            ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|SM2:inst23|lpm_add_sub:lpm_add_sub_component                                       ; work         ;
-;             |add_sub_f2i:auto_generated|          ; 17 (17)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|SM2:inst23|lpm_add_sub:lpm_add_sub_component|add_sub_f2i:auto_generated            ; work         ;
+;             |add_sub_f2i:auto_generated|          ; 17 (17)           ; 0 (0)        ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|SM2:inst23|lpm_add_sub:lpm_add_sub_component|add_sub_f2i:auto_generated            ;              ;
 ;       |UA:inst100|                                ; 154 (154)         ; 30 (30)      ; 0           ; 0            ; 0       ; 0         ; 0    ; 0            ; |lab1|lab:inst4|UA:inst100                                                                         ; work         ;
 +---------------------------------------------------+-------------------+--------------+-------------+--------------+---------+-----------+------+--------------+----------------------------------------------------------------------------------------------------+--------------+
 Note: For table entries with two numbers listed, the numbers in parentheses indicate the number of resources of the given type used by the specific entity alone. The numbers listed outside of parentheses indicate the total resources of the given type used by the specific entity and all of its sub-entities in the hierarchy.
@@ -1468,7 +1456,7 @@ Note: In order to hide this table in the UI and the text report file, please set
 Info: *******************************************************************
 Info: Running Quartus II Analysis & Synthesis
     Info: Version 9.1 Build 350 03/24/2010 Service Pack 2 SJ Web Edition
-    Info: Processing started: Mon Dec 02 23:50:57 2019
+    Info: Processing started: Mon Dec 09 21:33:08 2019
 Info: Command: quartus_map --read_settings_files=on --write_settings_files=off lab -c lab
 Info: Found 1 design units, including 1 entities, in source file pll1.v
     Info: Found entity 1: PLL1
@@ -1865,9 +1853,9 @@ Info: Implemented 764 device resources after synthesis - the final resource coun
     Info: Implemented 739 logic cells
     Info: Implemented 1 PLLs
 Info: Quartus II Analysis & Synthesis was successful. 0 errors, 72 warnings
-    Info: Peak virtual memory: 272 megabytes
-    Info: Processing ended: Mon Dec 02 23:51:05 2019
-    Info: Elapsed time: 00:00:08
-    Info: Total CPU time (on all processors): 00:00:08
+    Info: Peak virtual memory: 251 megabytes
+    Info: Processing ended: Mon Dec 09 21:33:25 2019
+    Info: Elapsed time: 00:00:17
+    Info: Total CPU time (on all processors): 00:00:11
 
 
