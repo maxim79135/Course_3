@@ -20,26 +20,6 @@ VHSM_ON
 -- Start VHDL Libraries --
 -- End VHDL Libraries --
 # entity
-lab1
-# storage
-db|lab.(0).cnf
-db|lab.(0).cnf
-# case_insensitive
-# source_file
-lab1.bdf
-b562ec3c9a6d9edaefb33670705e2793
-26
-# internal_option {
-BLOCK_DESIGN_NAMING
-AUTO
-}
-# hierarchies {
-|
-}
-# macro_sequence
-
-# end
-# entity
 USBBridge
 # storage
 db|lab.(1).cnf
@@ -7681,6 +7661,26 @@ clock
 }
 # hierarchies {
 lab:inst4|CT3:inst33|lpm_counter:lpm_counter_component|cntr_7cj:auto_generated
+}
+# macro_sequence
+
+# end
+# entity
+lab1
+# storage
+db|lab.(0).cnf
+db|lab.(0).cnf
+# case_insensitive
+# source_file
+lab1.bdf
+914ca25618a0d9a6faf272d9968accb2
+26
+# internal_option {
+BLOCK_DESIGN_NAMING
+AUTO
+}
+# hierarchies {
+|
 }
 # macro_sequence
 
