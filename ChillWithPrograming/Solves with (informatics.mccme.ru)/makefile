@@ -1,5 +1,2 @@
-deque:
-	g++ -o deque deque.cpp
-
-cards:
-	g++ -g -o cardsWithDeque cardsWithDeque.cpp & ./cardsWithDeque
+all:
+	g++ -g -o main 96.cpp && ./main
