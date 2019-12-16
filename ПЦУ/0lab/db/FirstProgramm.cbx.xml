@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<LOG_ROOT>
+	<PROJECT NAME="FirstProgramm">
+		<CBX_INST_ENTRY INSTANCE_NAME="|FirstProgramm|ct1:inst9|lpm_counter:lpm_counter_component" CBX_FILE_NAME="cntr_e1k.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|FirstProgramm|ms2:inst23|lpm_mux:lpm_mux_component" CBX_FILE_NAME="mux_frc.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|FirstProgramm|shifter:inst24|lpm_clshift:lpm_clshift_component" CBX_FILE_NAME="lpm_clshift_nkb.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|FirstProgramm|ct:inst14|lpm_counter:lpm_counter_component" CBX_FILE_NAME="cntr_6cj.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|FirstProgramm|sm1:inst10|lpm_add_sub:lpm_add_sub_component" CBX_FILE_NAME="add_sub_p7i.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|FirstProgramm|sm2:inst8|lpm_add_sub:lpm_add_sub_component" CBX_FILE_NAME="add_sub_d6i.tdf"/>
+	</PROJECT>
+</LOG_ROOT>

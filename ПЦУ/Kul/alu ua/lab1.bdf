@@ -103,7 +103,7 @@ applicable agreement for further details.
 		(line (pt 117 12)(pt 121 8)(line_width 1))
 	)
 	(text "VCC" (rect 136 7 156 17)(font "Arial" (font_size 6)))
-	(annotation_block (location)(rect -16 576 32 600))
+	(annotation_block (location)(rect -16 576 32 608))
 )
 (pin
 	(output)
@@ -902,6 +902,11 @@ applicable agreement for further details.
 	(text "GG[63..15],P[14..0]" (rect -23 488 73 500)(font "Arial" ))
 	(pt 80 504)
 	(pt 16 504)
+	(bus)
+)
+(connector
+	(pt 560 632)
+	(pt 624 632)
 	(bus)
 )
 (junction (pt 168 72))

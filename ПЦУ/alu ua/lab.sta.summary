@@ -1,0 +1,365 @@
+------------------------------------------------------------
+TimeQuest Timing Analyzer Summary
+------------------------------------------------------------
+
+Type  : Slow 1200mV 85C Model Setup 'lab:inst4|UA:inst100|y[11]'
+Slack : -6.727
+TNS   : -6.727
+
+Type  : Slow 1200mV 85C Model Setup 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : -5.386
+TNS   : -180.312
+
+Type  : Slow 1200mV 85C Model Setup 'USBBridge:inst|USBRDn'
+Slack : -5.115
+TNS   : -416.206
+
+Type  : Slow 1200mV 85C Model Setup 'lab:inst4|UA:inst100|y[17]'
+Slack : -5.028
+TNS   : -5.028
+
+Type  : Slow 1200mV 85C Model Setup 'USBBridge:inst|Z_ALTERA_SYNTHESIZED'
+Slack : -2.370
+TNS   : -57.793
+
+Type  : Slow 1200mV 85C Model Hold 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : -0.697
+TNS   : -11.440
+
+Type  : Slow 1200mV 85C Model Hold 'USBBridge:inst|USBRDn'
+Slack : 0.041
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Hold 'USBBridge:inst|Z_ALTERA_SYNTHESIZED'
+Slack : 1.000
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Hold 'lab:inst4|UA:inst100|y[11]'
+Slack : 2.449
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Hold 'lab:inst4|UA:inst100|y[17]'
+Slack : 3.248
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Recovery 'lab:inst4|UA:inst100|y[24]'
+Slack : -5.053
+TNS   : -5.053
+
+Type  : Slow 1200mV 85C Model Recovery 'lab:inst4|UA:inst100|y[17]'
+Slack : -4.079
+TNS   : -4.079
+
+Type  : Slow 1200mV 85C Model Recovery 'lab:inst4|UA:inst100|y[11]'
+Slack : -3.937
+TNS   : -3.937
+
+Type  : Slow 1200mV 85C Model Recovery 'lab:inst4|UA:inst100|y[23]'
+Slack : -3.117
+TNS   : -3.117
+
+Type  : Slow 1200mV 85C Model Recovery 'USBBridge:inst|USBRDn'
+Slack : -2.021
+TNS   : -3.629
+
+Type  : Slow 1200mV 85C Model Recovery 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : -1.621
+TNS   : -6.078
+
+Type  : Slow 1200mV 85C Model Removal 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : 1.086
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Removal 'USBBridge:inst|USBRDn'
+Slack : 1.322
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Removal 'lab:inst4|UA:inst100|y[23]'
+Slack : 2.918
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Removal 'lab:inst4|UA:inst100|y[11]'
+Slack : 3.685
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Removal 'lab:inst4|UA:inst100|y[17]'
+Slack : 3.931
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Removal 'lab:inst4|UA:inst100|y[24]'
+Slack : 4.913
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'USBBridge:inst|USBRDn'
+Slack : -1.487
+TNS   : -172.492
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'USBBridge:inst|Z_ALTERA_SYNTHESIZED'
+Slack : -1.487
+TNS   : -47.584
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[11]'
+Slack : -1.487
+TNS   : -1.487
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[17]'
+Slack : -1.487
+TNS   : -1.487
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[23]'
+Slack : -1.487
+TNS   : -1.487
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[24]'
+Slack : -1.487
+TNS   : -1.487
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'clk_25mhz'
+Slack : 19.929
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : 499.480
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Setup 'lab:inst4|UA:inst100|y[11]'
+Slack : -6.062
+TNS   : -6.062
+
+Type  : Slow 1200mV 0C Model Setup 'lab:inst4|UA:inst100|y[17]'
+Slack : -4.758
+TNS   : -4.758
+
+Type  : Slow 1200mV 0C Model Setup 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : -4.692
+TNS   : -154.553
+
+Type  : Slow 1200mV 0C Model Setup 'USBBridge:inst|USBRDn'
+Slack : -4.681
+TNS   : -388.203
+
+Type  : Slow 1200mV 0C Model Setup 'USBBridge:inst|Z_ALTERA_SYNTHESIZED'
+Slack : -2.267
+TNS   : -55.125
+
+Type  : Slow 1200mV 0C Model Hold 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : -0.924
+TNS   : -7.963
+
+Type  : Slow 1200mV 0C Model Hold 'USBBridge:inst|USBRDn'
+Slack : 0.133
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Hold 'USBBridge:inst|Z_ALTERA_SYNTHESIZED'
+Slack : 1.056
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Hold 'lab:inst4|UA:inst100|y[11]'
+Slack : 2.191
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Hold 'lab:inst4|UA:inst100|y[17]'
+Slack : 2.933
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Recovery 'lab:inst4|UA:inst100|y[24]'
+Slack : -4.846
+TNS   : -4.846
+
+Type  : Slow 1200mV 0C Model Recovery 'lab:inst4|UA:inst100|y[17]'
+Slack : -3.884
+TNS   : -3.884
+
+Type  : Slow 1200mV 0C Model Recovery 'lab:inst4|UA:inst100|y[11]'
+Slack : -3.764
+TNS   : -3.764
+
+Type  : Slow 1200mV 0C Model Recovery 'lab:inst4|UA:inst100|y[23]'
+Slack : -2.958
+TNS   : -2.958
+
+Type  : Slow 1200mV 0C Model Recovery 'USBBridge:inst|USBRDn'
+Slack : -1.838
+TNS   : -3.211
+
+Type  : Slow 1200mV 0C Model Recovery 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : -1.355
+TNS   : -5.048
+
+Type  : Slow 1200mV 0C Model Removal 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : 0.993
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Removal 'USBBridge:inst|USBRDn'
+Slack : 1.240
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Removal 'lab:inst4|UA:inst100|y[23]'
+Slack : 2.863
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Removal 'lab:inst4|UA:inst100|y[11]'
+Slack : 3.501
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Removal 'lab:inst4|UA:inst100|y[17]'
+Slack : 3.787
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Removal 'lab:inst4|UA:inst100|y[24]'
+Slack : 4.729
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'USBBridge:inst|USBRDn'
+Slack : -1.487
+TNS   : -172.492
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'USBBridge:inst|Z_ALTERA_SYNTHESIZED'
+Slack : -1.487
+TNS   : -47.584
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[11]'
+Slack : -1.487
+TNS   : -1.498
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[17]'
+Slack : -1.487
+TNS   : -1.487
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[23]'
+Slack : -1.487
+TNS   : -1.487
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[24]'
+Slack : -1.487
+TNS   : -1.487
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'clk_25mhz'
+Slack : 19.917
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : 499.292
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Setup 'lab:inst4|UA:inst100|y[11]'
+Slack : -2.548
+TNS   : -2.548
+
+Type  : Fast 1200mV 0C Model Setup 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : -2.107
+TNS   : -42.578
+
+Type  : Fast 1200mV 0C Model Setup 'lab:inst4|UA:inst100|y[17]'
+Slack : -1.760
+TNS   : -1.760
+
+Type  : Fast 1200mV 0C Model Setup 'USBBridge:inst|USBRDn'
+Slack : -1.611
+TNS   : -118.310
+
+Type  : Fast 1200mV 0C Model Setup 'USBBridge:inst|Z_ALTERA_SYNTHESIZED'
+Slack : -0.720
+TNS   : -14.667
+
+Type  : Fast 1200mV 0C Model Hold 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : -0.477
+TNS   : -11.584
+
+Type  : Fast 1200mV 0C Model Hold 'USBBridge:inst|USBRDn'
+Slack : -0.267
+TNS   : -13.010
+
+Type  : Fast 1200mV 0C Model Hold 'USBBridge:inst|Z_ALTERA_SYNTHESIZED'
+Slack : 0.517
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Hold 'lab:inst4|UA:inst100|y[11]'
+Slack : 1.119
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Hold 'lab:inst4|UA:inst100|y[17]'
+Slack : 1.396
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Recovery 'lab:inst4|UA:inst100|y[24]'
+Slack : -1.585
+TNS   : -1.585
+
+Type  : Fast 1200mV 0C Model Recovery 'lab:inst4|UA:inst100|y[11]'
+Slack : -1.169
+TNS   : -1.169
+
+Type  : Fast 1200mV 0C Model Recovery 'lab:inst4|UA:inst100|y[17]'
+Slack : -1.163
+TNS   : -1.163
+
+Type  : Fast 1200mV 0C Model Recovery 'lab:inst4|UA:inst100|y[23]'
+Slack : -0.689
+TNS   : -0.689
+
+Type  : Fast 1200mV 0C Model Recovery 'USBBridge:inst|USBRDn'
+Slack : -0.428
+TNS   : -0.672
+
+Type  : Fast 1200mV 0C Model Recovery 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : -0.180
+TNS   : -0.530
+
+Type  : Fast 1200mV 0C Model Removal 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : 0.350
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Removal 'USBBridge:inst|USBRDn'
+Slack : 0.525
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Removal 'lab:inst4|UA:inst100|y[23]'
+Slack : 1.060
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Removal 'lab:inst4|UA:inst100|y[11]'
+Slack : 1.443
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Removal 'lab:inst4|UA:inst100|y[17]'
+Slack : 1.469
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Removal 'lab:inst4|UA:inst100|y[24]'
+Slack : 1.883
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'USBBridge:inst|USBRDn'
+Slack : -1.000
+TNS   : -116.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'USBBridge:inst|Z_ALTERA_SYNTHESIZED'
+Slack : -1.000
+TNS   : -32.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[11]'
+Slack : -1.000
+TNS   : -1.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[17]'
+Slack : -1.000
+TNS   : -1.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[23]'
+Slack : -1.000
+TNS   : -1.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'lab:inst4|UA:inst100|y[24]'
+Slack : -1.000
+TNS   : -1.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'clk_25mhz'
+Slack : 19.597
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'inst1|altpll_component|auto_generated|pll1|clk[0]'
+Slack : 499.642
+TNS   : 0.000
+
+------------------------------------------------------------

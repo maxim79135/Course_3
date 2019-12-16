@@ -1,0 +1,67 @@
+<internal_error>
+	<executable>quartus_map.exe</executable>
+	<sub_system>AMERGE</sub_system>
+	<file>/quartus/atm/amerge/amerge_kpt_op.cpp</file>
+	<line>220</line>
+	<callstack>
+	0x0bc8dd57: atm_amerge + 0x3dd57 (amerge_mini_merge + 0x3a977)
+	0x001a30d5: ccl_cfg_ini + 0x30d5 (?cfg_force_qexe_mode_off@@YIXXZ + 0x1e15)
+	0x0bc8d4f2: atm_amerge + 0x3d4f2 (amerge_mini_merge + 0x3a112)
+	0x0bc944dd: atm_amerge + 0x444dd (amerge_mini_merge + 0x410fd)
+	0x0bc5321d: atm_amerge + 0x321d
+	0x0bc533f1: atm_amerge + 0x33f1 (amerge_mini_merge + 0x11)
+	0x00412d94: quartus_map + 0x12d94
+	0x008f4b0d: ccl_mem + 0x4b0d (?splay_heap@MEM_SEGMENT_INTERNAL@@AAIPAVMEM_MEGA_PAGE@@PAX@Z + 0x14d)
+	0x00418601: quartus_map + 0x18601
+	0x008f94f2: ccl_mem + 0x94f2 (?locked_allocate@MEM_SEGMENT_INTERNAL@@AAIPAXPADKKPAVMEM_TRACKER_DATA@@@Z + 0x62)
+	0x008f5580: ccl_mem + 0x5580 (mem_out_of_memory + 0x4f0)
+	0x03182931: db_rdb + 0x2931 (??0RDB_WAVEFORM_OBJECT@@QAE@XZ + 0x211)
+	0x018320a6: comp_qcu + 0x20a6 (??1QCU_ACF_SETTING@@QAE@XZ + 0x126)
+	0x01835a66: comp_qcu + 0x5a66 (??4QCU_ACF_SETTING@@QAEAAU0@ABU0@@Z + 0x3366)
+	0x00409d3b: quartus_map + 0x9d3b
+	0x0041ab19: quartus_map + 0x1ab19
+	0x0179ce32: comp_qexe + 0xce32 (?qexe_get_command_line@@YIPBDXZ + 0x3a2)
+	0x018338e3: comp_qcu + 0x38e3 (??4QCU_ACF_SETTING@@QAEAAU0@ABU0@@Z + 0x11e3)
+	0x01837c29: comp_qcu + 0x7c29 (?check_license@QCU_FRAMEWORK@@UAI_NXZ + 0x139)
+	0x0179fbbd: comp_qexe + 0xfbbd (?qexe_process_cmdline_arguments@@YI_NPAVQEXE_CMDLINE@@HPAPBD@Z + 0x34d)
+	</callstack>
+	<error>cmp_merge_kpt_db</error>
+	<date>Sun Dec 08 15:34:22 2019</date>
+	<version>Quartus II Version 9.0 Build 235 06/17/2009 Service Pack 2 SJ Web Edition</version>
+	<full_error>cmp_merge_kpt_db
+Quartus II Version 9.0 Build 235 06/17/2009 Service Pack 2 SJ Web Edition </full_error>
+</internal_error>
+
+<internal_error>
+	<executable>quartus_map.exe</executable>
+	<sub_system>AMERGE</sub_system>
+	<file>/quartus/atm/amerge/amerge_kpt_op.cpp</file>
+	<line>220</line>
+	<callstack>
+	0x0bcedd57: atm_amerge + 0x3dd57 (amerge_mini_merge + 0x3a977)
+	0x008730d5: ccl_cfg_ini + 0x30d5 (?cfg_force_qexe_mode_off@@YIXXZ + 0x1e15)
+	0x0bced4f2: atm_amerge + 0x3d4f2 (amerge_mini_merge + 0x3a112)
+	0x0bcf44dd: atm_amerge + 0x444dd (amerge_mini_merge + 0x410fd)
+	0x0bcb321d: atm_amerge + 0x321d
+	0x0bcb33f1: atm_amerge + 0x33f1 (amerge_mini_merge + 0x11)
+	0x00412d94: quartus_map + 0x12d94
+	0x015f4b0d: ccl_mem + 0x4b0d (?splay_heap@MEM_SEGMENT_INTERNAL@@AAIPAVMEM_MEGA_PAGE@@PAX@Z + 0x14d)
+	0x00418601: quartus_map + 0x18601
+	0x015f94f2: ccl_mem + 0x94f2 (?locked_allocate@MEM_SEGMENT_INTERNAL@@AAIPAXPADKKPAVMEM_TRACKER_DATA@@@Z + 0x62)
+	0x033c2931: db_rdb + 0x2931 (??0RDB_WAVEFORM_OBJECT@@QAE@XZ + 0x211)
+	0x018520a6: comp_qcu + 0x20a6 (??1QCU_ACF_SETTING@@QAE@XZ + 0x126)
+	0x01855a66: comp_qcu + 0x5a66 (??4QCU_ACF_SETTING@@QAEAAU0@ABU0@@Z + 0x3366)
+	0x00409d3b: quartus_map + 0x9d3b
+	0x0041ab19: quartus_map + 0x1ab19
+	0x018dce32: comp_qexe + 0xce32 (?qexe_get_command_line@@YIPBDXZ + 0x3a2)
+	0x018538e3: comp_qcu + 0x38e3 (??4QCU_ACF_SETTING@@QAEAAU0@ABU0@@Z + 0x11e3)
+	0x01857c29: comp_qcu + 0x7c29 (?check_license@QCU_FRAMEWORK@@UAI_NXZ + 0x139)
+	0x018dfbbd: comp_qexe + 0xfbbd (?qexe_process_cmdline_arguments@@YI_NPAVQEXE_CMDLINE@@HPAPBD@Z + 0x34d)
+	</callstack>
+	<error>cmp_merge_kpt_db</error>
+	<date>Sun Dec 08 15:35:57 2019</date>
+	<version>Quartus II Version 9.0 Build 235 06/17/2009 Service Pack 2 SJ Web Edition</version>
+	<full_error>cmp_merge_kpt_db
+Quartus II Version 9.0 Build 235 06/17/2009 Service Pack 2 SJ Web Edition </full_error>
+</internal_error>
+

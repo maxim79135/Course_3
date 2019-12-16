@@ -47,7 +47,7 @@ ON
 USBBridge:inst
 }
 # lmf
-|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -107,7 +107,7 @@ USBBridge:inst|USB_RG8E:b2v_inst9
 USBBridge:inst|USB_RG8E:b2v_instRgAdr
 }
 # lmf
-|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -140,7 +140,7 @@ ON
 USBBridge:inst|USB_MUX1x2:b2v_inst116
 }
 # lmf
-|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -152,7 +152,7 @@ db|lab.(4).cnf
 db|lab.(4).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+|altera|quartus|libraries|megafunctions|lpm_mux.tdf
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -281,7 +281,7 @@ USR
 USBBridge:inst|USB_DC8:b2v_inst14
 }
 # lmf
-|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -293,7 +293,7 @@ db|lab.(7).cnf
 db|lab.(7).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_decode.tdf
+|altera|quartus|libraries|megafunctions|lpm_decode.tdf
 801b50bb3ab97a9f41a27f6333e6c69e
 7
 # user_parameter {
@@ -917,7 +917,7 @@ USR
 USBBridge:inst|USB_CT3:b2v_inst5
 }
 # lmf
-|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -929,7 +929,7 @@ db|lab.(10).cnf
 db|lab.(10).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_counter.tdf
+|altera|quartus|libraries|megafunctions|lpm_counter.tdf
 151f75e8fcf5e87e72b7df6bb2ea
 7
 # user_parameter {
@@ -1102,7 +1102,7 @@ USR
 USBBridge:inst|usb_dc3:b2v_instdc3
 }
 # lmf
-|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -1114,7 +1114,7 @@ db|lab.(13).cnf
 db|lab.(13).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_decode.tdf
+|altera|quartus|libraries|megafunctions|lpm_decode.tdf
 801b50bb3ab97a9f41a27f6333e6c69e
 7
 # user_parameter {
@@ -1293,7 +1293,7 @@ USR
 USBBridge:inst|USB_MUX8x2:b2v_instmux1
 }
 # lmf
-|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -1305,7 +1305,7 @@ db|lab.(16).cnf
 db|lab.(16).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+|altera|quartus|libraries|megafunctions|lpm_mux.tdf
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -1676,7 +1676,7 @@ USR
 USBBridge:inst|USB_MUX8x19:b2v_instmux2
 }
 # lmf
-|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -1688,7 +1688,7 @@ db|lab.(19).cnf
 db|lab.(19).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+|altera|quartus|libraries|megafunctions|lpm_mux.tdf
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -3224,7 +3224,7 @@ db|lab.(22).cnf
 db|lab.(22).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|altpll.tdf
+|altera|quartus|libraries|megafunctions|altpll.tdf
 2ba9eb5c4b9bddd84f6c12efd8fd6af
 7
 # user_parameter {
@@ -4943,7 +4943,7 @@ db|lab.(27).cnf
 db|lab.(27).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_or.tdf
+|altera|quartus|libraries|megafunctions|lpm_or.tdf
 9d9b85358b57ebf2c2ba1d6b37aa4141
 7
 # user_parameter {
@@ -5131,7 +5131,7 @@ db|lab.(30).cnf
 db|lab.(30).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_ff.tdf
+|altera|quartus|libraries|megafunctions|lpm_ff.tdf
 6f1796a38d8b519cf7b8f38b5da1ac5b
 7
 # user_parameter {
@@ -5244,7 +5244,7 @@ db|lab.(32).cnf
 db|lab.(32).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+|altera|quartus|libraries|megafunctions|lpm_mux.tdf
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -5590,7 +5590,7 @@ db|lab.(35).cnf
 db|lab.(35).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_add_sub.tdf
+|altera|quartus|libraries|megafunctions|lpm_add_sub.tdf
 74821f847e545ce9ad847cbce0ef11
 7
 # user_parameter {
@@ -6141,7 +6141,7 @@ db|lab.(39).cnf
 db|lab.(39).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_shiftreg.tdf
+|altera|quartus|libraries|megafunctions|lpm_shiftreg.tdf
 da99a65952a97e3c68facd67112efbfd
 7
 # user_parameter {
@@ -6390,7 +6390,7 @@ db|lab.(41).cnf
 db|lab.(41).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_xor.tdf
+|altera|quartus|libraries|megafunctions|lpm_xor.tdf
 50b371f29654dff12ba9fe77a68b3329
 7
 # user_parameter {
@@ -6460,7 +6460,7 @@ db|lab.(43).cnf
 db|lab.(43).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_and.tdf
+|altera|quartus|libraries|megafunctions|lpm_and.tdf
 dae67a4b94d163e024adf962885fdb7
 7
 # user_parameter {
@@ -6573,7 +6573,7 @@ db|lab.(45).cnf
 db|lab.(45).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_or.tdf
+|altera|quartus|libraries|megafunctions|lpm_or.tdf
 9d9b85358b57ebf2c2ba1d6b37aa4141
 7
 # user_parameter {
@@ -6716,7 +6716,7 @@ db|lab.(48).cnf
 db|lab.(48).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_counter.tdf
+|altera|quartus|libraries|megafunctions|lpm_counter.tdf
 151f75e8fcf5e87e72b7df6bb2ea
 7
 # user_parameter {
@@ -6966,7 +6966,7 @@ db|lab.(51).cnf
 db|lab.(51).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_add_sub.tdf
+|altera|quartus|libraries|megafunctions|lpm_add_sub.tdf
 74821f847e545ce9ad847cbce0ef11
 7
 # user_parameter {
@@ -7204,7 +7204,7 @@ db|lab.(54).cnf
 db|lab.(54).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_xor.tdf
+|altera|quartus|libraries|megafunctions|lpm_xor.tdf
 50b371f29654dff12ba9fe77a68b3329
 7
 # user_parameter {
@@ -7275,7 +7275,7 @@ db|lab.(56).cnf
 db|lab.(56).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_compare.tdf
+|altera|quartus|libraries|megafunctions|lpm_compare.tdf
 6fe57e55c2d8e254bfe73d8fff3f219
 7
 # user_parameter {
@@ -7478,7 +7478,7 @@ db|lab.(59).cnf
 db|lab.(59).cnf
 # case_insensitive
 # source_file
-|altera|91sp2|quartus|libraries|megafunctions|lpm_counter.tdf
+|altera|quartus|libraries|megafunctions|lpm_counter.tdf
 151f75e8fcf5e87e72b7df6bb2ea
 7
 # user_parameter {
@@ -7673,7 +7673,7 @@ db|lab.(0).cnf
 # case_insensitive
 # source_file
 lab1.bdf
-10bb4cecbc6dbd41549cac03c18ad13
+39b0e437a52dba5ba9a7fbcf42719b1
 26
 # internal_option {
 BLOCK_DESIGN_NAMING
