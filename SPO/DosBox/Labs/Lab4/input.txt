@@ -1,0 +1,13 @@
+HNIVS
+#jmo
+N,#,S
+H,j,N
+I,o,N
+I,j,I
+N,o,I
+I,j,V
+N,o,V
+N,m,V
+H,o,V
+V,m,V
+V,o,V

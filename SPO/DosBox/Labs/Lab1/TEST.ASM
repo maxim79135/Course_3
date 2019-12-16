@@ -136,7 +136,7 @@ FINDCHAR endp
 main:
     mov ax, @data
     mov ds, ax
-    dec byte ptr ds:[bp][si+00C4h]
+    Dec word ptr [bp+si+00e6h]
     
     ; print string1
     lea dx, message2

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # -------------------------------------------------------------------------- #
 #
 # Copyright (C) 1991-2010 Altera Corporation
@@ -122,4 +123,130 @@ set_location_assignment PIN_46 -to sw[2]
 set_location_assignment PIN_25 -to sw[1]
 set_location_assignment PIN_24 -to sw[0]
 set_global_assignment -name SIMULATION_MODE FUNCTIONAL
+=======
+# -------------------------------------------------------------------------- #
+#
+# Copyright (C) 1991-2010 Altera Corporation
+# Your use of Altera Corporation's design tools, logic functions 
+# and other software and tools, and its AMPP partner logic 
+# functions, and any output files from any of the foregoing 
+# (including device programming or simulation files), and any 
+# associated documentation or information are expressly subject 
+# to the terms and conditions of the Altera Program License 
+# Subscription Agreement, Altera MegaCore Function License 
+# Agreement, or other applicable license agreement, including, 
+# without limitation, that your use is for the sole purpose of 
+# programming logic devices manufactured by Altera and sold by 
+# Altera or its authorized distributors.  Please refer to the 
+# applicable agreement for further details.
+#
+# -------------------------------------------------------------------------- #
+#
+# Quartus II
+# Version 9.1 Build 350 03/24/2010 Service Pack 2 SJ Web Edition
+# Date created = 14:21:00  January 20, 2019
+#
+# -------------------------------------------------------------------------- #
+#
+# Notes:
+#
+# 1) The default values for assignments are stored in the file:
+#		lab_assignment_defaults.qdf
+#    If this file doesn't exist, see file:
+#		assignment_defaults.qdf
+#
+# 2) Altera recommends that you do not modify this file. This
+#    file is updated automatically by the Quartus II software
+#    and any changes you make may be lost or overwritten.
+#
+# -------------------------------------------------------------------------- #
+
+
+set_global_assignment -name FAMILY "Cyclone III"
+set_global_assignment -name DEVICE EP3C5E144C8
+set_global_assignment -name TOP_LEVEL_ENTITY lab1
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION "9.1 SP2"
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:21:00  JANUARY 20, 2019"
+set_global_assignment -name LAST_QUARTUS_VERSION "9.1 SP2"
+set_global_assignment -name USE_GENERATED_PHYSICAL_CONSTRAINTS OFF -section_id eda_blast_fpga
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name NOMINAL_CORE_SUPPLY_VOLTAGE 1.2V
+set_global_assignment -name SIMULATION_BUS_CHANNEL_GROUPING ON
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -entity test3 -section_id Top
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -entity test3 -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -entity test3 -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -entity test3 -section_id Top
+set_global_assignment -name VERILOG_FILE PLL1.v
+set_global_assignment -name VHDL_FILE USB_CT3.vhd
+set_global_assignment -name VHDL_FILE usb_dc3.vhd
+set_global_assignment -name VHDL_FILE USB_DC8.vhd
+set_global_assignment -name VHDL_FILE USB_MUX1x2.vhd
+set_global_assignment -name VHDL_FILE USB_MUX8x2.vhd
+set_global_assignment -name VHDL_FILE USB_MUX8x19.vhd
+set_global_assignment -name VHDL_FILE USB_RG8E.vhd
+set_global_assignment -name VHDL_FILE USBBridge.vhd
+set_global_assignment -name BDF_FILE lab1.bdf
+set_global_assignment -name QIP_FILE KC1.qip
+set_global_assignment -name QIP_FILE SM1.qip
+set_global_assignment -name QIP_FILE Kc2.qip
+set_global_assignment -name QIP_FILE Kc4.qip
+set_global_assignment -name QIP_FILE Kc5.qip
+set_global_assignment -name QIP_FILE Sm2.qip
+set_global_assignment -name QIP_FILE Ct3.qip
+set_global_assignment -name BDF_FILE lab.bdf
+set_global_assignment -name VERILOG_FILE block_name.v
+set_global_assignment -name VECTOR_TABLE_OUTPUT_FILE lab.tbl
+set_global_assignment -name QIP_FILE Rg_1.qip
+set_global_assignment -name BDF_FILE Rg1.bdf
+set_global_assignment -name QIP_FILE Rg_3.qip
+set_global_assignment -name QIP_FILE MUX0.qip
+set_global_assignment -name BDF_FILE Rg3.bdf
+set_global_assignment -name QIP_FILE CT.qip
+set_global_assignment -name BDF_FILE CT1.bdf
+set_global_assignment -name VERILOG_FILE UA.v
+set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
+set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL ON
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
+set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
+set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -entity ALUUAPR -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -entity ALUUAPR -section_id Top
+set_global_assignment -name LL_ROOT_REGION ON -entity ALUUAPR -section_id "Root Region"
+set_global_assignment -name LL_MEMBER_STATE LOCKED -entity ALUUAPR -section_id "Root Region"
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -entity ALUUAPR -section_id Top
+set_location_assignment PIN_38 -to usb_d[0]
+set_location_assignment PIN_32 -to usb_d[1]
+set_location_assignment PIN_33 -to usb_d[2]
+set_location_assignment PIN_44 -to usb_d[3]
+set_location_assignment PIN_50 -to usb_d[4]
+set_location_assignment PIN_30 -to usb_d[5]
+set_location_assignment PIN_28 -to usb_d[6]
+set_location_assignment PIN_31 -to usb_d[7]
+set_location_assignment PIN_43 -to usb_rdn
+set_location_assignment PIN_39 -to usb_rxfn
+set_location_assignment PIN_98 -to usb_wr
+set_location_assignment PIN_64 -to led[0]
+set_location_assignment PIN_60 -to led[1]
+set_location_assignment PIN_59 -to led[2]
+set_location_assignment PIN_58 -to led[3]
+set_location_assignment PIN_55 -to led[4]
+set_location_assignment PIN_54 -to led[5]
+set_location_assignment PIN_53 -to led[6]
+set_location_assignment PIN_52 -to led[7]
+set_location_assignment PIN_23 -to mode_usb_n
+set_location_assignment PIN_22 -to clk_25mhz
+set_location_assignment PIN_42 -to usb_txen
+set_location_assignment PIN_88 -to sw[7]
+set_location_assignment PIN_89 -to sw[6]
+set_location_assignment PIN_90 -to sw[5]
+set_location_assignment PIN_91 -to sw[4]
+set_location_assignment PIN_49 -to sw[3]
+set_location_assignment PIN_46 -to sw[2]
+set_location_assignment PIN_25 -to sw[1]
+set_location_assignment PIN_24 -to sw[0]
+set_global_assignment -name SIMULATION_MODE FUNCTIONAL
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

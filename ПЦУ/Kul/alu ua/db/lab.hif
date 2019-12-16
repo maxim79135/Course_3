@@ -31,7 +31,7 @@ ON
 # case_insensitive
 # source_file
 usbbridge.vhd
-4a97a9305dea86d8bb8445e922989ec
+cce2ba9322ee8fec656934b1213daae
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -47,7 +47,11 @@ ON
 USBBridge:inst
 }
 # lmf
+<<<<<<< HEAD
 |altera|quartus|lmf|maxplus2.lmf
+=======
+c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -64,7 +68,7 @@ ON
 # case_insensitive
 # source_file
 usb_rg8e.vhd
-c3e4228a76d53c44e5a66e88ff9ae20
+6f19801ca589518db07b4714d6b03ae
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -107,7 +111,11 @@ USBBridge:inst|USB_RG8E:b2v_inst9
 USBBridge:inst|USB_RG8E:b2v_instRgAdr
 }
 # lmf
+<<<<<<< HEAD
 |altera|quartus|lmf|maxplus2.lmf
+=======
+c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -124,7 +132,7 @@ ON
 # case_insensitive
 # source_file
 usb_mux1x2.vhd
-1c13a6aa2bace5fcc845d4a8941d10
+dffc5c8bee86e6248712f8365ecb
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -140,7 +148,11 @@ ON
 USBBridge:inst|USB_MUX1x2:b2v_inst116
 }
 # lmf
+<<<<<<< HEAD
 |altera|quartus|lmf|maxplus2.lmf
+=======
+c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -152,7 +164,11 @@ db|lab.(4).cnf
 db|lab.(4).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_mux.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -225,7 +241,7 @@ db|lab.(5).cnf
 # case_insensitive
 # source_file
 db|mux_96e.tdf
-18f7c54f14385e8f72ef8e538ad38dd8
+c7bab883c1b7988c450e4873e598f37
 7
 # used_port {
 sel0
@@ -259,7 +275,7 @@ ON
 # case_insensitive
 # source_file
 usb_dc8.vhd
-7230d4b699146ee483797f22c3cdbb6
+96cc3b2fa3fcede06dd973567efdb9
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -281,7 +297,11 @@ USR
 USBBridge:inst|USB_DC8:b2v_inst14
 }
 # lmf
+<<<<<<< HEAD
 |altera|quartus|lmf|maxplus2.lmf
+=======
+c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -293,7 +313,11 @@ db|lab.(7).cnf
 db|lab.(7).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_decode.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_decode.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 801b50bb3ab97a9f41a27f6333e6c69e
 7
 # user_parameter {
@@ -465,7 +489,7 @@ db|lab.(8).cnf
 # case_insensitive
 # source_file
 db|decode_j1g.tdf
-232d04d5f455e19766ebbe67ca16e
+fb214bd14992c4253f56f32aeebd3cd5
 7
 # used_port {
 eq99
@@ -895,7 +919,7 @@ ON
 # case_insensitive
 # source_file
 usb_ct3.vhd
-dacb34919fdae1d76b34385d4c994
+39a717ddb6f1b52ec9791a90e815aa9
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -917,7 +941,11 @@ USR
 USBBridge:inst|USB_CT3:b2v_inst5
 }
 # lmf
+<<<<<<< HEAD
 |altera|quartus|lmf|maxplus2.lmf
+=======
+c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -929,7 +957,11 @@ db|lab.(10).cnf
 db|lab.(10).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_counter.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_counter.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 151f75e8fcf5e87e72b7df6bb2ea
 7
 # user_parameter {
@@ -1040,7 +1072,7 @@ db|lab.(11).cnf
 # case_insensitive
 # source_file
 db|cntr_pqi.tdf
-763451ba861db77bc8a927ee3e509026
+86b0d643562dbc80fafea5867735065
 7
 # used_port {
 q2
@@ -1080,7 +1112,7 @@ ON
 # case_insensitive
 # source_file
 usb_dc3.vhd
-b0137ced501b9df910a9c66d268c99d1
+5c5520ee798acc95155f88f21e1494
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -1102,7 +1134,11 @@ USR
 USBBridge:inst|usb_dc3:b2v_instdc3
 }
 # lmf
+<<<<<<< HEAD
 |altera|quartus|lmf|maxplus2.lmf
+=======
+c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -1114,7 +1150,11 @@ db|lab.(13).cnf
 db|lab.(13).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_decode.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_decode.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 801b50bb3ab97a9f41a27f6333e6c69e
 7
 # user_parameter {
@@ -1208,7 +1248,7 @@ db|lab.(14).cnf
 # case_insensitive
 # source_file
 db|decode_5af.tdf
-5495edc4c876a09838b24e99f5f5d8f
+863ff54257cf8daedea06380cf6d13
 7
 # used_port {
 eq7
@@ -1263,7 +1303,7 @@ ON
 # case_insensitive
 # source_file
 usb_mux8x2.vhd
-df286b3afff29841d335cb8b3ca4de0
+32949d6512bd6227aaf7961cab22715
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -1293,7 +1333,11 @@ USR
 USBBridge:inst|USB_MUX8x2:b2v_instmux1
 }
 # lmf
+<<<<<<< HEAD
 |altera|quartus|lmf|maxplus2.lmf
+=======
+c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -1305,7 +1349,11 @@ db|lab.(16).cnf
 db|lab.(16).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_mux.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -1441,7 +1489,7 @@ db|lab.(17).cnf
 # case_insensitive
 # source_file
 db|mux_g6e.tdf
-dbb934acc33597c37f1beb60c6667e2
+faac87d1ccc2a91090cfcc4adbc465
 7
 # used_port {
 sel0
@@ -1538,7 +1586,7 @@ ON
 # case_insensitive
 # source_file
 usb_mux8x19.vhd
-f9aef6e08850b02c3ba6f8677622c4c9
+361e7416cb11872b295459b94ec0e75b
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -1676,7 +1724,11 @@ USR
 USBBridge:inst|USB_MUX8x19:b2v_instmux2
 }
 # lmf
+<<<<<<< HEAD
 |altera|quartus|lmf|maxplus2.lmf
+=======
+c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -1688,7 +1740,11 @@ db|lab.(19).cnf
 db|lab.(19).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_mux.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -2460,7 +2516,7 @@ db|lab.(20).cnf
 # case_insensitive
 # source_file
 db|mux_c8e.tdf
-d0a5e2b1d6dc693b5338df682729cdb1
+5ee15874f5e71e8bc7c6d18433eb9be5
 7
 # used_port {
 sel4
@@ -3193,7 +3249,7 @@ ON
 # case_sensitive
 # source_file
 pll1.v
-257072c51cb3bd8d55828dcfe36525d
+a79a554de4d7289e1a64c76d3e3dffb
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -3224,7 +3280,11 @@ db|lab.(22).cnf
 db|lab.(22).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|altpll.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|altpll.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 2ba9eb5c4b9bddd84f6c12efd8fd6af
 7
 # user_parameter {
@@ -4762,7 +4822,7 @@ ON
 # case_sensitive
 # source_file
 db|pll1_altpll.v
-a62e5a0a1b7ebcd4bfdd2264ec2b5
+403d9a7e928b57e3eee127289b4ba5be
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -4794,7 +4854,7 @@ db|lab.(24).cnf
 # case_insensitive
 # source_file
 lab.bdf
-af469ea1fef16c051c2ff868a618157
+2631466095db2f9dd1ceefa5db46491
 26
 # internal_option {
 BLOCK_DESIGN_NAMING
@@ -4818,7 +4878,7 @@ ON
 # case_sensitive
 # source_file
 ua.v
-8db33ed9e3184812ecedf9794127b26b
+1983bfcc2208e5db865dac5f8dd1669
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -4850,7 +4910,7 @@ db|lab.(26).cnf
 # case_insensitive
 # source_file
 kc3.tdf
-6c8adf53f6daff1f2df7644ed644245
+6655d8cb97dbb5c3812e5f9446b5c1
 7
 # used_port {
 result
@@ -4943,7 +5003,11 @@ db|lab.(27).cnf
 db|lab.(27).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_or.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_or.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 9d9b85358b57ebf2c2ba1d6b37aa4141
 7
 # user_parameter {
@@ -5076,7 +5140,7 @@ db|lab.(28).cnf
 # case_insensitive
 # source_file
 rg3.bdf
-6258e29a327bdb19d87066b938b672ce
+9518ef22996359d65aef0be6a632fef
 26
 # internal_option {
 BLOCK_DESIGN_NAMING
@@ -5100,7 +5164,7 @@ ON
 # case_sensitive
 # source_file
 rg_3.v
-44cab4f231a46d702657cb689c3a7a2
+917b8703bbb2a36ab6509f23684aa
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -5131,7 +5195,11 @@ db|lab.(30).cnf
 db|lab.(30).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_ff.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_ff.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 6f1796a38d8b519cf7b8f38b5da1ac5b
 7
 # user_parameter {
@@ -5211,7 +5279,7 @@ ON
 # case_sensitive
 # source_file
 mux0.v
-6da552c1a7155d75ea201682faa16fc3
+913485d0217e395278b63fe318aa54c
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -5244,7 +5312,11 @@ db|lab.(32).cnf
 db|lab.(32).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_mux.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -5316,7 +5388,7 @@ db|lab.(33).cnf
 # case_insensitive
 # source_file
 db|mux_jrc.tdf
-1d5ecd47c51b35c93ada3ce18d574f6f
+b6bf2920cbad69bd6afc8f07e5ead5a
 7
 # used_port {
 sel0
@@ -5559,7 +5631,7 @@ ON
 # case_sensitive
 # source_file
 sm1.v
-f8e3972e28285ea65d9fe9a95b157a70
+732511d7e8cee754709117322d4220c6
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -5590,7 +5662,11 @@ db|lab.(35).cnf
 db|lab.(35).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_add_sub.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_add_sub.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 74821f847e545ce9ad847cbce0ef11
 7
 # user_parameter {
@@ -5702,7 +5778,7 @@ db|lab.(36).cnf
 # case_insensitive
 # source_file
 db|add_sub_oii.tdf
-6dfe3d4f838e8fef90badcc25bada1
+721cefeb5714a918d6cf6926ed6da8ac
 7
 # used_port {
 result9
@@ -5942,7 +6018,7 @@ db|lab.(37).cnf
 # case_insensitive
 # source_file
 rg1.bdf
-2662a897b5f85cd47cbc17f4325babb
+d7af79b49e1b41eab724780164c5c29
 26
 # internal_option {
 BLOCK_DESIGN_NAMING
@@ -5963,7 +6039,7 @@ db|lab.(38).cnf
 # case_insensitive
 # source_file
 rg_1.tdf
-2cfaedf1319b546caaa049feb96ed692
+6926c7558fafd3557732f2d98c9584ed
 7
 # used_port {
 shiftin
@@ -6141,7 +6217,11 @@ db|lab.(39).cnf
 db|lab.(39).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_shiftreg.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_shiftreg.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 da99a65952a97e3c68facd67112efbfd
 7
 # user_parameter {
@@ -6359,7 +6439,7 @@ ON
 # case_sensitive
 # source_file
 kc1.v
-eecadc245c1dfcb0658146c523d378a7
+fdd636ed9e5a26eb2cc9fba7e4296081
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -6390,7 +6470,11 @@ db|lab.(41).cnf
 db|lab.(41).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_xor.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_xor.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 50b371f29654dff12ba9fe77a68b3329
 7
 # user_parameter {
@@ -6429,7 +6513,7 @@ ON
 # case_sensitive
 # source_file
 kc2.v
-7455f2e8d59736079aa4ed7c3761384
+a73b3ac934816efac18dad9b837cfac1
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -6460,7 +6544,11 @@ db|lab.(43).cnf
 db|lab.(43).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_and.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_and.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 dae67a4b94d163e024adf962885fdb7
 7
 # user_parameter {
@@ -6527,7 +6615,7 @@ db|lab.(44).cnf
 # case_insensitive
 # source_file
 kc5.tdf
-cf28d78b8a2446adf72bb3fdf122ddd
+b2232eb04c7ee9acfe3082dabdef041
 7
 # used_port {
 result
@@ -6573,7 +6661,11 @@ db|lab.(45).cnf
 db|lab.(45).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_or.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_or.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 9d9b85358b57ebf2c2ba1d6b37aa4141
 7
 # user_parameter {
@@ -6659,7 +6751,7 @@ db|lab.(46).cnf
 # case_insensitive
 # source_file
 ct1.bdf
-203c1ec5e8e81e29491762ddd79c8c76
+34be14fd115ec16ea59be53cc9c65aaa
 26
 # internal_option {
 BLOCK_DESIGN_NAMING
@@ -6684,7 +6776,7 @@ ON
 # case_sensitive
 # source_file
 ct.v
-b8cd7ceada80f8bf666e87773f2abb6
+8c7e5d19416490cdb98654b6badb7090
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -6716,7 +6808,11 @@ db|lab.(48).cnf
 db|lab.(48).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_counter.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_counter.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 151f75e8fcf5e87e72b7df6bb2ea
 7
 # user_parameter {
@@ -6849,7 +6945,7 @@ db|lab.(49).cnf
 # case_insensitive
 # source_file
 db|cntr_8ii.tdf
-ee31905210189d443f1c677550671032
+72af8a37c95e40539f8ed38ad68ef15
 7
 # used_port {
 updown
@@ -6935,7 +7031,7 @@ ON
 # case_sensitive
 # source_file
 sm2.v
-27667abb30a83a689a1722985a23da6
+629cfd5427c3e0bf7c9cc4c972931020
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -6966,7 +7062,11 @@ db|lab.(51).cnf
 db|lab.(51).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_add_sub.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_add_sub.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 74821f847e545ce9ad847cbce0ef11
 7
 # user_parameter {
@@ -7075,7 +7175,7 @@ db|lab.(52).cnf
 # case_insensitive
 # source_file
 db|add_sub_f2i.tdf
-dfcfa460b1608221b43a4a06c364929
+1c1cee6425d8931f2f6eec2cd134a877
 7
 # used_port {
 result7
@@ -7172,7 +7272,7 @@ ON
 # case_sensitive
 # source_file
 kc4.v
-d9a0e44a71f0f9e0529658fe93412d86
+f1f2533274e4dc8feb84271a953f89a9
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -7204,7 +7304,11 @@ db|lab.(54).cnf
 db|lab.(54).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_xor.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_xor.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 50b371f29654dff12ba9fe77a68b3329
 7
 # user_parameter {
@@ -7244,7 +7348,7 @@ ON
 # case_sensitive
 # source_file
 comp.v
-67bf61859482ba89b9e2d70b937f37
+1f42ab571c41e871c34d93d34ef9cb3
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -7275,7 +7379,11 @@ db|lab.(56).cnf
 db|lab.(56).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_compare.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_compare.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 6fe57e55c2d8e254bfe73d8fff3f219
 7
 # user_parameter {
@@ -7374,7 +7482,7 @@ db|lab.(57).cnf
 # case_insensitive
 # source_file
 db|cmpr_okg.tdf
-6753869a37ee79dd888838d02de02780
+a6ea638d4d6941e41b4f72efb5f66f
 7
 # used_port {
 datab7
@@ -7447,7 +7555,7 @@ ON
 # case_sensitive
 # source_file
 ct3.v
-bd9325199128f6d3dc3f3e63049ecb6
+49c12653f6987b7b192ee6b13c5e93f8
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -7478,7 +7586,11 @@ db|lab.(59).cnf
 db|lab.(59).cnf
 # case_insensitive
 # source_file
+<<<<<<< HEAD
 |altera|quartus|libraries|megafunctions|lpm_counter.tdf
+=======
+c:|altera|91sp2|quartus|libraries|megafunctions|lpm_counter.tdf
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 151f75e8fcf5e87e72b7df6bb2ea
 7
 # user_parameter {
@@ -7610,7 +7722,7 @@ db|lab.(60).cnf
 # case_insensitive
 # source_file
 db|cntr_7cj.tdf
-4e1392b611b6b2365346f0334a8d2
+e39a62c6777959cb1468bbcbcd310ab
 7
 # used_port {
 sload
@@ -7673,7 +7785,11 @@ db|lab.(0).cnf
 # case_insensitive
 # source_file
 lab1.bdf
+<<<<<<< HEAD
 39b0e437a52dba5ba9a7fbcf42719b1
+=======
+914ca25618a0d9a6faf272d9968accb2
+>>>>>>> f5f044ec4e6736365cbbed6454219d8c87e6af10
 26
 # internal_option {
 BLOCK_DESIGN_NAMING
