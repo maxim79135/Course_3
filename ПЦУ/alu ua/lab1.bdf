@@ -157,22 +157,6 @@ applicable agreement for further details.
 	(annotation_block (location)(rect 848 280 896 296))
 )
 (pin
-	(output)
-	(rect 616 624 792 640)
-	(text "OUTPUT" (rect 1 0 39 10)(font "Arial" (font_size 6)))
-	(text "y[26..0]" (rect 90 0 128 12)(font "Arial" ))
-	(pt 0 8)
-	(drawing
-		(line (pt 0 8)(pt 52 8)(line_width 1))
-		(line (pt 52 4)(pt 78 4)(line_width 1))
-		(line (pt 52 12)(pt 78 12)(line_width 1))
-		(line (pt 52 12)(pt 52 4)(line_width 1))
-		(line (pt 78 4)(pt 82 8)(line_width 1))
-		(line (pt 82 8)(pt 78 12)(line_width 1))
-		(line (pt 78 12)(pt 82 8)(line_width 1))
-	)
-)
-(pin
 	(bidir)
 	(rect 536 384 712 400)
 	(text "BIDIR" (rect 1 0 25 10)(font "Arial" (font_size 6)))
@@ -461,7 +445,7 @@ applicable agreement for further details.
 )
 (symbol
 	(rect 712 272 760 304)
-	(text "WIRE" (rect 1 0 25 10)(font "Arial" (font_size 6)))
+	(text "WIRE" (rect 1 0 24 10)(font "Arial" (font_size 6)))
 	(text "inst7" (rect 3 21 26 33)(font "Arial" ))
 	(port
 		(pt 0 16)
@@ -485,7 +469,7 @@ applicable agreement for further details.
 )
 (symbol
 	(rect 160 648 208 680)
-	(text "WIRE" (rect 1 0 25 10)(font "Arial" (font_size 6)))
+	(text "WIRE" (rect 1 0 24 10)(font "Arial" (font_size 6)))
 	(text "inst8" (rect 3 21 26 33)(font "Arial" ))
 	(port
 		(pt 0 16)
@@ -509,7 +493,7 @@ applicable agreement for further details.
 )
 (symbol
 	(rect 80 488 128 520)
-	(text "WIRE" (rect 1 0 25 10)(font "Arial" (font_size 6)))
+	(text "WIRE" (rect 1 0 24 10)(font "Arial" (font_size 6)))
 	(text "inst5" (rect 3 21 26 33)(font "Arial" ))
 	(port
 		(pt 0 16)
@@ -597,8 +581,8 @@ applicable agreement for further details.
 	(port
 		(pt 168 32)
 		(output)
-		(text "y[26..0]" (rect 0 0 42 14)(font "Arial" (font_size 8)))
-		(text "y[26..0]" (rect 105 27 147 41)(font "Arial" (font_size 8)))
+		(text "y[27..0]" (rect 0 0 42 14)(font "Arial" (font_size 8)))
+		(text "y[27..0]" (rect 105 27 147 41)(font "Arial" (font_size 8)))
 		(line (pt 168 32)(pt 152 32)(line_width 3))
 	)
 	(port
@@ -909,12 +893,6 @@ applicable agreement for further details.
 	(bus)
 )
 (connector
-	(text "y[26..0]" (rect 568 616 606 628)(font "Arial" ))
-	(pt 560 632)
-	(pt 616 632)
-	(bus)
-)
-(connector
 	(text "P[15..0]" (rect 568 648 606 660)(font "Arial" ))
 	(pt 560 664)
 	(pt 608 664)
@@ -926,4 +904,11 @@ applicable agreement for further details.
 	(pt 16 504)
 	(bus)
 )
+(connector
+	(text "y[27..0]" (rect 568 616 606 628)(font "Arial" ))
+	(pt 560 632)
+	(pt 616 632)
+	(bus)
+)
 (junction (pt 168 72))
+(text "s" (rect 760 688 767 702)(font "Arial" (font_size 8)))

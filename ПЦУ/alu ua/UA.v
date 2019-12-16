@@ -24,7 +24,7 @@
 module UA
 (
 	// {{ALTERA_ARGS_BEGIN}} DO NOT REMOVE THIS LINE!
-	xx, z, res, mode, clk, p, y, clkout
+	xx, z, res, mode, clk, p, clkout, y
 	// {{ALTERA_ARGS_END}} DO NOT REMOVE THIS LINE!
 );
 // Port Declaration
@@ -36,16 +36,16 @@ module UA
 	input [1:0] mode;
 	input clk;
 	input [15:0] p;
-	output [26:0] y;
 	output clkout;
+	output [27:0] y;
 	// {{ALTERA_IO_END}} DO NOT REMOVE THIS LINE!
 integer pc=1;
-reg [26:0] y;
+reg [27:0] y;
 wire clkout;
 assign clkout=!clk;
 always @(posedge clk)
 begin
-y=26'b0000000000000000000000000000;
+y=27'b00000000000000000000000000000;
 if (res) begin pc=1; end;
 case (pc)
 1:begin

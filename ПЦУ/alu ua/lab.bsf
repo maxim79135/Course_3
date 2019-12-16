@@ -68,8 +68,8 @@ applicable agreement for further details.
 	(port
 		(pt 168 32)
 		(output)
-		(text "y[26..0]" (rect 0 0 42 14)(font "Arial" (font_size 8)))
-		(text "y[26..0]" (rect 105 27 147 41)(font "Arial" (font_size 8)))
+		(text "y[27..0]" (rect 0 0 42 14)(font "Arial" (font_size 8)))
+		(text "y[27..0]" (rect 105 27 147 41)(font "Arial" (font_size 8)))
 		(line (pt 168 32)(pt 152 32)(line_width 3))
 	)
 	(port
