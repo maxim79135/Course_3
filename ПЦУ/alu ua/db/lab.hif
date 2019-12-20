@@ -20,6 +20,95 @@ VHSM_ON
 -- Start VHDL Libraries --
 -- End VHDL Libraries --
 # entity
+KC_AND8
+# storage
+db|lab.(61).cnf
+db|lab.(61).cnf
+# case_insensitive
+# source_file
+kc_and8.tdf
+c4362456691fe13a4418073841ac82b
+7
+# used_port {
+result
+-1
+3
+data7_0
+-1
+3
+data6_0
+-1
+3
+data5_0
+-1
+3
+data4_0
+-1
+3
+data3_0
+-1
+3
+data2_0
+-1
+3
+data1_0
+-1
+3
+data0_0
+-1
+3
+}
+# include_file {
+lpm_and.inc
+736ee09b68691a8143f713d19e2baa41
+}
+# hierarchies {
+lab:inst4|KC_AND8:inst46
+}
+# macro_sequence
+
+# end
+# entity
+lab1
+# storage
+db|lab.(0).cnf
+db|lab.(0).cnf
+# case_insensitive
+# source_file
+lab1.bdf
+ccea363eff5e3a8d7dc2ad8114548
+26
+# internal_option {
+BLOCK_DESIGN_NAMING
+AUTO
+}
+# hierarchies {
+|
+}
+# macro_sequence
+
+# end
+# entity
+lab
+# storage
+db|lab.(24).cnf
+db|lab.(24).cnf
+# case_insensitive
+# source_file
+lab.bdf
+5c2c58423a637d7d939fe384de995
+26
+# internal_option {
+BLOCK_DESIGN_NAMING
+AUTO
+}
+# hierarchies {
+lab:inst4
+}
+# macro_sequence
+
+# end
+# entity
 USBBridge
 # storage
 db|lab.(1).cnf
@@ -31,7 +120,7 @@ ON
 # case_insensitive
 # source_file
 usbbridge.vhd
-cce2ba9322ee8fec656934b1213daae
+4a97a9305dea86d8bb8445e922989ec
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -47,7 +136,7 @@ ON
 USBBridge:inst
 }
 # lmf
-c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -64,7 +153,7 @@ ON
 # case_insensitive
 # source_file
 usb_rg8e.vhd
-6f19801ca589518db07b4714d6b03ae
+c3e4228a76d53c44e5a66e88ff9ae20
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -107,7 +196,7 @@ USBBridge:inst|USB_RG8E:b2v_inst9
 USBBridge:inst|USB_RG8E:b2v_instRgAdr
 }
 # lmf
-c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -124,7 +213,7 @@ ON
 # case_insensitive
 # source_file
 usb_mux1x2.vhd
-dffc5c8bee86e6248712f8365ecb
+1c13a6aa2bace5fcc845d4a8941d10
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -140,7 +229,7 @@ ON
 USBBridge:inst|USB_MUX1x2:b2v_inst116
 }
 # lmf
-c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -152,7 +241,7 @@ db|lab.(4).cnf
 db|lab.(4).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+|altera|quartus|libraries|megafunctions|lpm_mux.tdf
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -225,7 +314,7 @@ db|lab.(5).cnf
 # case_insensitive
 # source_file
 db|mux_96e.tdf
-c7bab883c1b7988c450e4873e598f37
+18f7c54f14385e8f72ef8e538ad38dd8
 7
 # used_port {
 sel0
@@ -259,7 +348,7 @@ ON
 # case_insensitive
 # source_file
 usb_dc8.vhd
-96cc3b2fa3fcede06dd973567efdb9
+7230d4b699146ee483797f22c3cdbb6
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -281,7 +370,7 @@ USR
 USBBridge:inst|USB_DC8:b2v_inst14
 }
 # lmf
-c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -293,7 +382,7 @@ db|lab.(7).cnf
 db|lab.(7).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_decode.tdf
+|altera|quartus|libraries|megafunctions|lpm_decode.tdf
 801b50bb3ab97a9f41a27f6333e6c69e
 7
 # user_parameter {
@@ -465,7 +554,7 @@ db|lab.(8).cnf
 # case_insensitive
 # source_file
 db|decode_j1g.tdf
-fb214bd14992c4253f56f32aeebd3cd5
+232d04d5f455e19766ebbe67ca16e
 7
 # used_port {
 eq99
@@ -895,7 +984,7 @@ ON
 # case_insensitive
 # source_file
 usb_ct3.vhd
-39a717ddb6f1b52ec9791a90e815aa9
+dacb34919fdae1d76b34385d4c994
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -917,7 +1006,7 @@ USR
 USBBridge:inst|USB_CT3:b2v_inst5
 }
 # lmf
-c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -929,7 +1018,7 @@ db|lab.(10).cnf
 db|lab.(10).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_counter.tdf
+|altera|quartus|libraries|megafunctions|lpm_counter.tdf
 151f75e8fcf5e87e72b7df6bb2ea
 7
 # user_parameter {
@@ -1040,7 +1129,7 @@ db|lab.(11).cnf
 # case_insensitive
 # source_file
 db|cntr_pqi.tdf
-86b0d643562dbc80fafea5867735065
+763451ba861db77bc8a927ee3e509026
 7
 # used_port {
 q2
@@ -1080,7 +1169,7 @@ ON
 # case_insensitive
 # source_file
 usb_dc3.vhd
-5c5520ee798acc95155f88f21e1494
+b0137ced501b9df910a9c66d268c99d1
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -1102,7 +1191,7 @@ USR
 USBBridge:inst|usb_dc3:b2v_instdc3
 }
 # lmf
-c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -1114,7 +1203,7 @@ db|lab.(13).cnf
 db|lab.(13).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_decode.tdf
+|altera|quartus|libraries|megafunctions|lpm_decode.tdf
 801b50bb3ab97a9f41a27f6333e6c69e
 7
 # user_parameter {
@@ -1208,7 +1297,7 @@ db|lab.(14).cnf
 # case_insensitive
 # source_file
 db|decode_5af.tdf
-863ff54257cf8daedea06380cf6d13
+5495edc4c876a09838b24e99f5f5d8f
 7
 # used_port {
 eq7
@@ -1263,7 +1352,7 @@ ON
 # case_insensitive
 # source_file
 usb_mux8x2.vhd
-32949d6512bd6227aaf7961cab22715
+df286b3afff29841d335cb8b3ca4de0
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -1293,7 +1382,7 @@ USR
 USBBridge:inst|USB_MUX8x2:b2v_instmux1
 }
 # lmf
-c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -1305,7 +1394,7 @@ db|lab.(16).cnf
 db|lab.(16).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+|altera|quartus|libraries|megafunctions|lpm_mux.tdf
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -1441,7 +1530,7 @@ db|lab.(17).cnf
 # case_insensitive
 # source_file
 db|mux_g6e.tdf
-faac87d1ccc2a91090cfcc4adbc465
+dbb934acc33597c37f1beb60c6667e2
 7
 # used_port {
 sel0
@@ -1538,7 +1627,7 @@ ON
 # case_insensitive
 # source_file
 usb_mux8x19.vhd
-361e7416cb11872b295459b94ec0e75b
+f9aef6e08850b02c3ba6f8677622c4c9
 5
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -1676,7 +1765,7 @@ USR
 USBBridge:inst|USB_MUX8x19:b2v_instmux2
 }
 # lmf
-c:|altera|91sp2|quartus|lmf|maxplus2.lmf
+|altera|quartus|lmf|maxplus2.lmf
 a36c8ec425c8a2589af98b2d4daabc3
 # macro_sequence
 
@@ -1688,7 +1777,7 @@ db|lab.(19).cnf
 db|lab.(19).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+|altera|quartus|libraries|megafunctions|lpm_mux.tdf
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -2460,7 +2549,7 @@ db|lab.(20).cnf
 # case_insensitive
 # source_file
 db|mux_c8e.tdf
-5ee15874f5e71e8bc7c6d18433eb9be5
+d0a5e2b1d6dc693b5338df682729cdb1
 7
 # used_port {
 sel4
@@ -3193,7 +3282,7 @@ ON
 # case_sensitive
 # source_file
 pll1.v
-a79a554de4d7289e1a64c76d3e3dffb
+257072c51cb3bd8d55828dcfe36525d
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -3224,7 +3313,7 @@ db|lab.(22).cnf
 db|lab.(22).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|altpll.tdf
+|altera|quartus|libraries|megafunctions|altpll.tdf
 2ba9eb5c4b9bddd84f6c12efd8fd6af
 7
 # user_parameter {
@@ -4762,7 +4851,7 @@ ON
 # case_sensitive
 # source_file
 db|pll1_altpll.v
-403d9a7e928b57e3eee127289b4ba5be
+a62e5a0a1b7ebcd4bfdd2264ec2b5
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -4787,131 +4876,37 @@ PLL1:inst1|altpll:altpll_component|PLL1_altpll:auto_generated
 ALTERA_RESERVED_QISALTERA_RESERVED_QIS
 # end
 # entity
-KC5
+UA
 # storage
-db|lab.(26).cnf
-db|lab.(26).cnf
-# case_insensitive
-# source_file
-kc5.tdf
-b2232eb04c7ee9acfe3082dabdef041
-7
-# used_port {
-result
--1
-3
-data6_0
--1
-3
-data5_0
--1
-3
-data4_0
--1
-3
-data3_0
--1
-3
-data2_0
--1
-3
-data1_0
--1
-3
-data0_0
--1
-3
+db|lab.(25).cnf
+db|lab.(25).cnf
+# logic_option {
+AUTO_RAM_RECOGNITION
+ON
 }
-# include_file {
-lpm_or.inc
-b3db57fced17f86f7678b84966053be
+# case_sensitive
+# source_file
+ua.v
+75775438c65445d31e65c41b52fb87
+8
+# internal_option {
+HDL_INITIAL_FANOUT_LIMIT
+OFF
+AUTO_RESOURCE_SHARING
+OFF
+AUTO_RAM_RECOGNITION
+ON
+AUTO_ROM_RECOGNITION
+ON
+IGNORE_VERILOG_INITIAL_CONSTRUCTS
+OFF
+VERILOG_CONSTANT_LOOP_LIMIT
+5000
+VERILOG_NON_CONSTANT_LOOP_LIMIT
+250
 }
 # hierarchies {
-lab:inst4|KC5:inst26
-}
-# macro_sequence
-
-# end
-# entity
-lpm_or
-# storage
-db|lab.(27).cnf
-db|lab.(27).cnf
-# case_insensitive
-# source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_or.tdf
-9d9b85358b57ebf2c2ba1d6b37aa4141
-7
-# user_parameter {
-AUTO_CARRY_CHAINS
-ON
-AUTO_CARRY
-USR
-IGNORE_CARRY_BUFFERS
-OFF
-IGNORE_CARRY
-USR
-AUTO_CASCADE_CHAINS
-ON
-AUTO_CASCADE
-USR
-IGNORE_CASCADE_BUFFERS
-OFF
-IGNORE_CASCADE
-USR
-LPM_WIDTH
-1
-PARAMETER_UNKNOWN
-USR
-LPM_SIZE
-7
-PARAMETER_UNKNOWN
-USR
-CARRY_CHAIN_LENGTH
-48
-CARRY_CHAIN_LENGTH
-USR
-CARRY_CHAIN
-MANUAL
-PARAMETER_UNKNOWN
-USR
-CASCADE_CHAIN
-MANUAL
-PARAMETER_UNKNOWN
-USR
-DEVICE_FAMILY
-Cyclone III
-PARAMETER_UNKNOWN
-USR
-}
-# used_port {
-result0
--1
-3
-data6_0
--1
-3
-data5_0
--1
-3
-data4_0
--1
-3
-data3_0
--1
-3
-data2_0
--1
-3
-data1_0
--1
-3
-data0_0
--1
-3
-}
-# hierarchies {
-lab:inst4|KC5:inst26|lpm_or:lpm_or_component
+lab:inst4|UA:inst100
 }
 # macro_sequence
 
@@ -4919,12 +4914,12 @@ lab:inst4|KC5:inst26|lpm_or:lpm_or_component
 # entity
 CT1
 # storage
-db|lab.(28).cnf
-db|lab.(28).cnf
+db|lab.(26).cnf
+db|lab.(26).cnf
 # case_insensitive
 # source_file
 ct1.bdf
-34be14fd115ec16ea59be53cc9c65aaa
+203c1ec5e8e81e29491762ddd79c8c76
 26
 # internal_option {
 BLOCK_DESIGN_NAMING
@@ -4940,8 +4935,8 @@ lab:inst4|CT1:inst18
 # entity
 CT
 # storage
-db|lab.(29).cnf
-db|lab.(29).cnf
+db|lab.(27).cnf
+db|lab.(27).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -4949,7 +4944,7 @@ ON
 # case_sensitive
 # source_file
 ct.v
-8c7e5d19416490cdb98654b6badb7090
+b8cd7ceada80f8bf666e87773f2abb6
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -4977,11 +4972,11 @@ lab:inst4|CT1:inst18|CT:inst
 # entity
 lpm_counter
 # storage
-db|lab.(30).cnf
-db|lab.(30).cnf
+db|lab.(28).cnf
+db|lab.(28).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_counter.tdf
+|altera|quartus|libraries|megafunctions|lpm_counter.tdf
 151f75e8fcf5e87e72b7df6bb2ea
 7
 # user_parameter {
@@ -5109,12 +5104,12 @@ lab:inst4|CT1:inst18|CT:inst|lpm_counter:lpm_counter_component
 # entity
 cntr_8ii
 # storage
-db|lab.(31).cnf
-db|lab.(31).cnf
+db|lab.(29).cnf
+db|lab.(29).cnf
 # case_insensitive
 # source_file
 db|cntr_8ii.tdf
-72af8a37c95e40539f8ed38ad68ef15
+ee31905210189d443f1c677550671032
 7
 # used_port {
 updown
@@ -5191,8 +5186,8 @@ lab:inst4|CT1:inst18|CT:inst|lpm_counter:lpm_counter_component|cntr_8ii:auto_gen
 # entity
 Comp
 # storage
-db|lab.(32).cnf
-db|lab.(32).cnf
+db|lab.(30).cnf
+db|lab.(30).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -5200,7 +5195,7 @@ ON
 # case_sensitive
 # source_file
 comp.v
-1f42ab571c41e871c34d93d34ef9cb3
+67bf61859482ba89b9e2d70b937f37
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -5227,11 +5222,11 @@ lab:inst4|Comp:inst30
 # entity
 lpm_compare
 # storage
-db|lab.(33).cnf
-db|lab.(33).cnf
+db|lab.(31).cnf
+db|lab.(31).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_compare.tdf
+|altera|quartus|libraries|megafunctions|lpm_compare.tdf
 6fe57e55c2d8e254bfe73d8fff3f219
 7
 # user_parameter {
@@ -5325,12 +5320,12 @@ lab:inst4|Comp:inst30|lpm_compare:lpm_compare_component
 # entity
 cmpr_okg
 # storage
-db|lab.(34).cnf
-db|lab.(34).cnf
+db|lab.(32).cnf
+db|lab.(32).cnf
 # case_insensitive
 # source_file
 db|cmpr_okg.tdf
-a6ea638d4d6941e41b4f72efb5f66f
+6753869a37ee79dd888838d02de02780
 7
 # used_port {
 datab7
@@ -5394,8 +5389,8 @@ lab:inst4|Comp:inst30|lpm_compare:lpm_compare_component|cmpr_okg:auto_generated
 # entity
 SM2
 # storage
-db|lab.(35).cnf
-db|lab.(35).cnf
+db|lab.(33).cnf
+db|lab.(33).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -5403,7 +5398,7 @@ ON
 # case_sensitive
 # source_file
 sm2.v
-c3749d2e2b55fa755eb759ccf81cff6
+8bcd6c4bedfd991eedc92504d7ae076
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -5430,11 +5425,11 @@ lab:inst4|SM2:inst23
 # entity
 lpm_add_sub
 # storage
-db|lab.(36).cnf
-db|lab.(36).cnf
+db|lab.(34).cnf
+db|lab.(34).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_add_sub.tdf
+|altera|quartus|libraries|megafunctions|lpm_add_sub.tdf
 74821f847e545ce9ad847cbce0ef11
 7
 # user_parameter {
@@ -5541,12 +5536,12 @@ lab:inst4|SM2:inst23|lpm_add_sub:lpm_add_sub_component
 # entity
 add_sub_ahi
 # storage
-db|lab.(37).cnf
-db|lab.(37).cnf
+db|lab.(35).cnf
+db|lab.(35).cnf
 # case_insensitive
 # source_file
 db|add_sub_ahi.tdf
-12fababa03a6be2154f3cbffa76208d
+773d7439f8237c6e7266dc486ee6d5a6
 7
 # used_port {
 result7
@@ -5637,8 +5632,8 @@ lab:inst4|SM2:inst23|lpm_add_sub:lpm_add_sub_component|add_sub_ahi:auto_generate
 # entity
 KC4
 # storage
-db|lab.(38).cnf
-db|lab.(38).cnf
+db|lab.(36).cnf
+db|lab.(36).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -5646,7 +5641,7 @@ ON
 # case_sensitive
 # source_file
 kc4.v
-f1f2533274e4dc8feb84271a953f89a9
+d9a0e44a71f0f9e0529658fe93412d86
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -5673,11 +5668,11 @@ lab:inst4|KC4:inst21
 # entity
 lpm_xor
 # storage
-db|lab.(39).cnf
-db|lab.(39).cnf
+db|lab.(37).cnf
+db|lab.(37).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_xor.tdf
+|altera|quartus|libraries|megafunctions|lpm_xor.tdf
 50b371f29654dff12ba9fe77a68b3329
 7
 # user_parameter {
@@ -5707,12 +5702,12 @@ lab:inst4|KC4:inst21|lpm_xor:lpm_xor_component
 # entity
 KC3
 # storage
-db|lab.(40).cnf
-db|lab.(40).cnf
+db|lab.(38).cnf
+db|lab.(38).cnf
 # case_insensitive
 # source_file
 kc3.tdf
-6655d8cb97dbb5c3812e5f9446b5c1
+6c8adf53f6daff1f2df7644ed644245
 7
 # used_port {
 result
@@ -5801,11 +5796,11 @@ lab:inst4|KC3:inst10
 # entity
 lpm_or
 # storage
-db|lab.(41).cnf
-db|lab.(41).cnf
+db|lab.(39).cnf
+db|lab.(39).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_or.tdf
+|altera|quartus|libraries|megafunctions|lpm_or.tdf
 9d9b85358b57ebf2c2ba1d6b37aa4141
 7
 # user_parameter {
@@ -5933,12 +5928,12 @@ lab:inst4|KC3:inst10|lpm_or:lpm_or_component
 # entity
 Rg3
 # storage
-db|lab.(42).cnf
-db|lab.(42).cnf
+db|lab.(40).cnf
+db|lab.(40).cnf
 # case_insensitive
 # source_file
 rg3.bdf
-9518ef22996359d65aef0be6a632fef
+6258e29a327bdb19d87066b938b672ce
 26
 # internal_option {
 BLOCK_DESIGN_NAMING
@@ -5953,8 +5948,8 @@ lab:inst4|Rg3:inst9
 # entity
 Rg_3
 # storage
-db|lab.(43).cnf
-db|lab.(43).cnf
+db|lab.(41).cnf
+db|lab.(41).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -5962,7 +5957,7 @@ ON
 # case_sensitive
 # source_file
 rg_3.v
-917b8703bbb2a36ab6509f23684aa
+44cab4f231a46d702657cb689c3a7a2
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -5989,11 +5984,11 @@ lab:inst4|Rg3:inst9|Rg_3:inst
 # entity
 lpm_ff
 # storage
-db|lab.(44).cnf
-db|lab.(44).cnf
+db|lab.(42).cnf
+db|lab.(42).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_ff.tdf
+|altera|quartus|libraries|megafunctions|lpm_ff.tdf
 6f1796a38d8b519cf7b8f38b5da1ac5b
 7
 # user_parameter {
@@ -6064,8 +6059,8 @@ lab:inst4|Rg3:inst9|Rg_3:inst|lpm_ff:lpm_ff_component
 # entity
 MUX0
 # storage
-db|lab.(45).cnf
-db|lab.(45).cnf
+db|lab.(43).cnf
+db|lab.(43).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -6073,7 +6068,7 @@ ON
 # case_sensitive
 # source_file
 mux0.v
-913485d0217e395278b63fe318aa54c
+6da552c1a7155d75ea201682faa16fc3
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -6102,11 +6097,11 @@ lab:inst4|MUX0:inst8
 # entity
 LPM_MUX
 # storage
-db|lab.(46).cnf
-db|lab.(46).cnf
+db|lab.(44).cnf
+db|lab.(44).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_mux.tdf
+|altera|quartus|libraries|megafunctions|lpm_mux.tdf
 9d45665215a7636e457c26f5f1517
 7
 # user_parameter {
@@ -6173,12 +6168,12 @@ lab:inst4|MUX0:inst8|lpm_mux:lpm_mux_component
 # entity
 mux_jrc
 # storage
-db|lab.(47).cnf
-db|lab.(47).cnf
+db|lab.(45).cnf
+db|lab.(45).cnf
 # case_insensitive
 # source_file
 db|mux_jrc.tdf
-b6bf2920cbad69bd6afc8f07e5ead5a
+1d5ecd47c51b35c93ada3ce18d574f6f
 7
 # used_port {
 sel0
@@ -6412,8 +6407,8 @@ lab:inst4|MUX0:inst8|lpm_mux:lpm_mux_component|mux_jrc:auto_generated
 # entity
 SM1
 # storage
-db|lab.(48).cnf
-db|lab.(48).cnf
+db|lab.(46).cnf
+db|lab.(46).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -6421,7 +6416,7 @@ ON
 # case_sensitive
 # source_file
 sm1.v
-732511d7e8cee754709117322d4220c6
+f8e3972e28285ea65d9fe9a95b157a70
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -6448,11 +6443,11 @@ lab:inst4|SM1:inst6
 # entity
 lpm_add_sub
 # storage
-db|lab.(49).cnf
-db|lab.(49).cnf
+db|lab.(47).cnf
+db|lab.(47).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_add_sub.tdf
+|altera|quartus|libraries|megafunctions|lpm_add_sub.tdf
 74821f847e545ce9ad847cbce0ef11
 7
 # user_parameter {
@@ -6559,12 +6554,12 @@ lab:inst4|SM1:inst6|lpm_add_sub:lpm_add_sub_component
 # entity
 add_sub_oii
 # storage
-db|lab.(50).cnf
-db|lab.(50).cnf
+db|lab.(48).cnf
+db|lab.(48).cnf
 # case_insensitive
 # source_file
 db|add_sub_oii.tdf
-721cefeb5714a918d6cf6926ed6da8ac
+6dfe3d4f838e8fef90badcc25bada1
 7
 # used_port {
 result9
@@ -6799,12 +6794,12 @@ lab:inst4|SM1:inst6|lpm_add_sub:lpm_add_sub_component|add_sub_oii:auto_generated
 # entity
 Rg1
 # storage
-db|lab.(51).cnf
-db|lab.(51).cnf
+db|lab.(49).cnf
+db|lab.(49).cnf
 # case_insensitive
 # source_file
 rg1.bdf
-dd1c72bb0df8525c22f3ec949091b2
+d3b916f1e0a81665767643c8602c297b
 26
 # internal_option {
 BLOCK_DESIGN_NAMING
@@ -6820,12 +6815,12 @@ lab:inst4|Rg1:inst2
 # entity
 Rg_1
 # storage
-db|lab.(52).cnf
-db|lab.(52).cnf
+db|lab.(50).cnf
+db|lab.(50).cnf
 # case_insensitive
 # source_file
 rg_1.tdf
-7398f82d3bd3a924ea3d5517fa71f
+6faacca987c128e717442436dcddfe
 7
 # used_port {
 shiftin
@@ -7005,11 +7000,11 @@ lab:inst4|Rg1:inst2|Rg_1:inst
 # entity
 lpm_shiftreg
 # storage
-db|lab.(53).cnf
-db|lab.(53).cnf
+db|lab.(51).cnf
+db|lab.(51).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_shiftreg.tdf
+|altera|quartus|libraries|megafunctions|lpm_shiftreg.tdf
 da99a65952a97e3c68facd67112efbfd
 7
 # user_parameter {
@@ -7224,8 +7219,8 @@ lab:inst4|Rg1:inst2|Rg_1:inst|lpm_shiftreg:lpm_shiftreg_component
 # entity
 KC1
 # storage
-db|lab.(54).cnf
-db|lab.(54).cnf
+db|lab.(52).cnf
+db|lab.(52).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -7233,7 +7228,7 @@ ON
 # case_sensitive
 # source_file
 kc1.v
-fdd636ed9e5a26eb2cc9fba7e4296081
+eecadc245c1dfcb0658146c523d378a7
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -7260,11 +7255,11 @@ lab:inst4|KC1:inst5
 # entity
 lpm_xor
 # storage
-db|lab.(55).cnf
-db|lab.(55).cnf
+db|lab.(53).cnf
+db|lab.(53).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_xor.tdf
+|altera|quartus|libraries|megafunctions|lpm_xor.tdf
 50b371f29654dff12ba9fe77a68b3329
 7
 # user_parameter {
@@ -7294,8 +7289,8 @@ lab:inst4|KC1:inst5|lpm_xor:lpm_xor_component
 # entity
 KC2
 # storage
-db|lab.(56).cnf
-db|lab.(56).cnf
+db|lab.(54).cnf
+db|lab.(54).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -7303,7 +7298,7 @@ ON
 # case_sensitive
 # source_file
 kc2.v
-a73b3ac934816efac18dad9b837cfac1
+7455f2e8d59736079aa4ed7c3761384
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -7330,11 +7325,11 @@ lab:inst4|KC2:inst3
 # entity
 lpm_and
 # storage
-db|lab.(57).cnf
-db|lab.(57).cnf
+db|lab.(55).cnf
+db|lab.(55).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_and.tdf
+|altera|quartus|libraries|megafunctions|lpm_and.tdf
 dae67a4b94d163e024adf962885fdb7
 7
 # user_parameter {
@@ -7396,8 +7391,8 @@ lab:inst4|KC2:inst3|lpm_and:lpm_and_component
 # entity
 CT3
 # storage
-db|lab.(58).cnf
-db|lab.(58).cnf
+db|lab.(56).cnf
+db|lab.(56).cnf
 # logic_option {
 AUTO_RAM_RECOGNITION
 ON
@@ -7405,7 +7400,7 @@ ON
 # case_sensitive
 # source_file
 ct3.v
-49c12653f6987b7b192ee6b13c5e93f8
+bd9325199128f6d3dc3f3e63049ecb6
 8
 # internal_option {
 HDL_INITIAL_FANOUT_LIMIT
@@ -7432,11 +7427,11 @@ lab:inst4|CT3:inst33
 # entity
 lpm_counter
 # storage
-db|lab.(59).cnf
-db|lab.(59).cnf
+db|lab.(57).cnf
+db|lab.(57).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_counter.tdf
+|altera|quartus|libraries|megafunctions|lpm_counter.tdf
 151f75e8fcf5e87e72b7df6bb2ea
 7
 # user_parameter {
@@ -7563,12 +7558,12 @@ lab:inst4|CT3:inst33|lpm_counter:lpm_counter_component
 # entity
 cntr_7cj
 # storage
-db|lab.(60).cnf
-db|lab.(60).cnf
+db|lab.(58).cnf
+db|lab.(58).cnf
 # case_insensitive
 # source_file
 db|cntr_7cj.tdf
-e39a62c6777959cb1468bbcbcd310ab
+4e1392b611b6b2365346f0334a8d2
 7
 # used_port {
 sload
@@ -7624,20 +7619,17 @@ lab:inst4|CT3:inst33|lpm_counter:lpm_counter_component|cntr_7cj:auto_generated
 
 # end
 # entity
-KC_AND8
+KC5
 # storage
-db|lab.(61).cnf
-db|lab.(61).cnf
+db|lab.(59).cnf
+db|lab.(59).cnf
 # case_insensitive
 # source_file
-kc_and8.tdf
-c4362456691fe13a4418073841ac82b
+kc5.tdf
+cf28d78b8a2446adf72bb3fdf122ddd
 7
 # used_port {
 result
--1
-3
-data7_0
 -1
 3
 data6_0
@@ -7663,11 +7655,95 @@ data0_0
 3
 }
 # include_file {
-lpm_and.inc
-736ee09b68691a8143f713d19e2baa41
+lpm_or.inc
+b3db57fced17f86f7678b84966053be
 }
 # hierarchies {
-lab:inst4|KC_AND8:inst46
+lab:inst4|KC5:inst26
+}
+# macro_sequence
+
+# end
+# entity
+lpm_or
+# storage
+db|lab.(60).cnf
+db|lab.(60).cnf
+# case_insensitive
+# source_file
+|altera|quartus|libraries|megafunctions|lpm_or.tdf
+9d9b85358b57ebf2c2ba1d6b37aa4141
+7
+# user_parameter {
+AUTO_CARRY_CHAINS
+ON
+AUTO_CARRY
+USR
+IGNORE_CARRY_BUFFERS
+OFF
+IGNORE_CARRY
+USR
+AUTO_CASCADE_CHAINS
+ON
+AUTO_CASCADE
+USR
+IGNORE_CASCADE_BUFFERS
+OFF
+IGNORE_CASCADE
+USR
+LPM_WIDTH
+1
+PARAMETER_UNKNOWN
+USR
+LPM_SIZE
+7
+PARAMETER_UNKNOWN
+USR
+CARRY_CHAIN_LENGTH
+48
+CARRY_CHAIN_LENGTH
+USR
+CARRY_CHAIN
+MANUAL
+PARAMETER_UNKNOWN
+USR
+CASCADE_CHAIN
+MANUAL
+PARAMETER_UNKNOWN
+USR
+DEVICE_FAMILY
+Cyclone III
+PARAMETER_UNKNOWN
+USR
+}
+# used_port {
+result0
+-1
+3
+data6_0
+-1
+3
+data5_0
+-1
+3
+data4_0
+-1
+3
+data3_0
+-1
+3
+data2_0
+-1
+3
+data1_0
+-1
+3
+data0_0
+-1
+3
+}
+# hierarchies {
+lab:inst4|KC5:inst26|lpm_or:lpm_or_component
 }
 # macro_sequence
 
@@ -7679,7 +7755,7 @@ db|lab.(62).cnf
 db|lab.(62).cnf
 # case_insensitive
 # source_file
-c:|altera|91sp2|quartus|libraries|megafunctions|lpm_and.tdf
+|altera|quartus|libraries|megafunctions|lpm_and.tdf
 dae67a4b94d163e024adf962885fdb7
 7
 # user_parameter {
@@ -7755,82 +7831,6 @@ data0_0
 }
 # hierarchies {
 lab:inst4|KC_AND8:inst46|lpm_and:lpm_and_component
-}
-# macro_sequence
-
-# end
-# entity
-lab1
-# storage
-db|lab.(0).cnf
-db|lab.(0).cnf
-# case_insensitive
-# source_file
-lab1.bdf
-ccea363eff5e3a8d7dc2ad8114548
-26
-# internal_option {
-BLOCK_DESIGN_NAMING
-AUTO
-}
-# hierarchies {
-|
-}
-# macro_sequence
-
-# end
-# entity
-lab
-# storage
-db|lab.(24).cnf
-db|lab.(24).cnf
-# case_insensitive
-# source_file
-lab.bdf
-5c2c58423a637d7d939fe384de995
-26
-# internal_option {
-BLOCK_DESIGN_NAMING
-AUTO
-}
-# hierarchies {
-lab:inst4
-}
-# macro_sequence
-
-# end
-# entity
-UA
-# storage
-db|lab.(25).cnf
-db|lab.(25).cnf
-# logic_option {
-AUTO_RAM_RECOGNITION
-ON
-}
-# case_sensitive
-# source_file
-ua.v
-c1307bcd7c27d8ecd5fbce8b8163a97
-8
-# internal_option {
-HDL_INITIAL_FANOUT_LIMIT
-OFF
-AUTO_RESOURCE_SHARING
-OFF
-AUTO_RAM_RECOGNITION
-ON
-AUTO_ROM_RECOGNITION
-ON
-IGNORE_VERILOG_INITIAL_CONSTRUCTS
-OFF
-VERILOG_CONSTANT_LOOP_LIMIT
-5000
-VERILOG_NON_CONSTANT_LOOP_LIMIT
-250
-}
-# hierarchies {
-lab:inst4|UA:inst100
 }
 # macro_sequence
 

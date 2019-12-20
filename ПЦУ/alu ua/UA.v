@@ -52,9 +52,9 @@ case (pc)
 if (xx) begin y[0]=1; y[1]=1; y[2]=1; y[5]=1; y[16]=1; y[10]=1; pc=2; end;
 end
 2:begin
-if ((mode[0] == 0) && (mode[1] == 0)) begin pc=3; end;
-if ((mode[0] == 1) && (mode[1] == 0)) begin pc=50; end;
-if (mode[1] == 1) begin pc=100; end;
+if ((mode[0] == 0) && (mode[1] == 0)) begin pc=3; end; //*
+if ((mode[0] == 1) && (mode[1] == 0)) begin pc=50; end; //+
+if (mode[1] == 1) begin pc=100; end; //NOR
 end
 3:begin
 if (p[0]) begin pc=0; end;
@@ -90,7 +90,10 @@ end
 
 9:begin			//Norm
 if (p[1]) begin y[19]=1; y[12]=1; pc=10; end
-if (!p[1]) begin pc=11; end;			
+if (!p[1]) begin 
+	if (!p[15]) begin pc=11; end;
+	if (p[15]) begin pc=12; end;
+end;			
 end
 
 10:begin
@@ -126,27 +129,26 @@ if (p[0]) begin pc=11; end;
 if (!p[0]) begin 
 	if (p[1]) begin pc=54; end;	
 	if (!p[1]) begin 
-		if (!p[4]) begin y[20]=1; end;
-		y[17]=1; pc=53;
+		y[20]=1; y[17]=1; pc=53;
 	end; 
 end;
 end
 
 53:begin
-if (p[6]) begin 
-	if (p[4]) begin pc=12; end;
-	if (!p[4]) begin pc=0; end;
-end;
-if (!p[6]) begin 
-	if (p[7]) begin 
-		if (p[12]) begin pc=55; end;
-		if (!p[12]) begin y[10]=1; y[16]=1; pc=54; end;
+if (p[8]) begin pc=12; end;
+if (!p[8]) begin
+	if (p[9]) begin pc=0; end;
+	if (!p[9]) begin
+		if (p[7]) begin 
+			if (p[12]) begin pc=55; end;
+			if (!p[12]) begin y[10]=1; y[16]=1; pc=54; end;
+		end;
+		if (!p[7]) begin 
+			if (p[12]) begin y[17]=1; pc=11; end;
+			if (!p[12]) begin pc=55; end;
+		end; 
 	end;
-	if (!p[7]) begin 
-		if (p[12]) begin y[17]=1; pc=11; end;
-		if (!p[12]) begin pc=55; end;
-	end; 
-end;
+end; 
 end
 
 54:begin	//two
@@ -154,22 +156,21 @@ y[11]=1; y[17]=1; pc=11;
 end
 
 55:begin	//Equ
-if (p[10]) begin y[4]=1; y[7]=1; y[13]=1; pc=57; end;
+if (p[10]) begin y[11]=1; y[17]=1; pc=56; end;
 if (!p[10]) begin 
-	if (p[7]) begin y[4]=1; y[18]=1; end;
-	if (!p[7]) begin 
-		if (p[4]) begin y[8]=1; y[13]=1; y[19]=1; pc=56; end;
-		if (!p[4]) begin y[7]=1; y[13]=1; y[19]=1; end;
-	end;
+	if (p[7]) begin y[13]=1; y[19]=1; end;
+	if (!p[7]) begin y[4]=1; y[7]=1; y[19]=1; end;
 end;
 end
 
 56:begin
-y[6]=1; pc=55;
+if (p[5]) begin pc=9; end;
+if (!p[6]) begin y[13]=1; y[19]=1; pc=57; end;
 end
 
 57:begin
-y[11]=1; y[17]=1; pc=9; 
+if (p[10]) begin pc=12; end;
+if (!p[10]) begin pc=11; end;
 end
 
 100:begin
