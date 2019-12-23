@@ -27,3 +27,23 @@ begin
     else B:=0;
 end.
 >>>>>>> 91850d5489a9fde5dd70a43ca26aefc90603e79e
+
+
+
+
+procedure BBB;
+   var K,L: integer;
+   begin
+      K:=1;
+      L:=K-8; 
+   end;
+   
+   var L,M,K: integer;
+   begin
+      L:=3;
+      M:=L-K;
+      L:=(L-M)-(L-K);
+      if M<22 then L:=L-1
+      else M:=1;
+      BBB;
+   end.
