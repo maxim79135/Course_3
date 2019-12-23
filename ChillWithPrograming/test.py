@@ -6,7 +6,7 @@ for value in range(a, b + 1):
     stack.append(value)
     if value % 10 == 0:
         if len(stack) < 2 ** (value / 10 - 1):
-            break 
+            break
         for i in range(2 ** (value // 10 - 1)):
             stack.pop()
 
