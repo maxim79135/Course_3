@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="MyString">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../MyString/src/com/max/tools/MyString.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
