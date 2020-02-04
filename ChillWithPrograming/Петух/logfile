@@ -1,0 +1,9 @@
+2020-01-16 21:52:34.475 +03 [8828] FATAL:  data directory "/Users/max/Documents/Course_3/ChillWithPrograming/Петух/Петух" has invalid permissions
+2020-01-16 21:52:34.475 +03 [8828] DETAIL:  Permissions should be u=rwx (0700) or u=rwx,g=rx (0750).
+2020-01-16 21:54:08.229 +03 [8899] LOG:  could not bind IPv6 address "::1": Address already in use
+2020-01-16 21:54:08.229 +03 [8899] HINT:  Is another postmaster already running on port 5432? If not, wait a few seconds and retry.
+2020-01-16 21:54:08.229 +03 [8899] LOG:  could not bind IPv4 address "127.0.0.1": Address already in use
+2020-01-16 21:54:08.229 +03 [8899] HINT:  Is another postmaster already running on port 5432? If not, wait a few seconds and retry.
+2020-01-16 21:54:08.230 +03 [8899] WARNING:  could not create listen socket for "localhost"
+2020-01-16 21:54:08.230 +03 [8899] FATAL:  could not create any TCP/IP sockets
+2020-01-16 21:54:08.230 +03 [8899] LOG:  database system is shut down
