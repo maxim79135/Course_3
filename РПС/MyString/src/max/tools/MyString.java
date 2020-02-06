@@ -32,6 +32,14 @@ public class MyString {
     }
 
     public static boolean isSubsequence(String str, String sub) {
-        return true;
+        int n = str.length(), m = sub.length();
+        int p = 0, t = 0, cnt = 0;
+        while (p < m && m - p <= n - t) {
+            cnt++;
+            if (sub.charAt(p) == str.charAt(t))
+                p++;
+            t++;
+        }
+        return p == sub.length();
     }
 }
