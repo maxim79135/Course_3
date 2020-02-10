@@ -37,7 +37,8 @@ public class Main {
             try {
                 int code = scanner.nextInt();
                 System.out.println(code);
-                currentPos = code - 1;
+                if (code > 5) { currentPos = -1; continue; }
+                else currentPos = code - 1;
                 if (code == 5) break;
 
                 System.out.print("Enter first string: ");
