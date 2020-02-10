@@ -1,0 +1,44 @@
+<project name="Lab1" default="run" basedir=".">
+
+    <target name="path">
+        <property name="srcDir" value="${basedir}\src"/>
+        <property name="jarDir" value="${basedir}\jar"/>
+    </target>
+
+    <target name="compile" depends="path">
+        <echo> Compile MyString</echo>
+        <javac destdir="${srcDir}"
+                includeantruntime="false">
+            <src path="${srcDir}\max"/>
+        </javac>
+    </target>
+
+    <target name="jar" depends="compile">
+        <echo> Make jar MyString</echo>
+        <jar jarfile="${jarDir}\MyString.jar">
+            <fileset dir="${srcDir}\max"/>
+        </jar>
+    </target>
+
+    <target name="compile_main" depends="jar">
+        <echo> Compile Main</echo>
+        <javac destdir="${srcDir}"
+                includeantruntime="false">
+            <src path="${srcDir}\com"/>
+        </javac>
+    </target>
+
+    <target name="jar_main">
+        <echo> Make jar Main</echo>
+        <jar jarfile="${jarDir}\Main.jar" basedir="${srcDir}">
+            <manifest>
+                <attribute name="Main-Class" value="com.max.Main"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="run" depends="compile_main,jar_main">
+            <java jar="${jarDir}\Main.jar" fork="true"/>
+    </target>
+  
+</project>
