@@ -10,7 +10,7 @@ public class Main {
 
     static void mainMenu(int index) {
         System.out.println("Possible optinons:");
-        String options[] = {"1. Value of sub a string prefix\n",
+        String[] options = {"1. Value of sub a string prefix\n",
                             "2. Value of sub a string suffix\n",
                             "3. Value of sub a substring\n",
                             "4. Value of sub a subsequence\n",
@@ -22,8 +22,7 @@ public class Main {
             for (int i = index + 1; i < options.length; i++)
                 System.out.print(RESET + options[i]);
         } else {
-            for (int i = 0; i < options.length; i++)
-                System.out.print(RESET + options[i]);
+            for (String option : options) System.out.print(RESET + option);
         }
         System.out.print("Enter the option: ");
     }

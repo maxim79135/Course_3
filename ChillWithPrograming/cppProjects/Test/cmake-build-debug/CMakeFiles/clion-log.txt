@@ -1,0 +1,32 @@
+"E:\Program Files (x86)\CLion 2019.3.4\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=E:/Program Files (x86)/make/bin/make.exe" -G "CodeBlocks - MinGW Makefiles" E:\Course_3\ChillWithPrograming\cppProjects\Test
+-- The C compiler identification is GNU 7.3.0
+-- The CXX compiler identification is GNU 7.3.0
+-- Check for working C compiler: E:/Qt/Tools/mingw730_64/bin/gcc.exe
+CMake Error: Generator: execution of make failed. Make command was: E:/Program Files (x86)/make/bin/make.exe cmTC_245c8/fast && 
+-- Check for working C compiler: E:/Qt/Tools/mingw730_64/bin/gcc.exe -- broken
+CMake Error at E:/Program Files (x86)/CLion 2019.3.4/bin/cmake/win/share/cmake-3.15/Modules/CMakeTestCCompiler.cmake:60 (message):
+  The C compiler
+
+    "E:/Qt/Tools/mingw730_64/bin/gcc.exe"
+
+  is not able to compile a simple test program.
+
+  It fails with the following output:
+
+    Change Dir: E:/Course_3/ChillWithPrograming/cppProjects/Test/cmake-build-debug/CMakeFiles/CMakeTmp
+    
+    Run Build Command(s):E:/Program Files (x86)/make/bin/make.exe cmTC_245c8/fast && Exit code 0xc0000135
+    
+    Generator: execution of make failed. Make command was: E:/Program Files (x86)/make/bin/make.exe cmTC_245c8/fast && 
+    
+
+  
+
+  CMake will not be able to correctly generate this project.
+Call Stack (most recent call first):
+  CMakeLists.txt:2 (project)
+
+
+-- Configuring incomplete, errors occurred!
+See also "E:/Course_3/ChillWithPrograming/cppProjects/Test/cmake-build-debug/CMakeFiles/CMakeOutput.log".
+See also "E:/Course_3/ChillWithPrograming/cppProjects/Test/cmake-build-debug/CMakeFiles/CMakeError.log".

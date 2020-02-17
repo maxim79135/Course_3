@@ -18,7 +18,7 @@ public class WorkWithStringPanel extends JPanel {
     public WorkWithStringPanel() {
         super();
         this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        this.setBorder(new EmptyBorder(10, 10, 10, 10));
+        //this.setBorder(new EmptyBorder(10, 10, 10, 10))
 
         JButton confirmEnterButton = new JButton("Check");
         confirmEnterButton.addActionListener(this::onConfirmButtonClicked);

@@ -1,0 +1,4 @@
+ToolSet: w64 6.0 (local)@E:\Qt\Tools\mingw730_64
+Options: 
+
+Options:-DCMAKE_MAKE_PROGRAM=E:/Program Files (x86)/make/bin/make.exe
