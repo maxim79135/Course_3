@@ -9,18 +9,16 @@ public class Main {
     static final String RESET = "\033[0m";
 
     static void mainMenu(int index) {
-        System.out.println("Possible optinons:");
+        System.out.println("Possible options:");
         String[] options = {"1. Value of sub a string prefix\n",
                             "2. Value of sub a string suffix\n",
                             "3. Value of sub a substring\n",
                             "4. Value of sub a subsequence\n",
                             "5. Exit\n"};
         if (index != -1) {
-            for (int i = 0; i < index; i++)
-                System.out.print(RESET + options[i]);
+            for (int i = 0; i < index; i++) System.out.print(RESET + options[i]);
             System.out.print(RED + options[index]);
-            for (int i = index + 1; i < options.length; i++)
-                System.out.print(RESET + options[i]);
+            for (int i = index + 1; i < options.length; i++) System.out.print(RESET + options[i]);
         } else {
             for (String option : options) System.out.print(RESET + option);
         }
