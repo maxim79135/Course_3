@@ -1,4 +1,4 @@
-<mxfile host="www.draw.io" modified="2020-02-24T10:03:01.878Z" agent="Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.87 Chedot/9.1.1 Safari/537.36" etag="S44YoTf_A-gWHJ9wKSwk" version="12.7.4" type="github">
+<mxfile host="www.draw.io" modified="2020-02-24T10:03:13.282Z" agent="Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.87 Chedot/9.1.1 Safari/537.36" etag="xe7dPefU4LfKtdF-GnlG" version="12.7.4" type="github">
   <diagram id="tK5q1NLOlwZ2YxY2mj0Y" name="ГСА">
     <mxGraphModel dx="599" dy="359" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
@@ -45,9 +45,6 @@
         </mxCell>
         <mxCell id="rl38IS3pnyw-bJ-a4kdB-16" value="Pop&lt;br&gt;Конец" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="200" y="320" width="120" height="40" as="geometry" />
-        </mxCell>
-        <mxCell id="2cZKViGcqCMV3AQL5ZWf-2" value="Text" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
-          <mxGeometry x="410" y="200" width="40" height="20" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
