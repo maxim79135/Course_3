@@ -3,6 +3,12 @@ package edu.javacourse.jar;
 import java.rmi.MarshalException;
 import java.util.ArrayList;
 
+/*
+0 5  0 5
+6 9  6 9
+ */
+
+
 public class MainHandler {
     public static void main(String[] args) {
         ArrayList<ArrayList<Integer>> mtx = new ArrayList<>();
@@ -17,7 +23,7 @@ public class MainHandler {
         MatrixHandler M1 = new MatrixHandler(mtx,mtx.size());
         MatrixHandler M2 = new MatrixHandler(mtx,mtx.size());
         MatrixHandler Answer = new MatrixHandler(mtx,mtx.size());
-        Answer = M1.addMatrix(M2);
+        Answer = M1.mulMatrix(M2);
         System.out.print(Answer.mtx);
     }
 }
