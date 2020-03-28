@@ -1,4 +1,5 @@
 MAX_NUMBER = 999999937
+MIN_NUMBER = 1
 
 def _is_prime(number):
     from math import gcd, log, floor
