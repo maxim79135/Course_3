@@ -1,0 +1,3 @@
+﻿  Main.cpp
+d:\учёба\пп\pplab3\pnewlab3\pnewlab3\main.cpp(32): warning C4244: аргумент: преобразование "time_t" в "unsigned int", возможна потеря данных
+  PNewLab3.vcxproj -> D:\Учёба\ПП\PPLab3\PNewLab3\Debug\PNewLab3.exe

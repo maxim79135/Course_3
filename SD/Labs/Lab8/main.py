@@ -1,6 +1,7 @@
 import tkinter as tk
 import prime_numbers as pn
 from tkinter import messagebox
+from xmlrpc.client import ServerProxy
 
 
 MIN_VALUE = 1
@@ -42,9 +43,10 @@ class ReadOnlyText(tk.Text):
 
 
 class MainFrame(tk.Frame):
-    def __init__(self, parent=None):
+    def __init__(self, server, parent=None):
         super().__init__(master=parent)
 
+        self._server = server
         self._build_ui()
     
     def _build_ui(self):
@@ -115,14 +117,14 @@ class MainFrame(tk.Frame):
                 messagebox.showerror('Error', 'Wrong numbers')
             else:
                 m, n = l[0], l[1]
-                self._result_text.set_text(pn.get_random_prime_number(m, n))
+                self._result_text.set_text(self._server.get_random_prime_number(m, n))
 
         elif op_code == 3:
             value = read_int(s, MIN_VALUE, MAX_VALUE)
             if value is None:
                 messagebox.showerror('Error', 'Wrong length of array')
             else:
-                array = pn.get_random_prime_array(value)
+                array = self._server.get_random_prime_array(value)
                 self._result_text.set_text(self._dump_json(array))
 
         elif op_code == 4:
@@ -130,35 +132,35 @@ class MainFrame(tk.Frame):
             if l is None:
                 messagebox.showerror('Error', 'Wrong array')
             else:
-                self._result_text.set_text(pn.is_relative_primes(l))
+                self._result_text.set_text(self._server.is_relative_primes(l))
 
         elif op_code == 5:
             l = read_int_array(s, MIN_VALUE, MAX_VALUE)
             if l is None:
                 messagebox.showerror('Error', 'Wrong array')
             else:
-                self._result_text.set_text(pn.is_pairwise_primes(l))
+                self._result_text.set_text(self._server.is_pairwise_primes(l))
 
         elif op_code == 6:
             value = read_int(s, MIN_VALUE, MAX_VALUE)
             if value is None:
                 messagebox.showerror('Error', 'Wrong number')
             else:
-                self._result_text.set_text(pn.get_next(value, MAX_VALUE))
+                self._result_text.set_text(self._server.get_next(value, MAX_VALUE))
 
         elif op_code == 7:
             value = read_int(s, MIN_VALUE, MAX_VALUE)
             if value is None:
                 messagebox.showerror('Error', 'Wrong number')
             else:
-                self._result_text.set_text(pn.get_prev(value, MIN_VALUE))
+                self._result_text.set_text(self._server.get_prev(value, MIN_VALUE))
 
         elif op_code == 8:
             value = read_int(s, MIN_VALUE, MAX_VALUE)
             if value is None:
                 messagebox.showerror('Error', 'Value must be in range(1, 10^9)')
             else:
-                self._result_text.set_text(pn.is_prime(value))
+                self._result_text.set_text(self._server.is_prime(value))
 
     @staticmethod
     def _dump_json(array):
@@ -182,18 +184,19 @@ class MainFrame(tk.Frame):
             self._op_code = "5"
         elif self._type_var.get() == "get_next":
             self.name_method_label['text'] = self.get_next['text']
-            self._op_code = 6
+            self._op_code = "6"
         elif self._type_var.get() == "get_prev":
             self.name_method_label['text'] = self.get_prev['text']
-            self._op_code = 7
+            self._op_code = "7"
         elif self._type_var.get() == "is_prime":
             self.name_method_label['text'] = self.is_prime['text']
-            self._op_code = 8
+            self._op_code = "8"
 
 class NumberFrame(tk.Frame):
-    def __init__(self, parent=None):
+    def __init__(self, server, parent=None):
         super().__init__(master=parent)
 
+        self._server = server
         self._build_ui()
     
     def _build_ui(self):
@@ -205,21 +208,22 @@ class NumberFrame(tk.Frame):
         number_entry.pack(side=tk.LEFT)
     
     def _gen_number(self):
-        self._number_var.set(pn.get_random_prime_number(2, pn.MAX_NUMBER))
+        self._number_var.set(self._server.get_random_prime_number(2, pn.MAX_NUMBER))
 
 class Application(tk.Tk):
     def __init__(self):
         super().__init__()
 
+        self._server = ServerProxy('http://127.0.0.1:8080')
         self._build_ui()
     
     def _build_ui(self):
         self.title('Prime numbers')
 
-        self._number_frame = NumberFrame(self)
+        self._number_frame = NumberFrame(self._server, self)
         self._number_frame.pack(side=tk.TOP)
 
-        self._main_frame = MainFrame(self)
+        self._main_frame = MainFrame(self._server, self)
         self._main_frame.pack(side=tk.TOP)
 
 if __name__ == "__main__":

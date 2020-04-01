@@ -1,0 +1,4 @@
+﻿  Main.cpp
+d:\учёба\пп\pplab2\pplab2\pplab2\main.cpp(32): warning C4244: аргумент: преобразование "time_t" в "unsigned int", возможна потеря данных
+d:\учёба\пп\pplab2\pplab2\pplab2\main.cpp(318): warning C4018: <: несоответствие типов со знаком и без знака
+  PPLab2.vcxproj -> D:\Учёба\ПП\PPLab2\PPLab2\Debug\PPLab2.exe
