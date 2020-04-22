@@ -1,12 +1,11 @@
-#include <conio.h>
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
 #include <ctime>
 #include <vector>
 #include "Map.h"
-#include "binTree.h"
-#include "state.h"
+#include "BinTree.h"
+#include "State.h"
 #include <ctime>
 #include <omp.h>
 
@@ -17,7 +16,7 @@ using namespace std;
 bool check (Map*);
 void printMap(Map*);
 
-//Генератор игрового поля
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 Map* generateMap(int lines, int cols) {
 	int len = lines * cols;
 	Map* map = new Map(lines, cols);
@@ -30,33 +29,33 @@ Map* generateMap(int lines, int cols) {
 	int i = 0;
 	int shift_pos;
 	while (i<=len*20) {
-		//Находим пустую клетку
+		//пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 		int zero = map->find(0);
 		shift_pos = rand() % 4;
 		switch (shift_pos){
 		case 0:
-			//Если свехру есть квадрат
+			//пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			if (zero / map->getCols() != 0) {
 				map = map->shift(shift_pos);
 				i++;
 			}
 			continue;
 		case 1:
-			//Если справа есть квадрат
+			//пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			if (zero % map->getCols() != map->getCols() - 1) {
 				map = map->shift(shift_pos);
 				i++;
 			}
 			continue;
 		case 2:
-			//Если снизу есть квадрат
+			//пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			if (zero / map->getCols() != map->getLines() - 1) {
 				map = map->shift(shift_pos);
 				i++;
 			}
 			continue;
 		case 3:
-			//Если слева есть квадрат
+			//пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			if (zero % map->getCols() != 0) {
 				map = map->shift(shift_pos);
 				i++;
@@ -68,7 +67,7 @@ Map* generateMap(int lines, int cols) {
 	return map;
 }
 
-// Функция для вывода карты на экран
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 void printMap(Map* map) {
 	std::cout << std::endl;
 	for (int i = 0; i < map->lines; ++i) {
@@ -79,68 +78,7 @@ void printMap(Map* map) {
 	}
 	std::cout << std::endl;
 }
-
-//Функция поиска решения головоломки
-	vector<State*> a(Map* map) {
-	//Создаем открытый и закрытый список для состояний
-	BinTree open = BinTree(new State(map, NULL));
-	BinTree close = BinTree();
-	State* min = open.min();
-
-	close.add(min);
-	open.del(min);
-
-	//Пока нет состояния в котором расстояние равно 0 (признак упорядоченности)
-	for (; min->getCost() != 0; min = open.min(), close.add(min), open.del(min))
-	{
-		//Находим пустую клетку
-		int zero = min->getMap()->find(0);
-		//Если свехру есть квадрат
-		if (zero / map->getCols() != 0) {
-			State* s = new State(min->getMap()->shift(0), min);
-			if ((open.find(s) == NULL) && (close.find(s) == NULL)) {
-				open.add(s);
-			}
-		}
-
-		//Если справа есть квадрат
-		if (zero % map->getCols() != map->getCols() - 1) {
-			State* s = new State(min->getMap()->shift(1), min);
-			if ((open.find(s) == NULL) && (close.find(s) == NULL)) {
-				open.add(s);
-			}
-		}
-
-		//Если снизу есть квадрат
-		if (zero / map->getCols() != map->getLines() - 1) {
-			State* s = new State(min->getMap()->shift(2), min);
-			if ((open.find(s) == NULL) && (close.find(s) == NULL)) {
-				open.add(s);
-			}
-		}
-
-		//Если слева есть квадрат
-		if (zero % map->getCols() != 0) {
-			State* s = new State(min->getMap()->shift(3), min);
-			if ((close.find(s) == NULL) && (open.find(s) == NULL)) {
-				open.add(s);
-			}
-		}
-
-	}
-	std::vector<State*> solution;
-
-	State* s = min;
-	do
-	{
-		solution.push_back(s);
-		s = s->getParent();
-	} while (s != NULL);
-
-	return solution;
-}
-
-	//Алгоритм поиска решения головоломки  OMP
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ  OMP
 std::vector<State*> aOMP(Map* map) {
 
 		BinTree open = BinTree();
@@ -150,7 +88,7 @@ std::vector<State*> aOMP(Map* map) {
 
 		for (; min->getCost() != 0; min = open.min(), close.add(min), open.del(min))
 		{
-			//Поиск пустой клетки
+			//пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 			int zero = min->getMap()->find(0);
 			State* states[4] = { 0, 0, 0, 0 };
 
@@ -160,7 +98,7 @@ std::vector<State*> aOMP(Map* map) {
 
 #pragma omp section 
 				{
-					//Проверка элемента сверху
+					//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 					if (zero / map->getCols() != 0) {
 						State* s = new State(min->getMap()->shift(0), min);
 						if ((open.find(s) == NULL) && (close.find(s) == NULL)) {
@@ -172,7 +110,7 @@ std::vector<State*> aOMP(Map* map) {
 
 #pragma omp section 
 				{
-					//Проверка элемента справа
+					//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 					if (zero % map->getCols() != map->getCols() - 1) {
 						State* s = new State(min->getMap()->shift(1), min);
 						if ((open.find(s) == NULL) && (close.find(s) == NULL)) {
@@ -184,7 +122,7 @@ std::vector<State*> aOMP(Map* map) {
 
 #pragma omp section 
 				{
-					//Проверка элемента снизу
+					//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 					if (zero / map->getCols() != map->getLines() - 1) {
 						State* s = new State(min->getMap()->shift(2), min);
 						if ((open.find(s) == NULL) && (close.find(s) == NULL)) {
@@ -196,7 +134,7 @@ std::vector<State*> aOMP(Map* map) {
 
 #pragma omp section 
 				{
-					//Проверка элемента слева
+					//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 					if (zero % map->getCols() != 0) {
 						State* s = new State(min->getMap()->shift(3), min);
 						if ((close.find(s) == NULL) && (open.find(s) == NULL)) {
@@ -208,7 +146,7 @@ std::vector<State*> aOMP(Map* map) {
 
 			}
 
-			//Обновление списка вершин для проверки
+			//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			for (int i = 0; i < 4; i++)
 			{
 				if (states[i]) {
@@ -231,6 +169,7 @@ std::vector<State*> aOMP(Map* map) {
 
 
 
+
 int main(int argc, char const *argv[]) {
 	int lines, cols;
 	Map* map;
@@ -241,13 +180,6 @@ int main(int argc, char const *argv[]) {
 		system("cls");
 		cout << "Enter field sizes: " << endl;
 		cin >> lines >> cols;
-		cin.clear();
-		if (cin.good() == false || cols < 2 || lines < 2) {
-			system("cls");
-			std::cout << "The size of the field is wrong" << std::endl;
-			cin.ignore(numeric_limits<streamsize>::max(), '\n');
-			_getch();
-		}
 	} while (cols*lines <= 4);
 
 	std::vector<State*> ans;
@@ -260,34 +192,19 @@ int main(int argc, char const *argv[]) {
 		printMap(map);
 
 		clock_t time = clock();
-		ans = a(map);
-		time = clock() - time;
-
-		//std::cout << "\n" << "Solution:";
-
-		//for (int k = ans.size()-1; k >= 0; k--) {
-		//	printMap(ans[k]->getMap());
-		//}
-
-		std::cout << "Time of Serial A*:" << (double)time / 1000 << std::endl;
-		printMap(ans[0]->getMap());
-		tSer += (double)time / 1000;
-
-		time = clock();
 		ans = aOMP(map);
 		time = clock() - time;
 		/*cout << "\n" << "Solution:";
 		for (int k = ans.size() - 1; k > 0; k--) {
 			printMap(ans[k]->getMap());
 		}*/
-		cout << "\n" << "Time of OMP A*= " << (double)time / 1000;
+		cout << "\n" << "Time of OMP A*= " << (double)time / CLOCKS_PER_SEC;
 		printMap(ans[0]->getMap());
-		tOMP += (double)time / 1000;
+		tOMP += (double)time / CLOCKS_PER_SEC;
 
 	}
 
 	std::cout << "\n" << "-------------------- " << std::endl;
-	std::cout << "Average time Serial = " << tSer / TESTS << std::endl;
 	std::cout << "Average time OMP = " << tOMP / TESTS << std::endl;
 	system("pause");
 	return 0;

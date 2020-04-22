@@ -1,6 +1,6 @@
-import ctypes
+def _is_prime(value):
+    import ctypes
 
-libcpp = ctypes.CDLL("./lib_external_method.so")
+    libcpp = ctypes.CDLL("./lib_external_method.so")
 
-test = libcpp.test()
-print(test)
+    return libcpp._is_prime(value)

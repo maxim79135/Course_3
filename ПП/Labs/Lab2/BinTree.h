@@ -140,7 +140,7 @@ public:
 		}
 
 	}
-	//���������� ��� �������� �����
+
 	bool cmp(State* a, State* b) {
 		Map* am = a->getMap();
 		Map* bm = b->getMap();
@@ -151,7 +151,7 @@ public:
 		return true;
 
 	}
-	//����� �������� � ������
+	
 	State* find(State* s) {
 		Node* n = this->node;
 
@@ -169,7 +169,7 @@ public:
 		}
 		return n->elem;
 	}
-	//����� ������������ �������� ������
+	
 	State* min() {
 		Node* n = this->node;
 

@@ -3,6 +3,7 @@
 #include "Map.h"
 #include <functional>
 
+
 int costFunc(Map* map);
 unsigned int calcHash(Map* map);
 

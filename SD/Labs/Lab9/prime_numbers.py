@@ -1,3 +1,5 @@
+import better_method as bm
+
 MAX_NUMBER = 999999937
 MIN_NUMBER = 1
 
@@ -30,6 +32,7 @@ def _is_prime(number):
 
 def is_prime(number):
     return number == 2 or _is_prime(number)
+    #return number == 2 or bm._is_prime(number)
 
 
 def get_next(number, max_value):

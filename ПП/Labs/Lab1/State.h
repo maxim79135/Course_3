@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdlib>
-#include "Map.h"
 #include <functional>
+#include "Map.h"
 
 int costFunc(Map* map);
 unsigned int calcHash(Map* map);

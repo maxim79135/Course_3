@@ -122,7 +122,11 @@ class MainFrame(tk.Frame):
             if value is None:
                 messagebox.showerror('Error', 'Wrong length of array')
             else:
+                import time
+                first = time.time()
                 array = pn.get_random_prime_array(value)
+                end = time.time()
+                print('Time of execute method: {0}'.format(end - first))
                 self._result_text.set_text(self._dump_json(array))
 
         elif op_code == 4:
