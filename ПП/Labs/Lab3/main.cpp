@@ -11,7 +11,7 @@
 #include <mutex>
 #include <omp.h>
 
-#define TESTS 1000
+#define TESTS 1
 using namespace std;
 
 bool check(Map*);

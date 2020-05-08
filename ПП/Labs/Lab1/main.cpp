@@ -8,8 +8,10 @@
 #include "State.h"
 #include <ctime>
 #include <limits>
+#include <fstream>
+#include <chrono>
 
-#define TESTS 10
+#define TESTS 1000
 
 using namespace std;
 
@@ -71,6 +73,16 @@ void printMap(Map* map) {
 		std::cout << std::endl;
 	}
 	std::cout << std::endl;
+}
+
+ofstream fout;
+
+void printMapToFile(Map* map) {
+	for (int i = 0; i < map->lines;i++) {
+		for (int j = 0; j < map->cols; j++) 
+			fout << map->map[i*map->cols + j] << '\t';
+		fout << std::endl;
+	}
 }
 
 vector<State*> a(Map* map) {
@@ -148,30 +160,35 @@ int main(int argc, char const *argv[]) {
 	double t = 0;
 	std::vector<State*> ans;
 
+	fout.open("output.txt", std::ios::ate);
+
 	for (int i = 0; i < TESTS; i++) {
 		srand(i);
 		map = generateMap(lines, cols);
-
+		printMapToFile(map);
 		printMap(map);
 
 		std::cout << "\n" << "Case #" << i + 1 << ": ";
-		clock_t time = clock();
+		auto start = std::chrono::system_clock::now();
+		//clock_t time = clock();
 		ans = a(map);
-		time = clock() - time;
+		auto end = std::chrono::system_clock::now();
+		//time = clock() - time;
 
 		std::cout << "\n" << "Solution:";
 
-		for (int k = ans.size()-1; k >= 0; k--) {
-			printMap(ans[k]->getMap());
-		}
+		//for (int k = ans.size()-1; k >= 0; k--) {
+		printMap(ans[0]->getMap());
+		//}
 
-		std::cout << "Time:" << (double)time / CLOCKS_PER_SEC << std::endl;
-		t += (double)time / CLOCKS_PER_SEC;
+		auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+		std::cout << "Time:" << time<< std::endl;
+		t += time;
 
 	}
-
+	fout.close();
 	std::cout << "\n" << "-------------------- " << std::endl;
-	std::cout << "Average time = " << t / TESTS << std::endl;
+	std::cout << "Average time = " << (double) t / TESTS / 1000000<< std::endl;
 	system("pause");
 	return 0;
 }

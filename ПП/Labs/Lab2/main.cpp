@@ -9,8 +9,11 @@
 #include <ctime>
 #include <thread>
 #include <mutex>
+#include <fstream>
+#include <chrono>
 
-#define TESTS 50
+#define TESTS 1
+
 using namespace std;
 
 bool check(Map*);
@@ -27,7 +30,6 @@ Map* generateMap(int lines, int cols) {
 	map->map[len - 1] = 0;
 	int i = 0;
 	int shift_pos;
-	srand(time(0));
 	while (i <= len * 20) {
 		int zero = map->find(0);
 		shift_pos = rand() % 4;
@@ -57,6 +59,19 @@ Map* generateMap(int lines, int cols) {
 			}
 			continue;
 		}
+	}
+	return map;
+}
+
+ifstream fin;
+
+Map* readMap(int lines, int cols) {
+	int len = lines * cols;
+	Map* map = new Map(lines, cols);
+
+	for (int i = 0; i < len; ++i)
+	{
+		fin >> map->map[i];
 	}
 	return map;
 }
@@ -188,38 +203,44 @@ vector<State*> aPar(Map* map) {
 int main(int argc, char const *argv[]) {
 	int lines, cols;
 	Map* map;
+	vector<Map*> maps;
+	maps.reserve(TESTS);
 
 	cout << "Enter field sizes: " << endl;
 	cin >> lines >> cols;
 
 	double tP = 0;
 	double tPar1 = 0;
-	double tPar2 = 0;
+	auto tPar2 = 0;
 	vector<State*> ans;
 
+	fin.open("output.txt");
 	for (int i = 0; i < TESTS; i++) {
 		srand(i);
-		map = generateMap(lines, cols);
+		//map = generateMap(lines, cols);
+		map = readMap(lines, cols);
 
 		cout << "\n" << "-----------------------------------------------------";
 		cout << "\n" << "Case #" << i + 1 << ": ";
 		printMap(map);
 
-		clock_t time = clock();
+		//clock_t time = clock();
+		auto start = std::chrono::system_clock::now();
 		ans = aPar(map);
-		time = clock() - time;
+		auto end = std::chrono::system_clock::now();	
+		//time = clock() - time;
 		
 		for(int i = ans.size() - 1; i >= 0; i--)
 			printMap(ans[i]->getMap());
 
-		cout << "\n" << "Answer Par(Time = " << (double)time / CLOCKS_PER_SEC << "): ";
-		printMap(ans[0]->getMap());
-		tPar2 += (double)time / CLOCKS_PER_SEC;
+		auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+		cout << "\n" << "Answer Par(Time = " << time  << "): ";
+		tPar2 += time;
 		cout << "-----------------------------------------------------";
 	}
 
 	cout << "\n" << "******************************" << endl;
-	cout << "* Average time " << tPar2 / TESTS << " *" << endl;
+	cout << "* Average time " << (double)tPar2 / TESTS / 1000000 << " *" << endl;
 	cout << "******************************" << endl;
 
 	system("pause");
