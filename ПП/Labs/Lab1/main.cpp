@@ -11,7 +11,7 @@
 #include <fstream>
 #include <chrono>
 
-#define TESTS 1000
+#define TESTS 100
 
 using namespace std;
 
@@ -135,6 +135,7 @@ vector<State*> a(Map* map) {
 		solution.push_back(s);
 		s = s->getParent();
 	} while (s != NULL);
+	cout << "Count steps: " << solution.size();
 
 	return solution;
 }

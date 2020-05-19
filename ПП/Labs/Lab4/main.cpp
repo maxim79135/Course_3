@@ -28,33 +28,28 @@ Map* generateMap(int lines, int cols) {
 	int shift_pos;
 	srand(time(0));
 	while (i <= len*3.5) {
-		//������� ������ ������ (3,5 > 3x3, 20 <= 3x3)
 		int zero = map->find(0);
 		shift_pos = rand() % 4;
 		switch (shift_pos) {
 		case 0:
-			//���� ������ ���� �������
 			if (zero / map->getCols() != 0) {
 				map = map->shift(shift_pos);
 				i++;
 			}
 			continue;
 		case 1:
-			//���� ������ ���� �������
 			if (zero % map->getCols() != map->getCols() - 1) {
 				map = map->shift(shift_pos);
 				i++;
 			}
 			continue;
 		case 2:
-			//���� ����� ���� �������
 			if (zero / map->getCols() != map->getLines() - 1) {
 				map = map->shift(shift_pos);
 				i++;
 			}
 			continue;
 		case 3:
-			//���� ����� ���� �������
 			if (zero % map->getCols() != 0) {
 				map = map->shift(shift_pos);
 				i++;
@@ -120,9 +115,8 @@ vector<State*> thread_func2(Map* map, State* min, BinTree* close, BinTree* open,
 			close->add(min);
 			open->del(min);
 
-			//������� ������ ������
 			int zero = min->getMap()->find(0);
-			//���� ������ ���� �������
+
 			if (zero / map->getCols() != 0) {
 				State* s = new State(min->getMap()->shift(0), min);
 				if ((open->find(s) == NULL) && (close->find(s) == NULL)) {
@@ -130,7 +124,6 @@ vector<State*> thread_func2(Map* map, State* min, BinTree* close, BinTree* open,
 				}
 			}
 
-			//���� ������ ���� �������
 			if (zero % map->getCols() != map->getCols() - 1) {
 				State* s = new State(min->getMap()->shift(1), min);
 				if ((open->find(s) == NULL) && (close->find(s) == NULL)) {
@@ -138,7 +131,6 @@ vector<State*> thread_func2(Map* map, State* min, BinTree* close, BinTree* open,
 				}
 			}
 
-			//���� ����� ���� �������
 			if (zero / map->getCols() != map->getLines() - 1) {
 				State* s = new State(min->getMap()->shift(2), min);
 				if ((open->find(s) == NULL) && (close->find(s) == NULL)) {
@@ -146,7 +138,6 @@ vector<State*> thread_func2(Map* map, State* min, BinTree* close, BinTree* open,
 				}
 			}
 
-			//���� ����� ���� �������
 			if (zero % map->getCols() != 0) {
 				State* s = new State(min->getMap()->shift(3), min);
 				if ((close->find(s) == NULL) && (open->find(s) == NULL)) {
@@ -175,17 +166,17 @@ vector<State*> thread_func2(Map* map, State* min, BinTree* close, BinTree* open,
 vector<State*> aPar2(Map* map, int rank) {
 
 	int flag_active_arr[4] = { 0,0,0,0 };
-	//������� �������� � �������� ������ ��� ���������
+	
 	BinTree* open = NULL;
 	BinTree* close = NULL;
 
 	BinTree* closekek = new BinTree(new State(map, NULL));
 	State* min = closekek->min();
 
-	//������� ������ ������
+	
 	int zero = min->getMap()->find(0);
 	int index = 0;
-	//���� ������ ���� �������
+	
 	if (zero / map->getCols() != 0) {
 		flag_active_arr[0] = 1;
 		if (rank == 0)
@@ -195,7 +186,6 @@ vector<State*> aPar2(Map* map, int rank) {
 		}
 	}
 
-	//���� ������ ���� �������
 	if (zero % map->getCols() != map->getCols() - 1) {
 		flag_active_arr[1] = 1;
 		if (rank == 1)
@@ -205,7 +195,6 @@ vector<State*> aPar2(Map* map, int rank) {
 		}
 	}
 
-	//���� ����� ���� �������
 	if (zero / map->getCols() != map->getLines() - 1) {
 		flag_active_arr[2] = 1;
 		if (rank == 2)
@@ -215,7 +204,6 @@ vector<State*> aPar2(Map* map, int rank) {
 		}
 	}
 
-	//���� ����� ���� �������
 	if (zero % map->getCols() != 0) {
 		flag_active_arr[3] = 1;
 		if (rank == 3)
@@ -225,18 +213,13 @@ vector<State*> aPar2(Map* map, int rank) {
 		}
 	}
 
-	//MPI_Allgather(&flag_active_arr[rank], 1, MPI_INT, flag_active_arr, 1, MPI_INT, MPI_COMM_WORLD);
-
-	if (flag_active_arr[rank] == true)
-	{
+	if (flag_active_arr[rank] == true) {
 		resultP2 = thread_func2(open->min()->getMap(), open->min(), close, open, flag_active_arr, rank);
 	}
-	//else
-		//resultP2 = thread_func2(NULL, NULL, NULL, NULL, flag_active_arr, rank);
 	return resultP2;
 
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 int main(int argc, char** argv)
 {
@@ -251,7 +234,6 @@ int main(int argc, char** argv)
 
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
 		do {
 			if (rank == 0) 
 			{
@@ -291,7 +273,7 @@ int main(int argc, char** argv)
 		ans = aPar2(map, rank);
 		chrono::high_resolution_clock::time_point t22 = chrono::high_resolution_clock::now();
 		MPI_Barrier(MPI_COMM_WORLD);
-		long double duration2 = chrono::duration_cast<chrono::milliseconds>(t22 - t11).count();
+		long double duration2 = chrono::duration_cast<chrono::nanoseconds>(t22 - t11).count();
 		if (rank == 0)
 			cout << "\n" << "Time of NEW PARALLEL = " << duration2;
 		tParNew += duration2;
@@ -299,9 +281,8 @@ int main(int argc, char** argv)
 	if (rank == 0)
 	{
 		cout << "\n" << "--------------" << endl;
-		cout << "Average time NEW PARALLEL = " << (tParNew / (double)TESTS) << endl;
+		cout << "Average time NEW PARALLEL = " << (tParNew / (double)TESTS) / (double)1000000 << endl;
 		cout << "--------------" << endl;
-		system("pause");
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Finalize();
