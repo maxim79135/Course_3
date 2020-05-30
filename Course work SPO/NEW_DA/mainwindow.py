@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter.messagebox import showinfo
+from hex_editor import HexEditor
 
 class Page(tk.Frame):
 	def __init__(self, *args, **kwargs):
@@ -79,11 +80,16 @@ class TestFrame(tk.Frame):
 
 		p1.pack(side="bottom",fill="x")
 
+
+
 class MainWindow(tk.Tk):
 	def __init__(self):
 		super().__init__()
 		
-		self.geometry("430x280")
+		screen_width = self.winfo_screenwidth()
+		screen_height = self.winfo_screenheight()
+		self.geometry("430x280+{0}+{1}".format(150, screen_height // 2 - 100))
+		self.resizable(False, False)
 		self._build_ui()
 
 	def _build_ui(self):
@@ -91,3 +97,5 @@ class MainWindow(tk.Tk):
 
 		self._testFrame = TestFrame(self)
 		self._testFrame.pack(fill=tk.BOTH, expand=1)
+		
+		self._hexeditor = HexEditor(self)
