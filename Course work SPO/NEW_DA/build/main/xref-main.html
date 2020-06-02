@@ -209,7 +209,7 @@ imported by:
   <a target="code" href="" type="text/plain"><tt>'org.python'</tt></a>
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
-    <a href="#copy">copy</a>
+    <a href="#pickle">pickle</a>
  &#8226;   <a href="#xml.sax">xml.sax</a>
 
   </div>
@@ -1516,8 +1516,8 @@ imported by:
   <a target="code" href="/usr/lib/python3.6/copy.py" type="text/plain"><tt>copy</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#'org.python'">'org.python'</a>
- &#8226;   <a href="#copyreg">copyreg</a>
+    <a href="#copyreg">copyreg</a>
+ &#8226;   <a href="#org">org</a>
  &#8226;   <a href="#types">types</a>
  &#8226;   <a href="#weakref">weakref</a>
 
@@ -5051,6 +5051,22 @@ imported by:
 </div>
 
 <div class="node">
+  <a name="hex_editor"></a>
+  <a target="code" href="/home/max/Course_3/Course%20work%20SPO/NEW_DA/hex_editor.py" type="text/plain"><tt>hex_editor</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#tkinter">tkinter</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#mainwindow">mainwindow</a>
+
+  </div>
+
+</div>
+
+<div class="node">
   <a name="html"></a>
   <a target="code" href="/usr/lib/python3.6/html/__init__.py" type="text/plain"><tt>html</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
@@ -5614,7 +5630,9 @@ imported by:
   <a target="code" href="/home/max/Course_3/Course%20work%20SPO/NEW_DA/mainwindow.py" type="text/plain"><tt>mainwindow</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#tkinter">tkinter</a>
+    <a href="#hex_editor">hex_editor</a>
+ &#8226;   <a href="#tkinter">tkinter</a>
+ &#8226;   <a href="#tkinter.messagebox">tkinter.messagebox</a>
 
   </div>
   <div class="import">
@@ -5814,7 +5832,7 @@ imported by:
   <a target="code" href="" type="text/plain"><tt>org</tt></a>
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
-    <a href="#pickle">pickle</a>
+    <a href="#copy">copy</a>
 
   </div>
 
@@ -5936,7 +5954,8 @@ imported by:
   <a target="code" href="/usr/lib/python3.6/pickle.py" type="text/plain"><tt>pickle</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#_compat_pickle">_compat_pickle</a>
+    <a href="#'org.python'">'org.python'</a>
+ &#8226;   <a href="#_compat_pickle">_compat_pickle</a>
  &#8226;   <a href="#_pickle">_pickle</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#codecs">codecs</a>
@@ -5945,7 +5964,6 @@ imports:
  &#8226;   <a href="#functools">functools</a>
  &#8226;   <a href="#io">io</a>
  &#8226;   <a href="#itertools">itertools</a>
- &#8226;   <a href="#org">org</a>
  &#8226;   <a href="#pprint">pprint</a>
  &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#struct">struct</a>
@@ -7060,8 +7078,27 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#mainwindow">mainwindow</a>
+    <a href="#hex_editor">hex_editor</a>
+ &#8226;   <a href="#mainwindow">mainwindow</a>
+ &#8226;   <a href="#tkinter.commondialog">tkinter.commondialog</a>
  &#8226;   <a href="#tkinter.constants">tkinter.constants</a>
+ &#8226;   <a href="#tkinter.messagebox">tkinter.messagebox</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="tkinter.commondialog"></a>
+  <a target="code" href="/usr/lib/python3.6/tkinter/commondialog.py" type="text/plain"><tt>tkinter.commondialog</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#tkinter">tkinter</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#tkinter.messagebox">tkinter.messagebox</a>
 
   </div>
 
@@ -7078,6 +7115,23 @@ imports:
   <div class="import">
 imported by:
     <a href="#tkinter">tkinter</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="tkinter.messagebox"></a>
+  <a target="code" href="/usr/lib/python3.6/tkinter/messagebox.py" type="text/plain"><tt>tkinter.messagebox</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#tkinter">tkinter</a>
+ &#8226;   <a href="#tkinter.commondialog">tkinter.commondialog</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#mainwindow">mainwindow</a>
 
   </div>
 

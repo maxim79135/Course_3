@@ -114,7 +114,6 @@ model.fit([encoder_input_data , decoder_input_data], decoder_output_data, batch_
 model.save( 'model.h5' ) 
 
 def make_inference_models():
-    
     encoder_model = tf.keras.models.Model(encoder_inputs, encoder_states)
     
     decoder_state_input_h = tf.keras.layers.Input(shape=( 200 ,))
@@ -151,11 +150,14 @@ for _ in range(10):
         dec_outputs , h , c = dec_model.predict([ empty_target_seq ] + states_values )
         sampled_word_index = np.argmax( dec_outputs[0, -1, :] )
         sampled_word = None
+
         for word , index in tokenizer.word_index.items() :
             if sampled_word_index == index :
+                print(word, index)
                 decoded_translation += ' {}'.format( word )
                 sampled_word = word
         
+
         if sampled_word == 'end' or len(decoded_translation.split()) > maxlen_answers:
             stop_condition = True
             

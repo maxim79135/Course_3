@@ -11,4 +11,7 @@ class HexEditor(tk.Toplevel):
 		self.title("Просмотр кода")
 		self.geometry("465x475+600+{0}".format(self.screen_height // 2 - 150))
 
+	def create_header(self):
+		pass
+
 

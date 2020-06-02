@@ -13,7 +13,7 @@ class Page1(Page):
 	def __init__(self, parent=None):
 		self.parent = parent
 		Page.__init__(self)
-		label = tk.Label(self, text="asd")
+		#label = tk.Label(self, text="asd")
 		self.params = [["Макс. требуемый объем памяти", "Dec"],
 		["Мин. требуемый объем памяти", "Dec"],
 		["Смещение Relocation Table", "Hex"],
@@ -85,8 +85,7 @@ class TestFrame(tk.Frame):
 class MainWindow(tk.Tk):
 	def __init__(self):
 		super().__init__()
-		
-		screen_width = self.winfo_screenwidth()
+
 		screen_height = self.winfo_screenheight()
 		self.geometry("430x280+{0}+{1}".format(150, screen_height // 2 - 100))
 		self.resizable(False, False)
