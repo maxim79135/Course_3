@@ -48,6 +48,7 @@ class HexEditor(tk.Toplevel):
 		for row in range(len(self.dump) // 16):
 			for column in range(16):
 				self._widgets[row][column].bind("<Button-1>", lambda event, q=row, p=column: self._select_byte(q, p))
+				self._widgets[row][column].bind("<Left>", lambda event, q=row, p=column: self._move_left(q, p))
 
 		toolbar = tk.Frame(self, bd=1, relief=tk.RAISED)
 		toolbar.pack(side=tk.BOTTOM, fill=tk.X)
@@ -57,8 +58,24 @@ class HexEditor(tk.Toplevel):
 		self.binary_byte = tk.Label(toolbar)
 		self.binary_byte.pack(side=tk.LEFT)
 
+	def _move_left(self, q, p):
+		print(q, p)
+		if p > 0:
+			self._widgets[q][p - 1].config(fg='red')
+			_q = q
+			_p = p - 1
+		else:
+			self._widgets[q - 1][15].config(fg='red')
+			_q = q - 1
+			_p = 15
+		self._widgets[_q][_p].focus_set()
+		if self.prev_selected != (None, None):
+			self._widgets[self.prev_selected[0]][self.prev_selected[1]].config(fg='black')
+		self.prev_selected = (q, p)
+		print(self.prev_selected)
 
 	def _select_byte(self, q, p):
+		self._widgets[q][p].focus_set()
 		self._widgets[q][p].config(fg='red')
 		#self.binary_byte['text'] = format(self._widgets[q][p]['text'], '08b')
 		if self.prev_selected != (None, None):

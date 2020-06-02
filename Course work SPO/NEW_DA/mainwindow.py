@@ -52,7 +52,7 @@ class Page1(Page):
 
 			#draw circle for check correct answers
 			canvas = tk.Canvas(table, width="20", height="20")
-			canvas.create_oval(0, 0, entry["width"] - 10, entry["width"] - 10, width=2)
+			canvas.create_oval(4, 4, entry["width"] - 6, entry["width"] - 6, width=2)
 			canvas.grid(row=row, column=3)
 			current_row.append(canvas)
 			self._widgets.append(current_row)
