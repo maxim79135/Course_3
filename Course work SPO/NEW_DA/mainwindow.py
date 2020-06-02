@@ -9,6 +9,7 @@ class Page(tk.Frame):
 	def show(self):
 		self.lift()
 
+
 class Page1(Page):
 	def __init__(self, parent=None):
 		self.parent = parent
@@ -79,7 +80,6 @@ class TestFrame(tk.Frame):
 		p1 = Page1(self)
 
 		p1.pack(side="bottom",fill="x")
-
 
 
 class MainWindow(tk.Tk):
