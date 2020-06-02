@@ -10,12 +10,28 @@ class HexEditor(tk.Toplevel):
 		self.header = []
 		self.dump = []
 		self.create_header()
-		self.add_zero_bytes(50*16+14)
+		self.add_zero_bytes(28*16+14)
 		self._build_ui()
 		
 
 	def add_zero_bytes(self, count):
 		self.dump += tuple('00' for _ in range(count))
+	
+	def generate_ans_p1(self):
+		ans = []
+		ans += (65535, 0) 
+		ans.append([self.header[0x19] + self.header[0x18] + 'H', \
+					'0X' + self.header[0x19] + self.header[0x18]])
+		ans += (1, 0x20)
+		ans.append([self.header[0xF] + self.header[0xE] + 'H', \
+					'0X' + self.header[0xF] + self.header[0xE]])
+		ans.append([self.header[0x17] + self.header[0x16] + 'H', \
+					'0X' + self.header[0x17] + self.header[0x16]])
+		ans.append([self.header[0x15] + self.header[0x14] + 'H', \
+					'0X' + self.header[0x15] + self.header[0x14]])
+		print(self.header[0x3] + self.header[0x2])
+		ans.append(1024 - int(self.header[0x3] + self.header[0x2], 16))
+		return ans
 
 	def _build_ui(self):
 		self.title("Просмотр кода")
