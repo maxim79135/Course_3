@@ -1,6 +1,8 @@
 run:
 	python3 main.py
 
+run_exe:
+	wine ~/Загрузки/python_win/python.exe main.py
 clean:
 	rm -rfv ./dist
 
