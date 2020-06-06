@@ -1,1 +1,37 @@
-<mxfile host="app.diagrams.net" modified="2020-06-06T18:04:40.034Z" agent="5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36" etag="KZoNC3IUm94mvB4BnMCG" version="13.1.11" type="github"><diagram id="uJDvMS4vDAItZ34la3qq" name="Page-1">ddGxDoMgEADQr2FXaKzO1rZLJ4fORK5Cgp5BGm2/vhqwSmwXcjwOjgPC8ma8GN7JGwrQhEZiJOxEKE2TdBpneDk4ZLGD2ijhaAOleoPHyOtTCeiDRIuorepCrLBtobKBcWNwCNMeqMOqHa9hB2XF9V7vSljp26LH1a+garlUjpPMrTR8Sfad9JILHDbECsJyg2hd1Iw56Pntlndx+85/Vr8XM9DaHxumYD17mgQfxIoP</diagram></mxfile>
+<mxfile host="app.diagrams.net" modified="2020-06-06T18:07:12.074Z" agent="5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36" etag="STQkFxCcwUT4A41G52bG" version="13.1.11" type="github">
+  <diagram id="uJDvMS4vDAItZ34la3qq" name="Page-1">
+    <mxGraphModel dx="868" dy="491" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="dEOL9UdEEP-g-wncsEES-1" value="Модуль обработки добавления/изменения команд" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="170" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dEOL9UdEEP-g-wncsEES-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="dEOL9UdEEP-g-wncsEES-2" target="dEOL9UdEEP-g-wncsEES-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dEOL9UdEEP-g-wncsEES-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="dEOL9UdEEP-g-wncsEES-2" target="dEOL9UdEEP-g-wncsEES-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dEOL9UdEEP-g-wncsEES-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="dEOL9UdEEP-g-wncsEES-2" target="dEOL9UdEEP-g-wncsEES-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dEOL9UdEEP-g-wncsEES-2" value="Модуль графического интерфейса" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="280" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dEOL9UdEEP-g-wncsEES-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="dEOL9UdEEP-g-wncsEES-3" target="dEOL9UdEEP-g-wncsEES-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dEOL9UdEEP-g-wncsEES-3" value="Модуль генерации заданий" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="280" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dEOL9UdEEP-g-wncsEES-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="dEOL9UdEEP-g-wncsEES-4" target="dEOL9UdEEP-g-wncsEES-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dEOL9UdEEP-g-wncsEES-4" value="Модуль загрузки/сохранения состояния работы в файл" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="280" width="120" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
