@@ -110,7 +110,7 @@ model.compile(optimizer=tf.keras.optimizers.RMSprop(), loss='categorical_crossen
 
 model.summary()
 
-model.fit([encoder_input_data , decoder_input_data], decoder_output_data, batch_size=50, epochs=1 ) 
+model.fit([encoder_input_data , decoder_input_data], decoder_output_data, batch_size=50, epochs=200) 
 model.save( 'model.h5' ) 
 
 def make_inference_models():

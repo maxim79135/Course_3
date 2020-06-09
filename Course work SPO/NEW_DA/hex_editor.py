@@ -38,17 +38,15 @@ class HexEditor(tk.Toplevel):
 		self.geometry("465x475+600+{0}".format(self.screen_height // 2 - 150))
 
 
-		canvas = tk.Canvas(self)
-		canvas.pack(side='top', expand="yes")
-		table = tk.Frame(canvas)
-		table.pack(side="left")
+		canvas = tk.Canvas(self, bg="blue")
+		canvas.pack(side='left', expand=True)
+		table = tk.Frame(canvas, bg="red")
+		canvas.create_window((0, 0), window=table, anchor="s")
+		canvas.bind('<Configure>', lambda event: canvas.configure(scrollregion=canvas.bbox('all')))
 
-
-		scrollbar = tk.Scrollbar(self, orient='vertical')
+		scrollbar = tk.Scrollbar(self, orient='vertical', command=canvas.yview)
 		scrollbar.pack(side='right', fill='y')
-		scrollbar['command'] = canvas.yview
-		canvas['yscrollcommand'] = scrollbar.set
-
+		canvas.configure(yscrollcommand = scrollbar.set)
 
 		self._widgets = []
 		for row in range(len(self.dump) // 16):
@@ -56,7 +54,7 @@ class HexEditor(tk.Toplevel):
 			#labels
 			for column in range(16):
 				label = tk.Label(table, text=self.dump[row * 16 + column], borderwidth=0, anchor=tk.W, justify=tk.LEFT)
-				label.grid(row=row, column=column, sticky="nsew", padx=5)
+				label.grid(row=row, column=column, sticky="nsew", padx=3)
 				current_row.append(label)
 
 			self._widgets.append(current_row)
@@ -66,13 +64,13 @@ class HexEditor(tk.Toplevel):
 				self._widgets[row][column].bind("<Button-1>", lambda event, q=row, p=column: self._select_byte(q, p))
 				self._widgets[row][column].bind("<Left>", lambda event, q=row, p=column: self._move_left(q, p))
 
-		toolbar = tk.Frame(self, bd=1, relief=tk.RAISED)
-		toolbar.pack(side=tk.BOTTOM, fill=tk.X)
+		toolbar = tk.Frame(self, bd=1, relief=tk.RAISED,bg="red")
+		toolbar.pack(side=tk.LEFT, fill=tk.X, anchor="w")
 
-		binary_text = tk.Label(toolbar, text='Двоичное представление', padx=15)
-		binary_text.pack(side=tk.LEFT)
-		self.binary_byte = tk.Label(toolbar)
-		self.binary_byte.pack(side=tk.LEFT)
+		binary_text = tk.Label(self, text='Двоичное представление', padx=15)
+		binary_text.pack(side=tk.BOTTOM, anchor="w")
+		self.binary_byte = tk.Label(self)
+		#self.binary_byte.pack(side=tk.LEFT)
 
 	def _move_left(self, q, p):
 		print(q, p)
