@@ -13,15 +13,68 @@ class Page2(Page):
 	def __init__(self, parent=None):
 		self.parent = parent
 		Page.__init__(self)
+		self._completed_asks = 0
+		self._build_ui()
+
+	def add_command(self, event=None): 
+		if self.ans.get() != '':
+			self.lbox.insert(tk.END, self.ans.get())
+			self.ans.delete(0, tk.END)
+
+	def delete_command(self):
+		select = list(self.lbox.curselection())
+		select.reverse()
+		for i in select:
+			self.lbox.delete(i)
+
+	def check_command(self):
+		complete_commands = 0
+		writing_commands = self.lbox.get(0, tk.END)
+		for (i, com) in enumerate(writing_commands):
+			if i < len(self.parent._ans_p2):
+				print(i)
+				if com != self.parent._ans_p2[i]["asm"]:
+					consist_error = True
+				else:
+					complete_commands += 1
+		if consist_error:
+			showinfo(title="Ошибка", message="Найдена ошибочная строка")
+		if complete_commands == len(self.parent._ans_p2):
+			showinfo(title="Ошибка", message="Все команды успешно дизассемблированы")
 
 	def _build_ui(self):
-		pass
+		nameLabel = tk.Label(self, text="Декодирование команд", font=('Helvetica', 14, 'bold'), fg='blue')
+		nameLabel.pack(side="top")
+
+		self.lbox = tk.Listbox(self)
+		self.lbox.pack(side=tk.LEFT, fill="both", expand=True, padx=10, pady=10)
+		scroll = tk.Scrollbar(self, command=self.lbox.yview)
+		scroll.pack(side=tk.LEFT, fill=tk.Y, pady=10)
+		self.lbox.config(yscrollcommand=scroll.set)
+
+		buttons_frame = tk.Frame(self)
+		self.ans = tk.Entry(buttons_frame, highlightcolor="blue")
+		self.ans.bind("<Return>", self.add_command)
+		self.ans.pack(side="top")
+
+		add_button = tk.Button(buttons_frame, text="Добавить", borderwidth=0, activeforeground="red", command=self.add_command)
+		add_button.pack(side="top")
+
+		change_button = tk.Button(buttons_frame, text="Изменить", borderwidth=0, activeforeground="red")
+		change_button.pack(side="top")
+
+		delete_button = tk.Button(buttons_frame, text="Удалить", borderwidth=0, activeforeground="red", command=self.delete_command)
+		delete_button.pack(side="top")
+
+		delete_button = tk.Button(buttons_frame, text="Проверить", borderwidth=0, activeforeground="red", command=self.check_command)
+		delete_button.pack(side="top")
+
+		buttons_frame.pack(side="right", fill='x', expand=True)
 
 class Page1(Page):
 	def __init__(self, parent=None):
 		self.parent = parent
 		Page.__init__(self)
-		#label = tk.Label(self, text="asd")
 		self.params = [["Макс. требуемый объем памяти", "Dec"],
 		["Мин. требуемый объем памяти", "Dec"],
 		["Смещение Relocation Table", "Hex"],
@@ -66,7 +119,7 @@ class Page1(Page):
 			self.next_button.config(state="normal")
 	
 	def _build_ui(self):
-		nameLabel = tk.Label(self, text="Заголовок EXE файла")
+		nameLabel = tk.Label(self, text="Заголовок EXE файла", font=('Helvetica', 14, 'bold'), fg='blue')
 		nameLabel.pack(side="top")
 
 		table = tk.Frame(self)
@@ -105,9 +158,13 @@ class Page1(Page):
 		exit_button = tk.Button(self, text="Выход", borderwidth=0, activeforeground="red", command=self.parent.parent.destroy)
 		exit_button.pack(side="right", padx=10)
 
-		self.next_button = tk.Button(self, text="Далее", state="disabled", borderwidth=0, activeforeground="red")
+		self.next_button = tk.Button(self, text="Далее", state="disabled", borderwidth=0, activeforeground="red", command=self.next_btn_click)
 		self.next_button.pack(side="right")
 
+	def next_btn_click(self):
+		self.pack_forget()
+		self.parent.p2.pack(side="top",fill="both", expand=True)
+		self.parent.p2.show()
 
 class TestFrame(tk.Frame):
 	def __init__(self, parent=None):
@@ -116,12 +173,13 @@ class TestFrame(tk.Frame):
 		self._build_ui()
 		
 		self._ans_p1 = self.parent._hexeditor.generate_ans_p1()
+		self._ans_p2 = self.parent._hexeditor.generate_ans_p2()
 		
 	def _build_ui(self):
 		self.p2 = Page2(self)
 		self.p1 = Page1(self)
 
-		self.p1.pack(side="bottom",fill="x")
+		self.p1.pack(side="bottom",fill="both")
 
 
 class MainWindow(tk.Tk):
