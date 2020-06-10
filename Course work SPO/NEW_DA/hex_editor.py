@@ -87,23 +87,28 @@ class HexEditor(tk.Toplevel):
 		scrollbar = tk.Scrollbar(self, orient='vertical', command=canvas.yview)
 		
 		scrollbar.pack(side='right', fill='y')
-		canvas.pack(side='right', expand=True, fill='both')
+		canvas.pack(side='right', expand=True, fill='both')		
 
 		table = tk.Frame(canvas)
 		canvas.create_window((0, 0), window=table)
 		canvas.bind('<Configure>', lambda event: canvas.configure(scrollregion=canvas.bbox('all')))
 		canvas.configure(yscrollcommand = scrollbar.set)
-
+	
 		self._widgets = []
+		
+		for column in range(16):
+			label = tk.Label(table, text='{:02X}'.format(column), borderwidth=0, anchor=tk.W, justify=tk.LEFT, fg='blue')
+			label.grid(row=0, column=column+1, sticky="nsew", padx=3)
+
 		for row in range(len(self.dump) // 16):
 			current_row = []
 			#labels
-			label = tk.Label(table, text='{:04X}'.format(16 * row) + ':', borderwidth=0, anchor=tk.W, justify=tk.LEFT)
-			label.grid(row=row, column=0, sticky="nsew", padx=7)
+			label = tk.Label(table, text='{:04X}'.format(16 * row) + ':', borderwidth=0, anchor=tk.W, justify=tk.LEFT, fg='green')
+			label.grid(row=row+1, column=0, sticky="nsew", padx=7)
 			current_row.append(label)
 			for column in range(16):
 				label = tk.Label(table, text=self.dump[row * 16 + column], borderwidth=0, anchor=tk.W, justify=tk.LEFT)
-				label.grid(row=row, column=column+1, sticky="nsew", padx=3)
+				label.grid(row=row+1, column=column+1, sticky="nsew", padx=3)
 				current_row.append(label)
 
 			self._widgets.append(current_row)
