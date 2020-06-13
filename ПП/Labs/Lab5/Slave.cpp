@@ -1,4 +1,3 @@
-#include <curses.h>
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -47,25 +46,25 @@ public:
 		}
 
 		switch (angle) {
-			//Вверх
+			//
 		case 0: {
 			mapc->map[ind] = mapc->map[ind - cols];
 			mapc->map[ind - cols] = 0;
 			break;
 		}
-				//Вправо
+				//
 		case 1: {
 			mapc->map[ind] = mapc->map[ind + 1];
 			mapc->map[ind + 1] = 0;
 			break;
 		}
-				//Вниз	
+				//	
 		case 2: {
 			mapc->map[ind] = mapc->map[ind + cols];
 			mapc->map[ind + cols] = 0;
 			break;
 		}
-				//Влево
+				//
 		case 3: {
 			mapc->map[ind] = mapc->map[ind - 1];
 			mapc->map[ind - 1] = 0;
@@ -281,7 +280,6 @@ public:
 		}
 
 	}
-	//Компаратор при коллизии хешей
 	bool cmp(State * a, State * b) {
 		Map* am = a->getMap();
 		Map* bm = b->getMap();
@@ -292,7 +290,6 @@ public:
 		return true;
 
 	}
-	//Поиск элемента в дереве
 	State* find(State * s) {
 		Node* n = this->node;
 
@@ -310,7 +307,6 @@ public:
 		}
 		return n->elem;
 	}
-	//Поиск минимального элемента дерева
 	State* min() {
 		Node* n = this->node;
 
@@ -325,7 +321,6 @@ using namespace std;
 bool check(Map*);
 void printMap(Map*);
 
-//Генератор игрового поля
 Map* generateMap(int lines, int cols) {
 	int len = lines * cols;
 	Map* map = new Map(lines, cols);
@@ -339,33 +334,28 @@ Map* generateMap(int lines, int cols) {
 	int shift_pos;
 	srand(time(0));
 	while (i <= len * 3.5) {
-		//Находим пустую клетку (3,5 > 3x3, 20 <= 3x3)
 		int zero = map->find(0);
 		shift_pos = rand() % 4;
 		switch (shift_pos) {
 		case 0:
-			//Если свехру есть квадрат
 			if (zero / map->getCols() != 0) {
 				map = map->shift(shift_pos);
 				i++;
 			}
 			continue;
 		case 1:
-			//Если справа есть квадрат
 			if (zero % map->getCols() != map->getCols() - 1) {
 				map = map->shift(shift_pos);
 				i++;
 			}
 			continue;
 		case 2:
-			//Если снизу есть квадрат
 			if (zero / map->getCols() != map->getLines() - 1) {
 				map = map->shift(shift_pos);
 				i++;
 			}
 			continue;
 		case 3:
-			//Если слева есть квадрат
 			if (zero % map->getCols() != 0) {
 				map = map->shift(shift_pos);
 				i++;
@@ -375,8 +365,6 @@ Map* generateMap(int lines, int cols) {
 	}
 	return map;
 }
-
-// Функция для вывода матрицы на экран
 void printMap(Map * map) {
 	cout << endl;
 	for (int i = 0; i < map->lines; ++i) {
@@ -387,9 +375,6 @@ void printMap(Map * map) {
 	}
 	cout << endl;
 }
-
-
-/////////////////////////////////////////////////////////ПАРАЛЛЕЛЬНЫЙ НОВЫЙ/////////////////////////////////////////////////////////
 
 #define FINALTAG 7
 vector<State*> resultP2;
@@ -405,26 +390,18 @@ vector<State*> thread_func2(Map * map, State * min, BinTree * close, BinTree * o
 	child_with_parent[3] = child[2];
 	child_with_parent[4] = child[3];
 
-
-
-	//Пока нет состояния в котором расстояние равно 0 (признак упорядоченности)
 	while ((pvm_nrecv(-1, FINALTAG) == 0) || (local_flag_solution == 0))
 	{
 			min = open->min();
 			close->add(min);
 			open->del(min);
-
-			//Находим пустую клетку
 			int zero = min->getMap()->find(0);
-			//Если сверху есть квадрат
 			if (zero / map->getCols() != 0) {
 				State* s = new State(min->getMap()->shift(0), min);
 				if ((open->find(s) == NULL) && (close->find(s) == NULL)) {
 					open->add(s);
 				}
 			}
-
-			//Если справа есть квадрат
 			if (zero % map->getCols() != map->getCols() - 1) {
 				State* s = new State(min->getMap()->shift(1), min);
 				if ((open->find(s) == NULL) && (close->find(s) == NULL)) {
@@ -432,15 +409,12 @@ vector<State*> thread_func2(Map * map, State * min, BinTree * close, BinTree * o
 				}
 			}
 
-			//Если снизу есть квадрат
 			if (zero / map->getCols() != map->getLines() - 1) {
 				State* s = new State(min->getMap()->shift(2), min);
 				if ((open->find(s) == NULL) && (close->find(s) == NULL)) {
 					open->add(s);
 				}
 			}
-
-			//Если слева есть квадрат
 			if (zero % map->getCols() != 0) {
 				State* s = new State(min->getMap()->shift(3), min);
 				if ((close->find(s) == NULL) && (open->find(s) == NULL)) {
@@ -462,19 +436,16 @@ vector<State*> thread_func2(Map * map, State * min, BinTree * close, BinTree * o
 vector<State*> aPar2(Map * map, int side, int child[4], int myparent) {
 
 	int flag_active = 0;
-	//Создаем открытый и закрытый список для состояний
 	BinTree* open = NULL;
 	BinTree* close = NULL;
 
 	BinTree* closekek = new BinTree(new State(map, NULL));
 	State* min = closekek->min();
 
-	//Находим пустую клетку
 	int zero = min->getMap()->find(0);
 	int index = 0;
 	switch (side) { 
 	case 0:
-		//Если сверху есть квадрат
 		if (zero / map->getCols() != 0) {
 			flag_active = 1;
 			open = new BinTree(new State(min->getMap()->shift(0), NULL));
@@ -482,7 +453,6 @@ vector<State*> aPar2(Map * map, int side, int child[4], int myparent) {
 		}
 		break;
 	case 1:
-		//Если справа есть квадрат
 		if (zero % map->getCols() != map->getCols() - 1) {
 			flag_active = 1;
 			open = new BinTree(new State(min->getMap()->shift(1), NULL));
@@ -490,7 +460,6 @@ vector<State*> aPar2(Map * map, int side, int child[4], int myparent) {
 		}
 		break;
 	case 2:
-		//Если снизу есть квадрат
 		if (zero / map->getCols() != map->getLines() - 1) {
 			flag_active = 1;
 			open = new BinTree(new State(min->getMap()->shift(2), NULL));
@@ -498,7 +467,6 @@ vector<State*> aPar2(Map * map, int side, int child[4], int myparent) {
 		}
 		break;
 	case 3:
-		//Если слева есть квадрат
 		if (zero % map->getCols() != 0) {
 			flag_active = 1;
 			open = new BinTree(new State(min->getMap()->shift(3), NULL));
@@ -507,21 +475,15 @@ vector<State*> aPar2(Map * map, int side, int child[4], int myparent) {
 		break;
 	}
 
-
-	//MPI_Allgather(&flag_active_arr[rank], 1, MPI_INT, flag_active_arr, 1, MPI_INT, MPI_COMM_WORLD);
-
 	if (flag_active == 1)
 	{
 		resultP2 = thread_func2(open->min()->getMap(), open->min(), close, open, child, myparent);
 	}
-	//else
-		//resultP2 = thread_func2(NULL, NULL, NULL, NULL, flag_active_arr, rank);
 	return resultP2;
 
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define  SIZETAG 5       /* идентификатор для других сообщений */
+#define  SIZETAG 5     
 #define MAPTAG 6
 #define CHILDTAG 8
 
@@ -536,16 +498,16 @@ int main(int argc, char** argv)
 	Map* map;
 	vector<State*> ans;
 	long double tParNew = 0;
-	int  child[4];  /* массив идентификаторов дочерних задач */
+	int  child[4]; 
 	
-	int mytid = pvm_mytid();   /* определить собственный идентификатор задачи */
-	int myparent = pvm_parent();    /* узнать идентификатор родительской задачи */
+	int mytid = pvm_mytid();  
+	int myparent = pvm_parent();   
 		
-	pvm_recv(     /* получить от родительской задачи значения m и blksize. */
-		myparent,  /* от кого : идентификатор задачи, которая */							   /* в группе MY_GROUP имеет номер 0. */
-		CHILDTAG /* идентификатор ожидаемого сообщения */
+	pvm_recv(    
+		myparent,
+		CHILDTAG
 	);
-	pvm_upkint(child, 4, 1);       /* распаковать принятые значения m */
+	pvm_upkint(child, 4, 1);    
 	
 	map = new Map(lines, cols);
 	
@@ -562,14 +524,14 @@ int main(int argc, char** argv)
 		side = 3;
 	
 	for (int i = 0; i < TESTS; i++) {
-		pvm_recv(     /* получить от родительской задачи значения m и blksize. */
-			myparent,  /* от кого : идентификатор задачи, которая */
-									   /* в группе MY_GROUP имеет номер 0. */
-			MAPTAG                     /* идентификатор ожидаемого сообщения */
+		pvm_recv(     
+			myparent, 
+									
+			MAPTAG                 
 		);
-		pvm_upkint(map->map, lines * cols, 1);       /* распаковать принятые значения m */
+		pvm_upkint(map->map, lines * cols, 1);
 		ans = aPar2(map, side, child, myparent);
 	}
-	pvm_exit();    /* отключиться от PVM и завершить работу дочерней задачи */
+	pvm_exit(); 
 	return 0;
 }

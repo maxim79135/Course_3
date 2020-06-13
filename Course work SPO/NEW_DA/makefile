@@ -8,4 +8,3 @@ clean:
 
 build_exe:
 	pyinstaller -F -w main.py
-	cp /dist/main /dist/main.pp

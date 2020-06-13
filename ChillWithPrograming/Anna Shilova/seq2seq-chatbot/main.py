@@ -1,6 +1,3 @@
-#! /usr/bin/python
-# -*- coding: utf-8 -*-
-
 import tensorflow as tf
 import tensorlayer as tl
 import numpy as np
@@ -58,7 +55,7 @@ if __name__ == "__main__":
 
     src_vocab_size = tgt_vocab_size = src_vocab_size + 2
 
-    num_epochs = 50
+    num_epochs = 12
     vocabulary_size = src_vocab_size
     
 
@@ -134,9 +131,5 @@ if __name__ == "__main__":
                 sentence = inference(seed, top_n)
                 print(" >", ' '.join(sentence))
 
-        tl.files.save_npz(model_.all_weights, name='model.npz')
-
-
-        
-    
-    
+        #tl.files.save_npz(model_.all_weights, name='model.npz')
+        model_.save_weights("model.hdf5")
