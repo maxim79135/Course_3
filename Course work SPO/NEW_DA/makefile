@@ -1,10 +1,9 @@
 run:
 	python3 main.py
 
-run_exe:
-	wine ~/Загрузки/python_win/python.exe main.py
 clean:
 	rm -rfv ./dist
+	rm -rfv ./build
 
 build_exe:
-	pyinstaller -F -w main.py
+	pyinstaller -F -w --add-data 'manuals.pdf:.' main.py

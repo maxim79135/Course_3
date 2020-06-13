@@ -5,6 +5,14 @@ class HexEditor(tk.Toplevel):
 	def __init__(self, parent=None):
 		super().__init__(master=parent)
 		
+		self.tests = [
+			{"asm": "mov bx, 0417h", "dasm": ("BB", "17", "04")},
+			{"asm": "xor ax, ax", "dasm": ("33", "C0")},	
+			{"asm": "pop ss", "dasm": ["17"]},
+			{"asm": "int 21h", "dasm": ("CD", "21")},
+			{"asm": "mov ax, 4c00h", "dasm": ("B8", "00", "4C")},
+		]
+
 		self.moves = [{"asm": "mov ax, bx", "dasm": ("89", "D8")},
 		{"asm": "xor ax, ax", "dasm": ("33", "C0")},
 		{"asm": "push ax", "dasm": ["50"]},
@@ -46,9 +54,9 @@ class HexEditor(tk.Toplevel):
 		self.screen_height = self.winfo_screenheight()
 		self.resizable(False, False)
 		self.prev_selected = (None, None)
-		self.header = []
 		self.commands = []
-		self.create_dump()
+		#self.create_dump()
+		self.generate_test()
 		self._build_ui()
 		
 	def generate_ans_p1(self):
@@ -115,7 +123,7 @@ class HexEditor(tk.Toplevel):
 
 		for row in range(len(self.dump) // 16):
 			for column in range(16):
-				self._widgets[row][column].bind("<Button-1>", lambda event, q=row, p=column: self._select_byte(q, p))
+				self._widgets[row][column+1].bind("<Button-1>", lambda event, q=row, p=column+1: self._select_byte(q, p))
 				#self._widgets[row][column].bind("<Left>", lambda event, q=row, p=column: self._move_left(q, p))
 
 	def _move_left(self, q, p):
@@ -138,7 +146,10 @@ class HexEditor(tk.Toplevel):
 		self._widgets[q][p].focus_set()
 		self._widgets[q][p].config(fg='red')
 		self.binary_byte['text'] = format(int('0x' + self._widgets[q][p]['text'], 16), '08b')
-		self.next_binary_byte['text'] = format(int('0x' + self._widgets[q][p+1]['text'], 16), '08b')
+		if p + 1 == 17:
+			self.next_binary_byte['text'] = format(int('0x' + self._widgets[q+1][1]['text'], 16), '08b')
+		else:
+			self.next_binary_byte['text'] = format(int('0x' + self._widgets[q][p+1]['text'], 16), '08b')
 		if self.prev_selected != (None, None):
 			self._widgets[self.prev_selected[0]][self.prev_selected[1]].config(fg='black')
 		self.prev_selected = (q, p)
@@ -153,6 +164,7 @@ class HexEditor(tk.Toplevel):
 		self.dump += tuple(format(randint(100, 200), 'X') for _ in range(count))
 
 	def create_dump(self):
+		self.header = []
 		self.dump = []
 		self.create_header()
 		self.add_zero_bytes(28*16+14)
@@ -200,3 +212,21 @@ class HexEditor(tk.Toplevel):
 		self.dump += self.moves[-1]["dasm"]
 		self.add_rand_bytes(60)
 		
+	def generate_test(self):
+		self.header = []
+		self.dump = []
+		self.create_header()
+		self.add_zero_bytes(28*16+14)
+		start = (self.str_to_int(self.header[0x9] + self.header[0x8]) + \
+			self.str_to_int(self.header[0x17] + self.header[0x16])) * 16 + \
+				self.str_to_int(self.header[0x15] + self.header[0x14])
+		print(hex(start))
+		self.add_rand_bytes(start - 0x210)
+
+		for i in range(len(self.tests)):
+			self.dump += self.tests[i]["dasm"]
+			self.commands.append(self.tests[i])
+		self.commands.append(self.moves[-1])
+		self.dump += self.moves[-1]["dasm"]
+		self.add_rand_bytes(60)
+

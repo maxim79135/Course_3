@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter.messagebox import showinfo
 from hex_editor import HexEditor
+import webbrowser
+import os
 
 class Page(tk.Frame):
 	def __init__(self, *args, **kwargs):
@@ -14,12 +16,19 @@ class Page2(Page):
 		self.parent = parent
 		Page.__init__(self)
 		self._completed_asks = 0
+		self.changed = None
 		self._build_ui()
 
 	def add_command(self, event=None): 
 		if self.ans.get() != '':
-			self.lbox.insert(tk.END, self.ans.get())
+			if self.changed == None:
+				self.lbox.insert(tk.END, self.ans.get())
+			else:
+				self.lbox.delete(self.changed)
+				self.lbox.insert(self.changed, self.ans.get())
+				self.changed = None
 			self.ans.delete(0, tk.END)
+
 
 	def delete_command(self):
 		select = list(self.lbox.curselection())
@@ -27,9 +36,16 @@ class Page2(Page):
 		for i in select:
 			self.lbox.delete(i)
 
+	def change_command(self):
+		select = list(self.lbox.curselection())
+		text = self.lbox.get(select)
+		self.ans.insert(0, text)
+		self.changed = select
+
 	def check_command(self):
 		complete_commands = 0
 		writing_commands = self.lbox.get(0, tk.END)
+		consist_error = None
 		for (i, com) in enumerate(writing_commands):
 			if i < len(self.parent._ans_p2):
 				print(i)
@@ -37,10 +53,26 @@ class Page2(Page):
 					consist_error = True
 				else:
 					complete_commands += 1
+		print(complete_commands)
 		if consist_error:
 			showinfo(title="Ошибка", message="Найдена ошибочная строка")
 		if complete_commands == len(self.parent._ans_p2):
-			showinfo(title="Ошибка", message="Все команды успешно дизассемблированы")
+			showinfo(title="Успех", message="Все команды успешно дизассемблированы")
+			self.parent.write_to_file()
+
+	def left_command(self):
+		select = list(self.lbox.curselection())
+		if select and select[0] != 0:
+			text = self.lbox.get(select)
+			self.lbox.delete(select)
+			self.lbox.insert(select[0] - 1, text)
+
+	def right_command(self):
+		select = list(self.lbox.curselection())
+		if select and select[0] != len(self.lbox.get(0, tk.END)):
+			text = self.lbox.get(select)
+			self.lbox.delete(select)
+			self.lbox.insert(select[0] + 1, text)
 
 	def _build_ui(self):
 		nameLabel = tk.Label(self, text="Декодирование команд", font=('Helvetica', 14, 'bold'), fg='blue')
@@ -56,11 +88,20 @@ class Page2(Page):
 		self.ans = tk.Entry(buttons_frame, highlightcolor="blue")
 		self.ans.bind("<Return>", self.add_command)
 		self.ans.pack(side="top")
+		self.ans.focus_set()
+
+		left_right = tk.Frame(buttons_frame)
+		add_button = tk.Button(left_right, text="<", borderwidth=0, activeforeground="red", command=self.left_command)
+		add_button.pack(side="left")
+
+		add_button = tk.Button(left_right, text=">", borderwidth=0, activeforeground="red", command=self.right_command)
+		add_button.pack(side="left")
+		left_right.pack(side="top")
 
 		add_button = tk.Button(buttons_frame, text="Добавить", borderwidth=0, activeforeground="red", command=self.add_command)
 		add_button.pack(side="top")
 
-		change_button = tk.Button(buttons_frame, text="Изменить", borderwidth=0, activeforeground="red")
+		change_button = tk.Button(buttons_frame, text="Изменить", borderwidth=0, activeforeground="red", command=self.change_command)
 		change_button.pack(side="top")
 
 		delete_button = tk.Button(buttons_frame, text="Удалить", borderwidth=0, activeforeground="red", command=self.delete_command)
@@ -84,7 +125,7 @@ class Page1(Page):
 		["Смещение сегмента кода", "Hex"],
 		["Значение указателя команд", "Hex"],
 		["Длина загружаемой части", "Dec"]]
-		self._completed_asks = 0
+		self._completed_asks = 8
 		self._build_ui()
 
 	def _check_ans(self, text, row):
@@ -163,7 +204,7 @@ class Page1(Page):
 
 	def next_btn_click(self):
 		self.pack_forget()
-		self.parent.p2.pack(side="top",fill="both", expand=True)
+		self.parent.p2.pack(side="bottom",fill="both", expand=True)
 		self.parent.p2.show()
 
 class TestFrame(tk.Frame):
@@ -171,16 +212,34 @@ class TestFrame(tk.Frame):
 		super().__init__(master=parent)
 		self.parent = parent
 		self._build_ui()
+		self.write_to_file()
 		
+			
+	def write_to_file(self):
+		file = open('Ответы.txt', 'w')
 		self._ans_p1 = self.parent._hexeditor.generate_ans_p1()
 		self._ans_p2 = self.parent._hexeditor.generate_ans_p2()
+		file.writelines('Задание 1:\n\n')
+		for i, val in enumerate(self._ans_p1):
+			file.writelines(str(i) + ': ' + str(val) + '\n')
 		
+		file.writelines('Задание 2:\n\n')
+		for i, val in enumerate(self._ans_p2):
+			file.writelines(str(i) + ': ' + str(val) + '\n')
+
+		file.close()
+
 	def _build_ui(self):
 		self.p2 = Page2(self)
 		self.p1 = Page1(self)
 
-		self.p1.pack(side="bottom",fill="both")
+		#toolbar = tk.Frame(self, bd=1, relief=tk.RAISED)
+		#exitButton = tk.Button(toolbar, text="1", relief=tk.FLAT, command= lambda: webbrowser.open_new('manuals.pdf'))
+        #exitButton.image = eimg
+		#exitButton.pack(side=tk.LEFT, padx=2, pady=2)
+		#toolbar.pack(side=tk.TOP)
 
+		self.p1.pack(side="bottom",fill="both")
 
 class MainWindow(tk.Tk):
 	def __init__(self):
