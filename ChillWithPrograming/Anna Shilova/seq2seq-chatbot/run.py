@@ -79,7 +79,7 @@ class MyWindow(QtWidgets.QMainWindow):
     
     def button_clicked(self):
         sender = self.sender()
-        item = QListWidgetItem('Max: ' + self.ui.lineEdit.text())
+        item = QListWidgetItem('Me: ' + self.ui.lineEdit.text())
         self.ui.listWidget.addItem(item)
 
         sentence = inference(self.ui.lineEdit.text(), 3)

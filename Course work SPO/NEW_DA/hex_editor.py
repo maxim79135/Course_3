@@ -6,11 +6,11 @@ class HexEditor(tk.Toplevel):
 		super().__init__(master=parent)
 		
 		self.tests = [
-			{"asm": "mov bx, 0417h", "dasm": ("BB", "17", "04")},
-			{"asm": "xor ax, ax", "dasm": ("33", "C0")},	
+			{"asm": ["mov bx, 0417h", "mov bx,0417h"], "dasm": ("BB", "17", "04")},
+			{"asm": ["xor ax, ax", "xor ax,ax"], "dasm": ("33", "C0")},	
 			{"asm": "pop ss", "dasm": ["17"]},
 			{"asm": "int 21h", "dasm": ("CD", "21")},
-			{"asm": "mov ax, 4c00h", "dasm": ("B8", "00", "4C")},
+			{"asm": ["mov ax, 4c00h", "mov ax,4c00h"], "dasm": ("B8", "00", "4C")},
 		]
 
 		self.moves = [{"asm": "mov ax, bx", "dasm": ("89", "D8")},

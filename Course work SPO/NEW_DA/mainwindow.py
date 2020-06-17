@@ -49,7 +49,7 @@ class Page2(Page):
 		for (i, com) in enumerate(writing_commands):
 			if i < len(self.parent._ans_p2):
 				print(i)
-				if com != self.parent._ans_p2[i]["asm"]:
+				if com not in self.parent._ans_p2[i]["asm"]:
 					consist_error = True
 				else:
 					complete_commands += 1
