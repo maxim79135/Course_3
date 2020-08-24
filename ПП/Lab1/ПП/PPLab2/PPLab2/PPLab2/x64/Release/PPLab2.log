@@ -1,7 +1,0 @@
-﻿  Main.cpp
-d:\учёба\пп\pplab2\pplab2\pplab2\state.h(65): warning C4267: +=: преобразование из "size_t" в "unsigned int"; возможна потеря данных
-d:\учёба\пп\pplab2\pplab2\pplab2\main.cpp(32): warning C4244: аргумент: преобразование "time_t" в "unsigned int", возможна потеря данных
-  Создание кода
-  All 373 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
-  Создание кода завершено
-  PPLab2.vcxproj -> D:\Учёба\ПП\PPLab2\PPLab2\x64\Release\PPLab2.exe
